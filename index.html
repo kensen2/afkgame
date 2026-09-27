@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Zindan Dalgaları</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/" } }
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="vignette"></div>
+<div id="overlay"></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="hud-left panel">
+    <canvas id="portrait" width="72" height="72"></canvas>
+    <div class="hud-bars">
+      <div class="hud-name"><span id="hud-hero">—</span> <span class="lvl">Lv <b id="hud-level">1</b></span></div>
+      <div class="bar hp"><div id="hp-fill"></div><span id="hp-text">0 / 0</span></div>
+      <div class="bar xp"><div id="xp-fill"></div><span id="xp-text">XP</span></div>
+    </div>
+  </div>
+  <div class="hud-center">
+    <div class="wave-title"><span id="hud-floor">Kat 1</span> · <span id="hud-wave">Dalga 1</span></div>
+    <div id="hud-enemies" class="wave-sub">—</div>
+    <div id="boss-bar" class="hidden"><div class="boss-name" id="boss-name">Boss</div><div class="bar boss"><div id="boss-fill"></div></div></div>
+  </div>
+  <div class="hud-right">
+    <div class="gold panel"><span class="coin"></span><b id="hud-gold">0</b></div>
+    <div class="hud-buttons">
+      <button id="btn-shop" class="btn small" title="Dükkan (B)">🛒 Dükkan</button>
+      <button id="btn-speed" class="btn small" title="Oyun hızı (H)">1x</button>
+      <button id="btn-pause" class="btn small" title="Duraklat (Esc)">⏸</button>
+    </div>
+  </div>
+  <div class="hud-bottom">
+    <div id="skills"></div>
+    <button id="btn-auto" class="btn auto on" title="Otomatik yetenek (A)">OTO<br><small>AÇIK</small></button>
+  </div>
+</div>
+
+<div id="banner" class="hidden"></div>
+<div id="toast" class="hidden"></div>
+<div id="fade" class="hidden"><div class="fade-inner"><div class="fade-small" id="fade-small">KAT 2</div><div class="fade-big" id="fade-big">—</div></div></div>
+
+<!-- Yükleme -->
+<div id="screen-loading" class="screen">
+  <div class="logo">ZİNDAN<span>DALGALARI</span></div>
+  <div class="loadbar"><div id="load-fill"></div></div>
+  <div class="hint" id="load-text">Zindan kazılıyor...</div>
+</div>
+
+<!-- Başlık -->
+<div id="screen-title" class="screen hidden">
+  <div class="logo big">ZİNDAN<span>DALGALARI</span></div>
+  <div class="subtitle">Karanlığın derinliklerine in. Dalga dalga gelen ordulara karşı dur.</div>
+  <div class="title-stats" id="title-stats"></div>
+  <button class="btn big" id="btn-play">OYNA</button>
+  <div class="footer-note">Düşman ve zindan modelleri: KayKit (Kay Lousberg, CC0)</div>
+</div>
+
+<!-- Karakter seçimi -->
+<div id="screen-select" class="screen hidden">
+  <h1 class="screen-title">Kahramanını Seç</h1>
+  <div class="cards" id="hero-cards"></div>
+  <div class="select-actions">
+    <button class="btn" id="btn-select-shop">🛒 Dükkan</button>
+    <button class="btn big" id="btn-start">⚔️ ZİNDANA GİR</button>
+  </div>
+  <div class="hint" id="start-hint"></div>
+</div>
+
+<!-- Dükkan -->
+<div id="screen-shop" class="screen modal hidden">
+  <div class="shop panel">
+    <div class="shop-head">
+      <div>
+        <div class="shop-title">Dükkan</div>
+        <div class="shop-hero" id="shop-hero">—</div>
+      </div>
+      <div class="shop-wallet">
+        <div class="gold"><span class="coin"></span><b id="shop-gold">0</b></div>
+        <div class="sp">⭐ <b id="shop-sp">0</b> yetenek puanı</div>
+      </div>
+      <button class="btn small close" id="btn-shop-close">✕</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="upg">Geliştirmeler</button>
+      <button class="tab" data-tab="skl">Yetenekler</button>
+      <button class="tab" data-tab="stats">İstatistikler</button>
+    </div>
+    <div class="shop-body" id="shop-body"></div>
+  </div>
+</div>
+
+<!-- Ölüm -->
+<div id="screen-death" class="screen modal hidden">
+  <div class="panel death">
+    <div class="death-title">YENİLDİN</div>
+    <div class="death-stats" id="death-stats"></div>
+    <div class="death-count" id="death-count"></div>
+    <div class="death-actions">
+      <button class="btn big" id="btn-retry">↻ Tekrar Dene</button>
+      <button class="btn" id="btn-death-shop">🛒 Dükkan</button>
+      <button class="btn" id="btn-death-menu">Karakter Seç</button>
+    </div>
+  </div>
+</div>
+
+<!-- Zafer -->
+<div id="screen-victory" class="screen modal hidden">
+  <div class="panel death">
+    <div class="death-title victory">ZİNDAN FETHEDİLDİ</div>
+    <div class="hint">100 dalganın hepsini geçtin ve Zindan Efendisi'ni yendin. Geliştirmelerin ve seviyen seninle kalıyor.</div>
+    <div class="death-stats" id="victory-stats"></div>
+    <div class="death-actions">
+      <button class="btn big" id="btn-victory-again">Baştan Başla</button>
+      <button class="btn" id="btn-victory-menu">Karakter Seç</button>
+    </div>
+  </div>
+</div>
+
+<!-- Duraklat -->
+<div id="screen-pause" class="screen modal hidden">
+  <div class="panel pause">
+    <div class="shop-title">Duraklatıldı</div>
+    <button class="btn big" id="btn-resume">Devam Et</button>
+    <button class="btn" id="btn-pause-shop">🛒 Dükkan</button>
+    <button class="btn" id="btn-sound">🔊 Ses: Açık</button>
+    <button class="btn" id="btn-quit">Menüye Dön</button>
+    <button class="btn danger small" id="btn-reset">Kaydı Sıfırla</button>
+  </div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

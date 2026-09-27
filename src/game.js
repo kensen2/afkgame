@@ -1,0 +1,415 @@
+// Oyun denetleyicisi: sahne, kamera, faz makinesi (yürü → dalga → savaş → ganimet).
+import * as THREE from 'three';
+import { CONFIG, F } from './config.js';
+import { Dungeon } from './world/dungeon.js';
+import { Hero } from './entities/hero.js';
+import { Enemy } from './entities/enemy.js';
+import { Effects } from './fx/effects.js';
+import { Economy } from './systems/economy.js';
+import { Skills } from './systems/skills.js';
+import { buildWave } from './systems/waves.js';
+import { cloneDungeon, cloneWeapon } from './core/assets.js';
+import { Audio } from './core/audio.js';
+
+export class Game {
+  constructor(canvas, overlay, ui) {
+    this.ui = ui;
+    this.audio = Audio;
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.15;
+
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(CONFIG.floors[0].fog);
+    this.scene.fog = new THREE.Fog(CONFIG.floors[0].fog, 16, 42);
+    this.camera = new THREE.PerspectiveCamera(42, 16 / 9, 0.1, 120);
+
+    this.hemi = new THREE.HemisphereLight(CONFIG.floors[0].ambient, 0x0a0604, 1.4);
+    this.scene.add(this.hemi);
+    this.moon = new THREE.DirectionalLight(0x8899cc, 0.7);
+    this.moon.position.set(-3, 10, 8);
+    this.scene.add(this.moon); this.scene.add(this.moon.target);
+
+    this.dungeon = new Dungeon(this.scene);
+    this.fx = new Effects(this.scene, this.camera, overlay);
+    this.enemies = [];
+    this.projectiles = [];
+    this.coins = [];
+    this.hero = null;
+    this.phase = 'idle';
+    this.time = 0;
+    this.paused = true;
+    this.camFocus = new THREE.Vector3();
+    this.lookOffset = new THREE.Vector3(3.2, 1.0, -0.8);
+    this.camOffset = new THREE.Vector3(-0.8, 7.2, 12.5);
+    this.zoom = 1;
+    this.resize();
+
+    window.addEventListener('resize', () => this.resize());
+    this.clock = new THREE.Clock();
+    this.renderer.setAnimationLoop(() => this.frame());
+  }
+
+  resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    this.renderer.setSize(w, h, false);
+    this.camera.aspect = w / h;
+    // dar ekranlarda (telefon dikey) biraz geri çekil
+    const portrait = w / h < 1;
+    this.camera.fov = portrait ? 58 : 42;
+    this.lookOffset.set(portrait ? 1.0 : 3.2, 1.0, -0.8);
+    this.camOffset.set(portrait ? -0.2 : -0.8, portrait ? 9 : 7.2, portrait ? 15 : 12.5);
+    this.camera.updateProjectionMatrix();
+  }
+
+  // ---------- Koşu başlat / bitir ----------
+  startRun(heroId) {
+    this.clearWorld();
+    Economy.data.selectedHero = heroId;
+    Economy.save();
+    this.hero = new Hero(heroId, this.scene);
+    this.hero.pos.set(0, 0, 0);
+    this.wave = Economy.startWave() - 1;
+    this.runStartWave = this.wave + 1;
+    this.runGold = 0; this.runKills = 0; this.runXp = 0;
+    this.floorIndex = -1;
+    this.setFloor(F.floorOf(this.wave + 1));
+    this.dungeon.rebuild(0);
+    this.camFocus.set(0, 0, 0);
+    this.walkTarget = 8;
+    this.phase = 'walking';
+    this.paused = false;
+    this.ui.onRunStart(this);
+    this.audio.startAmbient();
+  }
+
+  clearWorld() {
+    for (const e of this.enemies) e.dispose();
+    this.enemies = [];
+    for (const p of this.projectiles) this.scene.remove(p.mesh);
+    this.projectiles = [];
+    for (const c of this.coins) this.scene.remove(c.mesh);
+    this.coins = [];
+    this.fx.clear();
+    if (this.hero) { this.hero.dispose(); this.hero = null; }
+  }
+
+  setFloor(fi) {
+    if (fi === this.floorIndex) return;
+    this.floorIndex = fi;
+    const th = CONFIG.floors[fi % CONFIG.floors.length];
+    this.scene.background.set(th.fog);
+    this.scene.fog.color.set(th.fog);
+    this.hemi.color.set(th.ambient);
+    this.dungeon.setTheme(fi);
+  }
+
+  // ---------- Dalga ----------
+  startWave() {
+    this.wave++;
+    const w = this.wave;
+    const fi = F.floorOf(w);
+    if (fi !== this.floorIndex) {
+      // yeni kat
+      this.phase = 'transition';
+      this.ui.floorTransition(fi + 1, CONFIG.floors[fi % CONFIG.floors.length].name, () => {
+        this.setFloor(fi);
+        this.hero.pos.set(this.hero.pos.x, 0, 0);
+        this.dungeon.rebuild(this.hero.pos.x);
+        this._spawnWave(w);
+      });
+      return;
+    }
+    this._spawnWave(w);
+  }
+
+  _spawnWave(w) {
+    const list = buildWave(w);
+    const hx = this.hero.pos.x;
+    const ahead = CONFIG.wave.spawnAhead;
+    list.forEach((s, i) => {
+      const e = new Enemy(s.type, w, this.scene, s.rank, s.bossDef);
+      const col = i % 4, row = Math.floor(i / 4);
+      const skel = e.def.skel;
+      const x = hx + (skel ? ahead - 2 : ahead + 3) + row * 1.6 + Math.random() * 1.2 + (s.rank === 'boss' ? 1.5 : 0);
+      const z = s.rank === 'boss' ? 0 : -2.4 + col * 1.6 + (Math.random() - 0.5) * 0.6;
+      e.pos.set(x, 0, z);
+      e.spawn();
+      if (skel) {
+        this.fx.burst(new THREE.Vector3(x, 0.2, z), { count: 10, color: 0x9fb4ff, speed: 2, up: 2, size: 0.4, life: 0.8 });
+      }
+      this.enemies.push(e);
+    });
+    this.phase = 'combat';
+    const boss = list.find((s) => s.rank === 'boss');
+    if (boss) {
+      this.audio.play('boss');
+      this.fx.shake(0.6);
+      this.ui.banner(`BOSS · ${boss.bossDef.name}`, 'boss');
+    } else if (F.isElite(w)) {
+      this.audio.play('wave');
+      this.ui.banner(`Dalga ${w} · ELİT`, 'elite');
+    } else {
+      this.audio.play('wave');
+      this.ui.banner(`Dalga ${w}`);
+    }
+    this.ui.updateWave(this);
+  }
+
+  bossAlive() { return this.enemies.some((e) => e.rank === 'boss' && !e.dead); }
+
+  bossSummon(boss) {
+    const alive = this.enemies.filter((e) => !e.dead).length;
+    if (alive > 8) return;
+    for (let i = 0; i < 2; i++) {
+      const e = new Enemy('Skeleton_Minion', this.wave, this.scene, 'normal');
+      e.pos.set(boss.pos.x + (Math.random() - 0.5) * 3, 0, THREE.MathUtils.clamp(boss.pos.z + (Math.random() - 0.5) * 4, -3, 3));
+      e.spawn();
+      e.gold *= 0.3; e.xp *= 0.3;
+      this.fx.burst(e.pos.clone().setY(0.3), { count: 14, color: 0x9a6aff, speed: 2, up: 3 });
+      this.enemies.push(e);
+    }
+  }
+
+  nearestEnemy(pos) {
+    let best = null, bd = Infinity;
+    for (const e of this.enemies) {
+      if (e.dead || !e.active) continue;
+      const d = Math.hypot(e.pos.x - pos.x, e.pos.z - pos.z) - (e.rank === 'boss' ? 0.5 : 0);
+      if (d < bd) { bd = d; best = e; }
+    }
+    return best;
+  }
+
+  onEnemyDeath(e) {
+    this.runKills++;
+    Economy.data.totalKills++;
+    const p = e.pos.clone(); p.y = 1;
+    this.fx.burst(p, { count: e.rank === 'boss' ? 50 : 14, color: e.def.skel ? 0xdde4ff : 0xff5544, speed: 5, size: 0.4, life: 0.6 });
+    this.audio.play(e.def.skel ? 'bones' : 'die');
+    if (e.rank === 'boss') this.fx.shake(1);
+    // gold paraları saç
+    const gold = e.gold * this.hero.stats.goldMult;
+    const n = e.rank === 'boss' ? 14 : e.rank === 'elite' ? 6 : Math.min(4, 1 + Math.floor(Math.random() * 3));
+    for (let i = 0; i < n; i++) this.spawnCoin(e.pos, gold / n);
+    const lv = Economy.addXp(e.xp);
+    this.runXp += e.xp;
+    if (lv > 0) {
+      this.hero.refreshStats();
+      this.hero.heal(this.hero.stats.maxHp * 0.3);
+      this.audio.play('levelup');
+      this.fx.floater(this.hero.pos.clone().setY(3.4), `SEVİYE ${Economy.data.level}!`, 'level');
+      this.fx.burst(this.hero.pos.clone().setY(1), { count: 40, color: 0x7affc0, speed: 3, up: 5, size: 0.5, life: 1 });
+      this.ui.toast(`Seviye ${Economy.data.level}! +1 yetenek puanı`);
+    }
+    this.ui.updateWave(this);
+  }
+
+  spawnCoin(pos, value) {
+    const mesh = cloneDungeon('coin');
+    mesh.scale.setScalar(1.6);
+    mesh.position.set(pos.x, 1, pos.z);
+    this.scene.add(mesh);
+    const a = Math.random() * Math.PI * 2, s = 1.5 + Math.random() * 2;
+    this.coins.push({ mesh, value, v: new THREE.Vector3(Math.cos(a) * s, 4 + Math.random() * 3, Math.sin(a) * s * 0.6), t: 0, magnet: false });
+  }
+
+  updateCoins(dt) {
+    const hp = this.hero.pos;
+    for (let i = this.coins.length - 1; i >= 0; i--) {
+      const c = this.coins[i];
+      c.t += dt;
+      const m = c.mesh;
+      m.rotation.y += dt * 6;
+      if (!c.magnet) {
+        c.v.y -= 16 * dt;
+        m.position.addScaledVector(c.v, dt);
+        if (m.position.y < 0.15) { m.position.y = 0.15; c.v.y *= -0.35; c.v.x *= 0.6; c.v.z *= 0.6; }
+        if (c.t > 0.9 || this.phase !== 'combat') c.magnet = true;
+      } else {
+        const target = new THREE.Vector3(hp.x, 1.2, hp.z);
+        const d = target.sub(m.position);
+        const len = d.length();
+        const spd = 6 + c.t * 14;
+        if (len < 0.5) {
+          const got = Economy.addGold(c.value);
+          this.runGold += got;
+          this.audio.play('coin');
+          this.fx.floater(hp.clone().setY(2.8), `+${got}`, 'gold');
+          this.scene.remove(m); this.coins.splice(i, 1);
+          continue;
+        }
+        m.position.addScaledVector(d.normalize(), Math.min(len, spd * dt));
+      }
+    }
+  }
+
+  // ---------- Mermiler ----------
+  spawnProjectile(e) {
+    const kind = e.def.proj;
+    let mesh;
+    const color = kind === 'fire' ? 0xff6a1a : kind === 'orb' ? 0xa066ff : 0xdddddd;
+    if (kind === 'bolt') {
+      mesh = cloneWeapon('Skeleton_Arrow');
+      mesh.scale.setScalar(1.4);
+      this.audio.play('bolt');
+    } else {
+      mesh = new THREE.Mesh(new THREE.SphereGeometry(kind === 'fire' ? 0.32 : 0.24, 12, 8), new THREE.MeshBasicMaterial({ color }));
+      this.audio.play('cast');
+    }
+    const start = e.pos.clone(); start.y = 1.4 * e.scale;
+    const dir = e.pos.x > this.hero.pos.x ? -1 : 1;
+    start.x += dir * 0.6;
+    mesh.position.copy(start);
+    this.scene.add(mesh);
+    const target = this.hero.pos.clone(); target.y = 1.2;
+    const v = target.sub(start).normalize().multiplyScalar(kind === 'bolt' ? 16 : 9);
+    if (kind === 'bolt') mesh.lookAt(start.clone().add(v)), mesh.rotateX(Math.PI / 2);
+    this.projectiles.push({ mesh, v, dmg: e.dmg, kind, color, life: 3, src: e });
+  }
+
+  updateProjectiles(dt) {
+    const hp = this.hero.pos;
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i];
+      p.life -= dt;
+      // hafif hedef takibi (büyüler)
+      if (p.kind !== 'bolt' && !this.hero.dead) {
+        const want = new THREE.Vector3(hp.x, 1.2, hp.z).sub(p.mesh.position).normalize().multiplyScalar(p.v.length());
+        p.v.lerp(want, Math.min(1, dt * 1.5));
+      }
+      p.mesh.position.addScaledVector(p.v, dt);
+      if (p.kind !== 'bolt' && Math.random() < 0.8) this.fx.burst(p.mesh.position, { count: 1, color: p.color, speed: 0.4, up: 0.3, size: 0.45, life: 0.3, gravity: 0 });
+      const d = Math.hypot(p.mesh.position.x - hp.x, p.mesh.position.z - hp.z);
+      if (!this.hero.dead && d < 0.7 && Math.abs(p.mesh.position.y - 1.2) < 1.3) {
+        this.hero.takeDamage(p.dmg, this, null);
+        this.fx.burst(p.mesh.position, { count: 12, color: p.color, speed: 4, size: 0.4 });
+        this.audio.play('hurt');
+        this.scene.remove(p.mesh); this.projectiles.splice(i, 1);
+        continue;
+      }
+      if (p.life <= 0) { this.scene.remove(p.mesh); this.projectiles.splice(i, 1); }
+    }
+  }
+
+  onVictory() {
+    this.phase = 'victory';
+    Economy.data.wins = (Economy.data.wins || 0) + 1;
+    Economy.data.resumeWave = 1;
+    for (const c of this.coins) { const g = Economy.addGold(c.value); this.runGold += g; this.scene.remove(c.mesh); }
+    this.coins = [];
+    Economy.save();
+    this.audio.play('levelup');
+    this.fx.burst(this.hero.pos.clone().setY(1.5), { count: 80, color: 0xffd23a, speed: 6, up: 6, size: 0.6, life: 1.4 });
+    setTimeout(() => this.ui.showVictory(this), 1500);
+  }
+
+  onHeroDeath() {
+    this.phase = 'dead';
+    this.audio.play('defeat');
+    this.fx.shake(0.8);
+    Economy.recordWave(Math.max(0, this.wave - 1));
+    Economy.setResumeAfterDeath(this.wave);
+    // yerdeki paraları otomatik topla
+    for (const c of this.coins) { const g = Economy.addGold(c.value); this.runGold += g; this.scene.remove(c.mesh); }
+    this.coins = [];
+    Economy.save();
+    setTimeout(() => this.ui.showDeath(this), 1800);
+  }
+
+  // ---------- Ana döngü ----------
+  frame() {
+    let dt = Math.min(0.05, this.clock.getDelta());
+    this._lastRenderDt = dt;
+    if (this.paused || !this.hero) { this.render(); return; }
+    dt *= Economy.data.settings.speed || 1;
+    // 2x/3x hızda simülasyonu küçük adımlarla koştur
+    const steps = Math.ceil(dt / 0.034);
+    for (let s = 0; s < steps; s++) this.step(dt / steps);
+    this.render();
+    this.ui.updateHud(this);
+  }
+
+  step(dt) {
+    this.time += dt;
+    const hero = this.hero;
+
+    if (this.phase === 'walking') {
+      if (hero.pos.x >= this.walkTarget) this.startWave();
+    }
+    if (this.phase === 'combat') {
+      if (Economy.data.settings.auto) Skills.autoCast(this);
+      const alive = this.enemies.filter((e) => !e.dead);
+      if (alive.length === 0) {
+        Economy.recordWave(this.wave);
+        if (this.wave >= CONFIG.wave.maxWave) { this.onVictory(); return; }
+        Economy.save();
+        this.phase = 'loot';
+        this.lootT = 0;
+        hero.heal(hero.stats.maxHp * 0.15);
+        this.ui.waveCleared(this);
+      }
+    }
+    if (this.phase === 'loot') {
+      this.lootT += dt;
+      if (this.lootT > 1.0 && this.coins.length === 0) {
+        this.phase = 'walking';
+        this.walkTarget = hero.pos.x + CONFIG.wave.walkDistance;
+      }
+    }
+
+    hero.update(dt, this);
+    for (const e of this.enemies) e.update(dt, this);
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      if (this.enemies[i].removed) { this.enemies[i].dispose(); this.enemies.splice(i, 1); }
+    }
+    this.updateProjectiles(dt);
+    this.updateCoins(dt);
+    this.dungeon.update(hero.pos.x, dt);
+    this.fx.update(dt);
+  }
+
+  render() {
+    if (this.hero) {
+      // kamera: kahramanı yumuşak takip; savaşta düşman grubunu da kadraja al
+      const target = new THREE.Vector3(this.hero.pos.x, 0, 0);
+      if (this.phase === 'combat') {
+        const alive = this.enemies.filter((e) => !e.dead);
+        if (alive.length) {
+          const cx = alive.reduce((s, e) => s + e.pos.x, 0) / alive.length;
+          target.x = THREE.MathUtils.clamp((this.hero.pos.x * 2 + cx) / 3, this.hero.pos.x - 3, this.hero.pos.x + 4);
+        }
+      }
+      const k = this.bossAlive() ? 1.12 : 1;
+      this.zoom += (k - this.zoom) * 0.02;
+      if (this.camFocus.distanceTo(target) > 25) this.camFocus.copy(target);
+      const dtR = Math.min(0.05, this._lastRenderDt || 0.016);
+      this.camFocus.lerp(target, 1 - Math.exp(-dtR * 3.5));
+      const cam = this.camFocus.clone().add(this.camOffset.clone().multiplyScalar(this.zoom)).add(this.fx.shakeOffset());
+      this.camera.position.copy(cam);
+      this.camera.lookAt(this.camFocus.clone().add(this.lookOffset));
+      this.moon.position.set(this.camFocus.x - 3, 10, 8);
+      this.moon.target.position.set(this.camFocus.x + 2, 0, 0);
+    }
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  // Menüde arka planda zindanı göster
+  showMenuScene() {
+    this.clearWorld();
+    this.paused = true;
+    this.setFloor(0);
+    this.dungeon.rebuild(0);
+    this.camera.position.set(-2, 5, 11);
+    this.camera.lookAt(4, 1.5, -2);
+    this.dungeon.update(0, 0.016);
+    const loop = () => {
+      if (!this.paused || this.hero) return;
+      this.dungeon.update(0, 0.016);
+      requestAnimationFrame(loop);
+    };
+    loop();
+  }
+}
