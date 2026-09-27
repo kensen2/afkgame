@@ -80,7 +80,8 @@ export class UI {
 
   _bind() {
     const click = (id, fn) => $(id).addEventListener('click', () => { Audio.play('click'); fn(); });
-    click('btn-play', () => this.showSelect());
+    click('btn-play', () => { Audio.setMusic('menu'); this.showSelect(); });
+    click('btn-music', () => this.toggleMusic());
     click('btn-start', () => this.startGame());
     click('btn-select-shop', () => this.openShop('select'));
     click('btn-shop', () => this.openShop('game'));
@@ -186,6 +187,7 @@ export class UI {
   }
 
   toMenu() {
+    Audio.setMusic('menu');
     this.game.showMenuScene();
     $('hud').classList.add('hidden');
     this.showSelect();
@@ -321,8 +323,10 @@ export class UI {
     a.classList.toggle('on', s.auto);
     a.innerHTML = `OTO<br><small>${s.auto ? 'AÇIK' : 'KAPALI'}</small>`;
     $('btn-speed').textContent = `${s.speed}x`;
-    $('btn-sound').textContent = s.sound ? '🔊 Ses: Açık' : '🔇 Ses: Kapalı';
+    $('btn-sound').textContent = s.sound ? '🔊 Efektler: Açık' : '🔇 Efektler: Kapalı';
+    $('btn-music').textContent = s.music ? '🎵 Müzik: Açık' : '🎵 Müzik: Kapalı';
     Audio.setEnabled(s.sound);
+    Audio.setMusicEnabled(s.music);
   }
 
   toggleAuto() { Economy.data.settings.auto = !Economy.data.settings.auto; Economy.save(); this.syncButtons(); }
@@ -333,6 +337,7 @@ export class UI {
     s.speed = steps[(i + 1) % steps.length];
     Economy.save(); this.syncButtons();
   }
+  toggleMusic() { Economy.data.settings.music = !Economy.data.settings.music; Economy.save(); this.syncButtons(); }
   toggleSound() { Economy.data.settings.sound = !Economy.data.settings.sound; Economy.save(); this.syncButtons(); }
 
   pause() {
@@ -352,6 +357,7 @@ export class UI {
     if (from === 'game') { if (this.game.phase === 'dead') return; this.game.paused = true; }
     if (from === 'select') $('screen-select').classList.add('hidden');
     $('screen-shop').classList.remove('hidden');
+    Audio.play('page');
     this.renderShop();
   }
 

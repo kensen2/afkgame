@@ -97,3 +97,14 @@ Tüm sayılar `src/config.js` dosyasında. Değiştirdikten sonra `node sim/bala
 
 `src/systems/economy.js` dışarıya sadece `addGold / spendGold / buyUpgrade / load / save` gibi fonksiyonlar açıyor.
 Solana entegrasyonunda bu fonksiyonların içi cüzdan ve zincir çağrılarıyla değiştirilecek. Oyunun geri kalanı değişmeyecek.
+
+## Sesler ve müzik
+
+- **Ses efektleri:** Kenney — Impact Sounds, RPG Audio, Interface Sounds (CC0). `assets/audio/sfx/`
+- **Müzik** (`assets/audio/music/`), Creative Commons Attribution 4.0 (isim vermek zorunlu):
+  - Menü: "Midnight Tale" — Kevin MacLeod (incompetech.com)
+  - Zindan: "Night Vigil" ve "Spellbound" — Kevin MacLeod (incompetech.com)
+  - Boss: "Strength of the Titans" — Kevin MacLeod (incompetech.com)
+  - Lisans: http://creativecommons.org/licenses/by/4.0/
+
+Efektleri değiştirmek için `src/core/audio.js` içindeki `BANK` listesine bak: her olayın hangi dosyaları, ses seviyesini ve perde aralığını kullandığı orada yazıyor.

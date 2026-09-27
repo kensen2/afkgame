@@ -83,6 +83,7 @@ export class Game {
     this.paused = false;
     this.ui.onRunStart(this);
     this.audio.startAmbient();
+    this.audio.setMusic('dungeon');
   }
 
   clearWorld() {
@@ -146,6 +147,7 @@ export class Game {
     const boss = list.find((s) => s.rank === 'boss');
     if (boss) {
       this.audio.play('boss');
+      this.audio.setMusic('boss');
       this.fx.shake(0.6);
       this.ui.banner(`BOSS · ${boss.bossDef.name}`, 'boss');
     } else if (F.isElite(w)) {
@@ -295,6 +297,7 @@ export class Game {
   }
 
   onVictory() {
+    this.audio.setMusic('menu');
     this.phase = 'victory';
     Economy.data.wins = (Economy.data.wins || 0) + 1;
     Economy.data.resumeWave = 1;
@@ -307,6 +310,7 @@ export class Game {
   }
 
   onHeroDeath() {
+    this.audio.setMusic(null);
     this.phase = 'dead';
     this.audio.play('defeat');
     this.fx.shake(0.8);
@@ -350,6 +354,7 @@ export class Game {
         this.lootT = 0;
         hero.heal(hero.stats.maxHp * 0.15);
         this.ui.waveCleared(this);
+        this.audio.setMusic('dungeon');
       }
     }
     if (this.phase === 'loot') {
