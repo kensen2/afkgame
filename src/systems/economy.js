@@ -93,7 +93,8 @@ export const Economy = {
     return { away, secs, gold, capped: away > secs, wave: Math.max(1, this.data.resumeWave || 1), hero: this.data.selectedHero };
   },
 
-  reset() { this.data = freshSave(); this.save(); this.emit(); },
+  // İlerlemeyi sıfırla; ses/hız gibi ayarlar korunur
+  reset() { const settings = this.data.settings; this.data = freshSave(); this.data.settings = settings; this.save(); this.emit(); },
 
   on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   emit(evt = {}) { for (const fn of listeners) fn(this.data, evt); },

@@ -259,3 +259,4 @@ input[type=range]:disabled { opacity: 0.35; cursor: not-allowed; }
 .off-gold .coin { width: 30px; height: 30px; }
 .off-note { color: #6d6680; font-size: 12px; margin-bottom: 14px; }
 #screen-offline { z-index: 40; }
+.set-reset { grid-column: 2 / 3; padding: 6px 0; font-size: 12px; }

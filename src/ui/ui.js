@@ -108,6 +108,26 @@ export class UI {
     click('btn-pause-shop', () => { $('screen-pause').classList.add('hidden'); this.openShop('pause'); });
     click('btn-quit', () => { $('screen-pause').classList.add('hidden'); this.toMenu(); });
     click('btn-sound', () => this.toggleSound());
+    // Ayarlar ekranındaki sıfırlama (iki tıkla onay)
+    click('btn-set-reset', () => {
+      const b = $('btn-set-reset'), note = $('reset-note');
+      if (!b.dataset.armed) {
+        b.dataset.armed = '1'; b.textContent = 'Confirm';
+        note.textContent = 'Click Confirm to erase all gold, levels and upgrades.';
+        clearTimeout(this._resetT);
+        this._resetT = setTimeout(() => { delete b.dataset.armed; b.textContent = 'Reset'; note.textContent = 'Start over from wave 1 with 0 gold. Settings are kept.'; }, 4000);
+        return;
+      }
+      clearTimeout(this._resetT);
+      delete b.dataset.armed; b.textContent = 'Reset';
+      $('reset-note').textContent = 'Start over from wave 1 with 0 gold. Settings are kept.';
+      Economy.reset();
+      $('screen-settings').classList.add('hidden');
+      $('screen-pause').classList.add('hidden');
+      if (this.game.hero) this.toMenu();
+      else if (!$('screen-title').classList.contains('hidden')) this.showTitle();
+      this.toast('Progress reset. Fresh start!');
+    });
     click('btn-reset', () => {
       const b = $('btn-reset');
       if (!b.dataset.armed) {
