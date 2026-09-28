@@ -22,19 +22,24 @@ function ensure() {
 // rastgele biri seçilir ve perdesi hafifçe değiştirilir (tekrar hissi olmasın).
 // ---------------------------------------------------------------------
 const BANK = {
-  hit:    { files: ['impactMetal_medium_000', 'impactMetal_medium_001', 'impactMetal_medium_002', 'impactMetal_medium_003', 'impactMetal_medium_004'], vol: 0.55, pitch: [0.85, 1.1], gap: 45,
-            layer: { files: ['chop'], vol: 0.45 }, thump: { f0: 150, vol: 0.55 } },
-  crit:   { files: ['impactMetal_heavy_000', 'impactMetal_heavy_001', 'impactMetal_heavy_002', 'impactMetal_heavy_003', 'impactMetal_heavy_004'], vol: 0.8, pitch: [0.85, 1.0], gap: 60,
-            layer: { files: ['chop'], vol: 0.6 }, thump: { f0: 120, vol: 0.85, dur: 0.22 } },
-  hurt:   { files: ['impactMetal_light_000', 'impactMetal_light_001', 'impactMetal_light_002', 'impactMetal_light_003'], vol: 0.45, pitch: [0.7, 0.85], gap: 90,
-            thump: { f0: 130, vol: 0.45 } },
+  // Vuruşlar: metal çınlaması yok; tok gövde darbesi + tahta/taş kırılma + alçak "güm"
+  hit:    { files: ['impactSoft_medium_000', 'impactSoft_medium_001'], vol: 0.9, pitch: [0.8, 1.05], gap: 45,
+            layer: { files: ['impactWood_light_002', 'impactWood_light_003', 'impactWood_heavy_000'], vol: 0.55 },
+            thump: { f0: 150, vol: 0.6 } },
+  crit:   { files: ['impactWood_heavy_000'], vol: 1.0, pitch: [0.75, 0.9], gap: 60,
+            layer: { files: ['impactMining_002', 'impactMining_004'], vol: 0.75 },
+            thump: { f0: 120, vol: 0.9, dur: 0.24 } },
+  hurt:   { files: ['impactSoft_medium_000', 'impactSoft_medium_001'], vol: 0.7, pitch: [0.6, 0.75], gap: 90,
+            thump: { f0: 110, vol: 0.5 } },
   bones:  { files: ['impactMining_002', 'impactMining_004', 'impactWood_light_002', 'impactWood_light_003'], vol: 0.7, pitch: [0.8, 1.1], gap: 50 },
-  die:    { files: ['dropLeather', 'chop'], vol: 0.6, pitch: [0.7, 0.9], gap: 60 },
+  die:    { files: ['impactSoft_medium_001', 'dropLeather'], vol: 0.7, pitch: [0.6, 0.8], gap: 60, thump: { f0: 100, vol: 0.5, dur: 0.2 } },
   coin:   { files: ['handleCoins', 'handleCoins2'], vol: 0.22, pitch: [1.0, 1.25], gap: 120 },
   buy:    { files: ['handleCoins2'], vol: 0.55, pitch: [1, 1], gap: 50 },
-  shield: { files: ['impactMetal_heavy_001', 'impactMetal_heavy_003'], vol: 0.9, pitch: [0.6, 0.72], gap: 80 },
-  skill:  { files: ['impactMetal_heavy_002', 'impactMetal_heavy_004'], vol: 0.7, pitch: [0.75, 0.9], gap: 80,
-            layer: { files: ['chop'], vol: 0.55 }, thump: { f0: 110, vol: 0.75, dur: 0.25 } },
+  shield: { files: ['impactWood_heavy_000'], vol: 1.0, pitch: [0.6, 0.7], gap: 80,
+            layer: { files: ['impactSoft_medium_000'], vol: 0.8 }, thump: { f0: 100, vol: 0.85, dur: 0.25 } },
+  skill:  { files: ['impactWood_heavy_000'], vol: 1.0, pitch: [0.7, 0.85], gap: 80,
+            layer: { files: ['impactMining_004'], vol: 0.7 }, thump: { f0: 100, vol: 0.85, dur: 0.26 } },
+  bolt:   { files: ['metalClick'], vol: 0.45, pitch: [0.9, 1.1], gap: 120 },
   levelup:{ files: ['maximize_006'], vol: 0.7, pitch: [1, 1], gap: 300, layer: { files: ['confirmation_004'], vol: 0.6 } },
   wave:   { files: ['doorOpen_2'], vol: 0.55, pitch: [0.8, 0.9], gap: 500 },
   click:  { files: ['click_002', 'select_001'], vol: 0.45, pitch: [0.95, 1.05], gap: 40 },
@@ -129,21 +134,22 @@ function whoosh() {
   s.connect(f); f.connect(g); g.connect(sfxBus); s.start(t);
 }
 
+// Not: burada gürültü (hışırtı) üreten hiçbir ses yok; sadece temiz tonlar.
 const SYNTH = {
-  cast: () => { tone({ type: 'sine', f0: 300, f1: 900, dur: 0.3, vol: 0.12 }); noise({ dur: 0.3, vol: 0.1, freq: 3000, q: 4 }); },
-  bolt: () => noise({ dur: 0.12, vol: 0.25, freq: 2500, f1: 900, q: 2 }),
-  roar: () => { tone({ type: 'sawtooth', f0: 110, f1: 60, dur: 0.7, vol: 0.3 }); noise({ dur: 0.7, vol: 0.35, freq: 500, f1: 120, q: 0.5 }); },
+  cast: () => { const now = performance.now(); if (now - (lastPlay.cast || 0) < 250) return; lastPlay.cast = now;
+    tone({ type: 'sine', f0: 260, f1: 520, dur: 0.22, vol: 0.06 }); },
+  roar: () => { tone({ type: 'sawtooth', f0: 110, f1: 60, dur: 0.6, vol: 0.18 }); tone({ type: 'sine', f0: 70, f1: 40, dur: 0.6, vol: 0.5 }); },
   boss: () => {
     playBuffer('doorOpen_2', 0.8, 0.6);
-    [110, 104, 98].forEach((f, i) => tone({ type: 'sawtooth', f0: f, f1: f * 0.9, dur: 0.8, vol: 0.18, delay: i * 0.35 }));
-    noise({ dur: 1.4, vol: 0.25, freq: 200, f1: 50 });
+    [110, 104, 98].forEach((f, i) => tone({ type: 'sawtooth', f0: f, f1: f * 0.9, dur: 0.8, vol: 0.12, delay: i * 0.35 }));
+    thump(90, 0.8, 0.6);
   },
   defeat: () => { playBuffer('minimize_004', 0.6, 0.8); [392, 330, 262, 196].forEach((f, i) => tone({ type: 'triangle', f0: f, dur: 0.45, vol: 0.14, delay: 0.1 + i * 0.2 })); },
-  // dosya yüklenemezse yedekler
   swing: () => {}, // kılıç savurma sesi yok; sadece vuruş anında tok ses çalar
-  hit: () => { noise({ dur: 0.12, vol: 0.4, freq: 900, f1: 200, q: 1.2 }); tone({ type: 'square', f0: 140, f1: 60, dur: 0.1, vol: 0.15 }); },
-  crit: () => noise({ dur: 0.18, vol: 0.5, freq: 1800, f1: 300, q: 1 }),
-  hurt: () => tone({ type: 'sawtooth', f0: 180, f1: 90, dur: 0.15, vol: 0.18 }),
+  // dosya yüklenemezse yedekler (yine gürültüsüz)
+  hit: () => thump(150, 0.6, 0.16),
+  crit: () => thump(120, 0.9, 0.24),
+  hurt: () => thump(110, 0.5, 0.16),
   coin: () => tone({ type: 'sine', f0: 1320, dur: 0.1, vol: 0.1 }),
   levelup: () => [523, 659, 784, 1047].forEach((f, i) => tone({ type: 'triangle', f0: f, dur: 0.25, vol: 0.15, delay: i * 0.09 })),
 };
@@ -223,13 +229,5 @@ export const Audio = {
     startTrack(mode);
   },
 
-  startAmbient() {
-    if (!ensure() || ambient) return;
-    // alçak zindan uğultusu (müziğin altında çok hafif)
-    const s = ctx.createBufferSource(); s.buffer = noiseBuffer(4); s.loop = true;
-    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 300;
-    const g = ctx.createGain(); g.gain.value = 0.03;
-    s.connect(f); f.connect(g); g.connect(sfxBus); s.start();
-    ambient = { g };
-  },
+  startAmbient() { /* sürekli arka plan uğultusu kaldırıldı (hışırtı yapıyordu) */ },
 };
