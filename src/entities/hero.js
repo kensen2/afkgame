@@ -42,7 +42,7 @@ export class Hero {
     this.pivot.add(this.xray);
     this.group.add(this.pivot);
     // yumuşak gölge
-    const sh = new THREE.Mesh(new THREE.CircleGeometry(0.75, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false }));
+    const sh = new THREE.Mesh(new THREE.CircleGeometry(0.94, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false }));
     sh.rotation.x = -Math.PI / 2; sh.position.y = 0.06; sh.scale.set(1.2, 0.7, 1);
     this.group.add(sh);
     // kahramanın etrafını aydınlatan sıcak ışık
@@ -50,8 +50,8 @@ export class Hero {
     this.light.position.set(0.5, 2.5, 2);
     this.group.add(this.light);
     // koruma kalkanı efekti
-    this.bubble = new THREE.Mesh(new THREE.SphereGeometry(1.4, 24, 16), new THREE.MeshBasicMaterial({ color: 0x55aaff, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false }));
-    this.bubble.position.y = 1.2; this.bubble.visible = false;
+    this.bubble = new THREE.Mesh(new THREE.SphereGeometry(1.75, 24, 16), new THREE.MeshBasicMaterial({ color: 0x55aaff, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false }));
+    this.bubble.position.y = 1.5; this.bubble.visible = false;
     this.group.add(this.bubble);
     scene.add(this.group);
 
@@ -146,7 +146,7 @@ export class Hero {
     }
     this.hp -= dmg;
     this.flash = 0.15;
-    game.fx.floater(this.pos.clone().add(new THREE.Vector3(0, 2.6, 0)), Math.round(dmg), 'hurt');
+    game.fx.floater(this.pos.clone().add(new THREE.Vector3(0, 3.2, 0)), Math.round(dmg), 'hurt');
     if (this.hp <= 0) { this.hp = 0; this.die(game); }
     return dmg;
   }

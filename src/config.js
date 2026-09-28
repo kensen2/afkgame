@@ -86,7 +86,7 @@ export const CONFIG = {
       role: 'Tank',
       desc: 'A knight who weathers every wave behind shield and heavy armor.',
       hp: 220, atk: 13, armor: 8, atkSpd: 1.0, crit: 0.05, critDmg: 1.5,
-      speed: 3.4, range: 1.9, hitFrame: 4, height: 2.35,
+      speed: 3.4, range: 1.9, hitFrame: 4, height: 2.94,
       skills: [
         { id: 'bash',   name: 'Shield Bash', icon: '🛡️', cd: 6,  power: 1.6, stun: 1.6,
           desc: 'Slams the target with the shield (160% damage) and stuns for 1.6s.' },
@@ -101,7 +101,7 @@ export const CONFIG = {
       role: 'Damage',
       desc: 'A fast, deadly swordsman. Low health, high damage.',
       hp: 150, atk: 21, armor: 3, atkSpd: 1.15, crit: 0.15, critDmg: 2.0,
-      speed: 3.8, range: 2.0, hitFrame: 2, height: 2.45,
+      speed: 3.8, range: 2.0, hitFrame: 2, height: 3.06,
       skills: [
         { id: 'spin',  name: 'Whirlwind',   icon: '🌀', cd: 7,  power: 1.8, radius: 3.0,
           desc: 'Deals 180% damage to every enemy around him.' },
