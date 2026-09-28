@@ -361,7 +361,7 @@ export class UI {
     a.classList.toggle('on', s.auto);
     a.innerHTML = `AUTO<br><small>${s.auto ? 'ON' : 'OFF'}</small>`;
     $('btn-speed').textContent = `${s.speed}x`;
-    const mv = s.musicVol ?? 0.6, sv = s.sfxVol ?? 0.8;
+    const mv = s.musicVol ?? 0.1, sv = s.sfxVol ?? 0.1;
     $('btn-music').setAttribute('aria-pressed', String(!!s.music));
     $('btn-sound').setAttribute('aria-pressed', String(!!s.sound));
     $('btn-set-auto').setAttribute('aria-pressed', String(!!s.auto));

@@ -2,7 +2,7 @@
 // Dosyası olmayan birkaç efekt (büyü, kükreme vb.) hâlâ kodla üretiliyor.
 let ctx = null, master = null, sfxBus = null, ambient = null;
 let sfxOn = true, musicOn = true;
-let sfxVol = 0.8, musicVol = 0.6;   // 0..1 (ayarlar ekranındaki çubuklar)
+let sfxVol = 0.1, musicVol = 0.1;   // 0..1 (ayarlar ekranındaki çubuklar)
 const SFX_BASE = 0.7, MUSIC_BASE = 0.6;
 
 function ensure() {

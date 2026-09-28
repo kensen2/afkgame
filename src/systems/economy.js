@@ -28,7 +28,7 @@ function freshSave() {
     totalKills: 0,
     selectedHero: 'warrior',
     heroes: { warrior: freshHero(), lion: freshHero() },
-    settings: { auto: true, speed: 1, sound: true, music: true, musicVol: 0.6, sfxVol: 0.8 },
+    settings: { auto: true, speed: 1, sound: true, music: true, musicVol: 0.1, sfxVol: 0.1, audioVer: 2 },
   };
 }
 
@@ -44,6 +44,8 @@ export const Economy = {
         const d = JSON.parse(raw);
         const base = freshSave();
         this.data = { ...base, ...d, heroes: { ...base.heroes, ...d.heroes }, settings: { ...base.settings, ...d.settings } };
+        // eski kayıtlarda ses %10'dan başlasın (bir kerelik)
+        if ((this.data.settings.audioVer || 0) < 2) { this.data.settings.musicVol = 0.1; this.data.settings.sfxVol = 0.1; this.data.settings.audioVer = 2; }
         // eski kayıttaki 3x hız artık yok
         if (![1, 1.5, 2, 2.5].includes(this.data.settings.speed)) this.data.settings.speed = 1;
         // eski kayıt: checkpoint'ten devam dalgasına geçiş
