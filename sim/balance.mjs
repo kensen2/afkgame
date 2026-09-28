@@ -27,7 +27,7 @@ for (const heroId of heroes.length ? heroes : ['warrior', 'lion']) {
     const tgt = TARGETS[payer ? 'payer' : 'free'];
     const who = payer ? 'Harcayan' : 'Bedava  ';
     console.log(`${CONFIG.heroes[heroId].name.padEnd(18)} ${who} ` + [10, 20, 30, 50, 75, 100].map((m) => `w${m}=${hm(r.marks[m])}(${hm(tgt[m])})`).join(' ')
-      + ` | seviye ${r.level}, ölüm ${r.deaths}, kazanılan 💎${r.gemsEarned}` + (payer ? `, harcanan 💎${r.gemsSpent} ≈ $${r.usd.toFixed(1)}` : ''));
+      + ` | seviye ${r.level}, ölüm ${r.deaths}` + (payer ? `, harcanan ${Math.round(r.tokensSpent)} ${CONFIG.token.symbol} ≈ $${r.usd.toFixed(1)}` : ''));
     if (process.env.JSON) console.log(JSON.stringify(r.marks));
   }
 }

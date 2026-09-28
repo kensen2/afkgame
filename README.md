@@ -75,7 +75,7 @@ src/game.js                Sahne, kamera, dalga döngüsü, mermiler, paralar
 src/world/dungeon.js       Sonsuz zindan koridoru üretimi, meşale ışıkları
 src/entities/hero.js       2D sprite kahraman (billboard)
 src/entities/enemy.js      KayKit 3D düşman + yapay zeka
-src/systems/economy.js     Gold, XP, seviye, geliştirmeler, kayıt (kripto buraya bağlanacak)
+src/systems/economy.js     Gold, XP, seviye, geliştirmeler, token cüzdanı, Realm (DP, Vault, Relic, havuz, çekim), kayıt
 src/systems/skills.js      Yetenekler ve otomatik kullanım kararları
 src/systems/waves.js       Dalga içeriği (hangi düşmandan kaç tane)
 src/ui/ui.js               Menüler, HUD, dükkan
@@ -86,6 +86,8 @@ assets/enemies|weapons|dungeon/  KayKit modelleri (gereksiz animasyonlar temizle
 lib/                       Three.js r170 (internet olmadan da çalışsın diye)
 sim/balance.mjs            Denge simülasyonu: `node sim/balance.mjs` (bedava + harcayan)
 sim/model.mjs              Simülasyon modeli (simulate fonksiyonu)
+sim/realm.mjs              Realm/havuz simülasyonu: `node sim/realm.mjs` (100–2.000 oyuncu)
+whitepaper.html            Ekonomi whitepaper'ı (İngilizce, oyuncular için)
 ```
 
 ## Dengeyi değiştirmek
@@ -110,48 +112,45 @@ Solana entegrasyonunda bu fonksiyonların içi cüzdan ve zincir çağrılarıyl
 
 Efektleri değiştirmek için `src/core/audio.js` içindeki `BANK` listesine bak: her olayın hangi dosyaları, ses seviyesini ve perde aralığını kullandığı orada yazıyor.
 
-## Ekonomi (v3, Solana'ya hazır)
+## Ekonomi (v4, Stonewatch tarzı günlük havuz)
 
-**İlke:** para sadece içeri girer, dışarı çıkmaz. Gold da Gems de paraya çevrilemez; "oyna-kazan" vaadi yok.
-Bedava oyuncu oyunu bitirebilir ama yavaş; ödeme zaman ve konfor kazandırır, oyunu kilitlemez.
+Ayrıntılar ve tablolar: **`whitepaper.html`** (oyunda başlık ekranındaki 📜 Whitepaper butonu).
 
-**İki para birimi**
+**İlke:** Oyunda tek değerli para var: token (**$DGN**, isim yer tutucu). Gold oyun içinde kalır ve asla tokena çevrilmez.
+Oyun içinde token basılmaz; oyuncuya giden token sadece **günlük havuzdan** gelir.
 
-| | Gold | Gems 💎 |
+| | Gold | $DGN |
 |---|---|---|
-| Nereden | Düşmanlar, AFK, Time Skip | Oyunun token'ıyla satın alma (Solana; fiyat dolar bazlı, 1 Gem ≈ $0.01). Boss ilk yenilişleri (toplam 275 Gems) |
-| Nereye | Geliştirmeler, yetenekler | Gems mağazası |
+| Nereden | Düşmanlar, AFK, Time Skip | Yatırma (deposit) ve günlük havuz |
+| Nereye | Geliştirmeler, yetenekler, Vault Lv2 | Relic, Vault Lv3+, Store (boost'lar) |
+| Çekilir mi | Hayır | Evet (kurallar aşağıda) |
 
-**Boss ilk yeniliş ödülleri** (`gems.bossRewards`): 10: 5💎 1📘 · 20: 5💎 2📘 · 30: 10💎 2📘 · 40: 10💎 3📘 · 50: 15💎 3📘 ·
-60: 15💎 3📘 · 70: 20💎 4📘 · 80: 20💎 4📘 · 90: 25💎 4📘 · 100: 150💎 5📘 (toplam 275💎, 31📘).
+- **Günlük havuz** = 2.000.000 + dünkü token harcamasının %30'u. Oyuncular arasında **sayılan DP**'ye göre bölünür. Pay saat saat birikir, kapalıyken de (en fazla 24 saat).
+- **Dungeon Power (DP)** = sezonun en iyi dalgası × 1 + seviye × 0,5 + Relic DP.
+- **Vault:** DP, realm ortalamasının en fazla şu katı kadar sayılır: 1,25× (bedava), 2× (15.000 gold), 3×, 4×, 6×, 8×, 10× (token).
+- **Relic:** Crypt Candle 1.000 → 10 DP, Bone Idol 10.000 → 100 DP, War Banner 50.000 → 520 DP, Dragon Skull 250.000 → 2.750 DP.
+- **Harcanan her token:** %30 yakılır, %30 ertesi günün havuzuna döner, %40 hazineye gider.
+- **Çekim:**
+  - Yatırılıp harcanmamış token (credit) her an çekilebilir, komisyonsuz.
+  - Havuzdan gelen token günde bir kez, o günün payı kadar çekilir, %5 komisyonla. İlk çekim katılımdan 12 saat sonra açılır.
+  - Harcama önce havuzdan geleni kullanır, yatırılan korunur.
+- **Sezon:** 30 gün. Relic, Vault ve Idle Pass sezonluk. Kahraman, geliştirme ve seviye kalır.
+- **Store:** Time Skip 3.000, Gold Rush 5.000, Idle Pass 30.000, Skill Tome 2.000, Revive 1.000.
+- **Boss ilk yenilişi:** sadece Skill Tome verir.
 
-**Yetenek maliyeti** (`skillUpgrade`): altın = 50 × seviye^2.2, her seviye +1 yetenek puanı.
-Lv4+ Skill Tome ister: Lv4–7 1'er, Lv8–9 2'şer, Lv10 3 (bir yetenek 11, bir kahraman 33 Tome).
-Bedava oyuncu boss'lardan 31 Tome alır; eksiği Gems ile (Tome = 20💎).
+**Faz 1 (şu an):** Sunucu yok. Havuz payı `config.realm.demo`'daki örnek realm'e göre hesaplanıyor. Yatırma ve çekme sadece bu tarayıcıda "demo" olarak çalışıyor.
+`?dev=1` ile açınca Realm sekmesinde iki test butonu çıkar: "+10,000 DGN (test deposit)" ve "+1 day (test)".
 
-**Gems mağazası** (dükkanda 💎 Gems sekmesi; Deposit butonu şimdilik "Coming soon · Solana"):
-Time Skip 30 (2 saatlik AFK altını), Gold Rush 50 (24 saat ×2 altın), Idle Pass 300 (kalıcı: AFK %25, 24 saat),
-Skill Tome 20, Revive 10 (ölüm ekranında: aynı dalgadan devam).
-Test için `?dev=1` ile açınca Gems sekmesinde "+100 Gems (test)" butonu çıkar.
+**Simülasyon**
+- `node sim/balance.mjs`: bedava ve harcayan oyuncunun dalga süreleri (düşmanlara karşı).
+- `node sim/realm.mjs`: 100–2.000 oyuncuda tip başına günlük kazanç, geri dönüş süresi, borsa baskısı ve ekip maliyeti.
+- `node sim/realm.mjs 1000 --days`: gün gün döküm.
 
-**İlerleme eğrisi** (`src/config.js`)
-- 10. dalga boss'unun canı %50 (`boss.hpScaleByWave`).
-- Altın: `taban × (1 + 0.20 × (dalga − 1))`.
-- Attack/Health/Armor maliyeti parçalı: Lv0–20 üs 1.35, Lv21–40 üs 2.4, Lv41+ üs 3.0 (`costSegs`), süreksizlik yok.
-- Düşmanlar üç evrede güçlenir (1–25 / 25–60 / 60+). Duvarı can değil hasar yapar, böylece savaşlar kısa kalır.
-- AFK ve Time Skip oyuncunun **gerçek** aktif kazanç hızını (`activeRate`) kullanır; duvara dayanmışken şişkin AFK olmaz.
-
-**Simülasyon** (`node sim/balance.mjs`, 1x hız, aktif oyun süresi, AFK hariç):
-
-| Dalga | Hedef bedava | Warrior | Lion | Hedef harcayan (~$10) | Warrior | Lion |
-|---|---|---|---|---|---|---|
-| 10 | 5 dk | 3 dk | 4 dk | 5 dk | 3 dk | 4 dk |
-| 20 | 40 dk | 42 dk | 69 dk | 40 dk | 23 dk | 37 dk |
-| 30 | 2 sa | 1.8 sa | 2.5 sa | 1.5 sa | 1.0 sa | 1.4 sa |
-| 50 | 12 sa | 11.8 sa | 12.0 sa | 5 sa | 5.4 sa | 5.8 sa |
-| 75 | 35 sa | 41.8 sa | 38.8 sa | 14 sa | 19.1 sa | 18.0 sa |
-| 100 | 80 sa | 75.2 sa | 70.7 sa | 30 sa | 34.3 sa | 32.0 sa |
-
-Harcayan profil ≈ $13: Idle Pass + her 2 saatte Time Skip + Gold Rush + eksik Skill Tome'lar.
+| Oyuncu | Bedava $/gün | $10 yatıran | $60 | $300 | $10 geri dönüş | $60 | $300 |
+|---|---|---|---|---|---|---|---|
+| 100 | 1,09 | 6,45 | 9,87 | 19,74 | 2 gün | 5 gün | 15 gün |
+| 500 | 0,25 | 0,92 | 2,26 | 4,61 | 2 gün | 7 gün | 30+ |
+| 1.000 | 0,12 | 0,47 | 1,19 | 2,37 | 3 gün | 10 gün | 30+ |
+| 2.000 | 0,06 | 0,24 | 0,61 | 1,21 | 3 gün | 19 gün | 30+ |
 
 Sonraki fazlar (sunucu kaydı, cüzdanla giriş, Solana yatırımı, NFT kahraman) `docs/YENI_SOHBET_PROMPT.md` içinde.

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --open",
     "start": "node serve.mjs",
-    "sim": "node sim/balance.mjs warrior && node sim/balance.mjs lion"
+    "sim": "node sim/balance.mjs warrior && node sim/balance.mjs lion",
+    "realm": "node sim/realm.mjs"
   },
   "devDependencies": {
     "vite": "^6.0.0"

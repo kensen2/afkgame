@@ -92,37 +92,61 @@ export const CONFIG = {
     tomes: { 4: 1, 5: 1, 6: 1, 7: 1, 8: 2, 9: 2, 10: 3 },
   },
 
-  // ---- Gems (değerli para) ----
-  // Oyunun kendi token'ıyla alınır (Solana). Oyun içinden az miktarda gelir.
-  // Gold da Gems de ASLA token'a / paraya çevrilmez (para sadece içeri girer).
-  // Gems'in fiyatı DOLAR cinsinden sabittir; token kuru oynadıkça ödenen token miktarı değişir,
-  // mağaza fiyatları değişmez. Satın alma anında: token = gems × priceUsd × tokensPerUsd.
-  gems: {
-    priceUsd: 0.01,          // 1 Gem ≈ $0.01 (100 Gems ≈ $1)
-    token: { symbol: 'TOKEN', tokensPerUsd: 10000 },   // tahmini; lansmanda piyasa kuru kullanılacak
-    packs: [                 // dolar bazlı paketler (büyük pakette bonus)
-      { usd: 1, gems: 100 }, { usd: 5, gems: 550 }, { usd: 10, gems: 1200 }, { usd: 25, gems: 3200 },
-    ],
-    // Boss'un İLK yenilişi ödülü (dalga → Gems / Skill Tome). Tekrar yenmek ödül vermez.
-    bossRewards: {
-      10: { gems: 5,  tomes: 1 }, 20: { gems: 5,  tomes: 2 }, 30: { gems: 10, tomes: 2 },
-      40: { gems: 10, tomes: 3 }, 50: { gems: 15, tomes: 3 }, 60: { gems: 15, tomes: 3 },
-      70: { gems: 20, tomes: 4 }, 80: { gems: 20, tomes: 4 }, 90: { gems: 25, tomes: 4 },
-      100: { gems: 150, tomes: 5 },
-    },
+  // ---- Token ve Realm (Ekonomi v4, Stonewatch tarzı) ----
+  // Oyunda TEK değerli para var: oyunun token'ı ($DGN, isim yer tutucu). Gold oyun içinde kalır.
+  //  - Token dışarıdan yatırılır (deposit). Harcanmayan kısım (credit) her an komisyonsuz geri çekilebilir.
+  //  - Token harcanınca: %burn yakılır, %pool ertesi günün havuzuna döner, kalanı hazineye gider.
+  //  - Her gün sabit bir havuz (taban + dünkü harcamanın bir kısmı) oyuncular arasında
+  //    Dungeon Power'a (DP) göre bölünür. DP, Vault seviyesine göre ortalamanın belli katında tavanlanır.
+  //  - Havuzdan gelen token (earned) günde bir kez, o günün payı kadar, %5 komisyonla çekilir.
+  token: {
+    symbol: 'DGN',
+    usdPerToken: 0.0001,          // lansman tahmini: 10.000 token ≈ $1 (piyasa kuru kullanılacak)
+    packs: [5000, 10000, 50000, 100000, 500000],   // yatırma kısayolları (token)
   },
-  gemShop: {
-    timeSkip: { name: 'Time Skip',  icon: '⏩', price: 30,  hours: 2,
+  realm: {
+    seasonDays: 30,
+    pool: { base: 2000000, fromSpend: 0.30 },       // günlük havuz = taban + dünkü harcama × fromSpend
+    spendSplit: { burn: 0.30, pool: 0.30 },          // kalan %40 hazine (ekip, geliştirme, ödüller)
+    withdraw: { fee: 0.05, firstAfterHours: 12, perDay: 1 },
+    accrueMaxHours: 24,                              // en fazla 24 saatlik pay birikir: her gün gir
+    // DP = en iyi dalga × perWave + seviye × perLevel + Relic DP
+    dp: { perWave: 1, perLevel: 0.5 },
+    // Vault: DP'nin realm ortalamasının en fazla kaç katı sayılacağı. İlk iki seviye gold, sonrası token.
+    vault: [
+      { cap: 1.25 },
+      { cap: 2,   gold: 15000 },
+      { cap: 3,   tokens: 20000 },
+      { cap: 4,   tokens: 60000 },
+      { cap: 6,   tokens: 150000 },
+      { cap: 8,   tokens: 300000 },
+      { cap: 10,  tokens: 600000 },
+    ],
+    // Relic: tokenle alınan kalıcı DP (sezon boyunca). Büyük relic az bonus verir.
+    relics: {
+      candle: { name: 'Crypt Candle', icon: '🕯️', tokens: 1000,   dp: 10 },
+      idol:   { name: 'Bone Idol',    icon: '💀', tokens: 10000,  dp: 100 },
+      banner: { name: 'War Banner',   icon: '🚩', tokens: 50000,  dp: 520 },
+      skull:  { name: 'Dragon Skull', icon: '🐉', tokens: 250000, dp: 2750 },
+    },
+    // Faz 1 (sunucu yok): havuz payını tahmin etmek için örnek bir realm. Sayılar sim/realm.mjs'den.
+    demo: { players: 400, totalCountedDp: 200000 },
+  },
+  // Token mağazası (eski Gems mağazası; fiyatlar aynı dolar değerinde)
+  tokenShop: {
+    timeSkip: { name: 'Time Skip',  icon: '⏩', price: 3000,  hours: 2,
                 desc: 'Instantly collect 2 hours of offline gold (uses your offline rate).' },
-    goldRush: { name: 'Gold Rush',  icon: '💰', price: 50,  hours: 24, mult: 2,
+    goldRush: { name: 'Gold Rush',  icon: '💰', price: 5000,  hours: 24, mult: 2,
                 desc: 'Double gold from every source for 24 hours.' },
-    idlePass: { name: 'Idle Pass',  icon: '🌙', price: 300, permanent: true, efficiency: 0.25, maxHours: 24,
-                desc: 'Permanent: offline gold rate 10% → 25% and cap 12h → 24h.' },
-    tome:     { name: 'Skill Tome', icon: '📘', price: 20,
+    idlePass: { name: 'Idle Pass',  icon: '🌙', price: 30000, permanent: true, efficiency: 0.25, maxHours: 24,
+                desc: 'Offline gold rate 10% → 25% and cap 12h → 24h for the season.' },
+    tome:     { name: 'Skill Tome', icon: '📘', price: 2000,
                 desc: 'Needed to raise a skill to Lv 4 and above. Bosses drop them the first time you beat them.' },
-    revive:   { name: 'Revive',     icon: '💖', price: 10,
+    revive:   { name: 'Revive',     icon: '💖', price: 1000,
                 desc: 'On the defeat screen: continue from the wave you fell on, not one wave back.' },
   },
+  // Boss'un İLK yenilişi: Skill Tome (token basılmaz; token sadece havuzdan gelir)
+  bossRewards: { 10: 1, 20: 2, 30: 2, 40: 3, 50: 3, 60: 3, 70: 4, 80: 4, 90: 4, 100: 5 },
 
   // ---- Kahramanlar ----
   heroes: {
@@ -238,9 +262,21 @@ export const F = {
   skillCost: (lvl) => Math.round(CONFIG.skillUpgrade.baseCost * Math.pow(lvl, CONFIG.skillUpgrade.costExp)),
   // lvl → lvl+1 için gereken Skill Tome
   skillTomes: (lvl) => CONFIG.skillUpgrade.tomes[lvl + 1] || 0,
-  bossReward: (w) => CONFIG.gems.bossRewards[w] || { gems: 0, tomes: 0 },
-  gemsForUsd: (usd) => Math.round(usd / CONFIG.gems.priceUsd),
-  tokensForGems: (gems) => Math.round(gems * CONFIG.gems.priceUsd * CONFIG.gems.token.tokensPerUsd),
+  bossReward: (w) => ({ tomes: CONFIG.bossRewards[w] || 0 }),
+  usd: (tokens) => tokens * CONFIG.token.usdPerToken,
+  // ---- Realm ----
+  progressDp: (save) => (save.seasonBest ?? save.bestWave ?? 0) * CONFIG.realm.dp.perWave + (save.level || 1) * CONFIG.realm.dp.perLevel,
+  relicDp: (save) => Object.entries(save.relics || {}).reduce((s, [k, n]) => s + (CONFIG.realm.relics[k]?.dp || 0) * n, 0),
+  dp: (save) => F.progressDp(save) + F.relicDp(save),
+  vaultCap: (lvl) => CONFIG.realm.vault[Math.min(lvl, CONFIG.realm.vault.length - 1)].cap,
+  // realm ortalamasına göre sayılan DP
+  countedDp: (save, avgDp) => Math.min(F.dp(save), F.vaultCap(save.vault || 0) * avgDp),
+  // günlük havuz payı (token). realm = { pool, totalCountedDp, players } (bu oyuncu hariç)
+  dailyShare(save, realm) {
+    const avg = (realm.totalCountedDp + F.dp(save)) / (realm.players + 1);
+    const mine = F.countedDp(save, avg);
+    return realm.pool * mine / (realm.totalCountedDp + mine);
+  },
   armorMult: (armor) => 1 - armor / (armor + CONFIG.armorK),
 
   // Kahramanın tüm bonuslar dahil istatistikleri
@@ -279,8 +315,8 @@ export const F = {
     const base = save.activeRate > 0 ? Math.min(formula, save.activeRate) : formula;
     return base * F.offlineEfficiency(save);
   },
-  offlineEfficiency: (save) => (save.idlePass ? CONFIG.gemShop.idlePass.efficiency : CONFIG.offline.efficiency),
-  offlineMaxHours: (save) => (save.idlePass ? CONFIG.gemShop.idlePass.maxHours : CONFIG.offline.maxHours),
+  offlineEfficiency: (save) => (save.idlePass ? CONFIG.tokenShop.idlePass.efficiency : CONFIG.offline.efficiency),
+  offlineMaxHours: (save) => (save.idlePass ? CONFIG.tokenShop.idlePass.maxHours : CONFIG.offline.maxHours),
 
   skillPower(skillDef, lvl) {
     return skillDef.power * (1 + (lvl - 1) * CONFIG.skillUpgrade.powerPer);

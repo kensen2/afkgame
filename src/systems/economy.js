@@ -18,14 +18,24 @@ function freshHero() {
 function freshSave() {
   return {
     version: 1,
-    econVer: 3,          // ekonomi sürümü (değişince eski ilerleme sıfırlanır)
+    econVer: 4,          // ekonomi sürümü (değişince eski ilerleme sıfırlanır)
     gold: 0,
-    gems: 0,             // değerli para (ileride Solana yatırımıyla); paraya çevrilemez
-    tomes: 0,            // Skill Tome envanteri (yetenek Lv6+ için)
+    tomes: 0,            // Skill Tome envanteri (yetenek Lv4+ için)
     bossesBeaten: [],    // ilk kez yenilen boss dalgaları (ilk yeniliş ödülü için)
     goldRushUntil: 0,    // Gold Rush bitiş zamanı (ms)
-    idlePass: false,     // kalıcı Idle Pass
-    gemsSpent: 0,
+    idlePass: false,     // sezonluk Idle Pass
+    // ---- Token ($DGN) — Faz 1'de tarayıcıda, Faz 2'de sunucuda tutulacak ----
+    credit: 0,           // yatırılıp harcanmamış token: her an komisyonsuz çekilebilir
+    earned: 0,           // havuzdan gelen token: günde bir kez, o günün payı kadar çekilir
+    deposited: 0, spent: 0, withdrawn: 0, burned: 0,
+    relics: {},          // { candle: 2, idol: 1, ... }
+    vault: 0,            // Vault seviyesi (0 = 1.25×)
+    seasonBest: 0,       // bu sezonun en iyi dalgası (DP bunu kullanır)
+    joinedAt: 0,         // realm'e katılış (ilk çekim 12 saat sonra)
+    lastAccrue: 0,       // havuz payının en son eklendiği an
+    todayShare: 0,       // bugünkü havuz payı (çekim tavanı)
+    dayNo: 0,            // realm günü (UTC gün sayısı)
+    withdrewDay: -1,     // en son çekim yapılan realm günü
     activeRate: 0,       // son aktif oyundaki ortalama gold/sn (Gold Rush hariç); AFK ve Time Skip bunu kullanır
     level: 1,
     xp: 0,
@@ -66,7 +76,7 @@ export const Economy = {
         }
         // Ekonomi sürümü değişince (v3: Gems + yeni maliyet eğrisi) eski ilerleme
         // yeni dengeyle uyumsuz; bir kereliğine sıfırlanır (ayarlar korunur)
-        if ((d.econVer || 1) < 3) {
+        if ((d.econVer || 1) < 4) {
           const settings = this.data.settings;
           this.data = freshSave();
           this.data.settings = settings;
@@ -94,7 +104,7 @@ export const Economy = {
     const secs = Math.min(away, F.offlineMaxHours(this.data) * 3600);
     // Gold Rush çevrimdışı sürenin yalnızca çakışan kısmında geçerli
     const rushSecs = Math.max(0, Math.min(secs, (Math.min(now, this.data.goldRushUntil || 0) - last) / 1000));
-    const gold = Math.floor(F.offlineGoldPerSec(this.data) * (secs + rushSecs * (CONFIG.gemShop.goldRush.mult - 1)));
+    const gold = Math.floor(F.offlineGoldPerSec(this.data) * (secs + rushSecs * (CONFIG.tokenShop.goldRush.mult - 1)));
     if (gold <= 0) return null;
     this.addGold(gold);
     this.data.offlineTotal = (this.data.offlineTotal || 0) + gold;
@@ -117,20 +127,100 @@ export const Economy = {
 
   canAfford(n) { return this.data.gold >= n; },
 
-  // ---- Gems ----
-  // Faz 1: sadece istemci. Gerçek yatırım (Solana) Faz 3'te sunucu doğrulamasıyla gelecek.
-  addGems(n, reason = '') {
-    n = Math.max(0, Math.round(n));
-    this.data.gems += n;
-    this.save(); this.emit({ type: 'gems', amount: n, reason });
+  // ---- Token cüzdanı ----
+  // Faz 1: sadece tarayıcı (demo). Faz 3'te deposit/withdraw zincirde, bakiye sunucuda doğrulanır.
+  tokens() { return (this.data.credit || 0) + (this.data.earned || 0); },
+  canAffordTokens(n) { return this.tokens() >= n; },
+  deposit(n) {
+    n = Math.max(0, Math.floor(n));
+    this.data.credit += n; this.data.deposited += n;
+    this.joinRealm();
+    this.save(); this.emit({ type: 'token', amount: n });
     return n;
   },
-  canAffordGems(n) { return this.data.gems >= n; },
-  spendGems(n) {
-    if (this.data.gems < n) return false;
-    this.data.gems -= n;
-    this.data.gemsSpent = (this.data.gemsSpent || 0) + n;
-    this.save(); this.emit({ type: 'gemSpend', amount: n });
+  // Harcama önce havuzdan geleni (earned), sonra yatırılanı (credit) kullanır: yatırdığın para korunur.
+  spendTokens(n) {
+    if (!this.canAffordTokens(n)) return false;
+    const fromEarned = Math.min(this.data.earned, n);
+    this.data.earned -= fromEarned; this.data.credit -= n - fromEarned;
+    this.data.spent += n;
+    this.data.burned += n * CONFIG.realm.spendSplit.burn;
+    this.save(); this.emit({ type: 'tokenSpend', amount: n });
+    return true;
+  },
+
+  // ---- Realm ----
+  joinRealm(now = Date.now()) {
+    if (!this.data.joinedAt) { this.data.joinedAt = now; this.data.lastAccrue = now; }
+  },
+  realmDay(now = Date.now()) { return Math.floor(now / 86400000); },
+  // Faz 1: sunucu yok; havuz ve realm büyüklüğü config.realm.demo'dan (sim/realm.mjs ile ayarlandı)
+  realmState() {
+    const R = CONFIG.realm;
+    return { pool: R.pool.base, players: R.demo.players, totalCountedDp: R.demo.totalCountedDp };
+  },
+  dp() { return F.dp(this.data); },
+  countedDp() {
+    const r = this.realmState();
+    return F.countedDp(this.data, (r.totalCountedDp + this.dp()) / (r.players + 1));
+  },
+  shareRate() { return F.dailyShare(this.data, this.realmState()); },   // token / gün
+  // Geçen süre kadar havuz payını ekle (en fazla 24 saat birikir). Oyun kapalıyken de işler.
+  accrue(now = Date.now()) {
+    const d = this.data;
+    if (!d.joinedAt) return 0;
+    const day = this.realmDay(now);
+    if (day !== d.dayNo) { d.dayNo = day; d.todayShare = 0; }
+    const secs = Math.min((now - (d.lastAccrue || now)) / 1000, CONFIG.realm.accrueMaxHours * 3600);
+    d.lastAccrue = now;
+    if (secs <= 0) return 0;
+    const add = this.shareRate() * secs / 86400;
+    d.earned += add; d.todayShare += add;
+    return add;
+  },
+  // Çekim kuralları: credit her an; earned günde bir kez, bugünkü pay kadar, %5 komisyonla, ilk 12 saat kapalı.
+  withdrawInfo(now = Date.now()) {
+    const d = this.data, W = CONFIG.realm.withdraw;
+    const opensAt = (d.joinedAt || now) + W.firstAfterHours * 3600000;
+    const locked = !d.joinedAt || now < opensAt;
+    const usedToday = d.withdrewDay === this.realmDay(now);
+    const earnedMax = locked || usedToday ? 0 : Math.min(d.earned, d.todayShare);
+    return { credit: Math.floor(d.credit), earnedMax: Math.floor(earnedMax), fee: W.fee, locked, opensAt, usedToday };
+  },
+  withdraw(amount, now = Date.now()) {
+    const info = this.withdrawInfo(now);
+    amount = Math.floor(amount);
+    if (amount <= 0 || amount > info.credit + info.earnedMax) return false;
+    const fromCredit = Math.min(info.credit, amount);
+    const fromEarned = amount - fromCredit;
+    this.data.credit -= fromCredit;
+    let fee = 0;
+    if (fromEarned > 0) {
+      fee = Math.ceil(fromEarned * info.fee);
+      this.data.earned -= fromEarned;
+      this.data.withdrewDay = this.realmDay(now);
+    }
+    const net = amount - fee;
+    this.data.withdrawn += net;
+    this.save(); this.emit({ type: 'withdraw', amount: net });
+    return { net, fee, fromCredit, fromEarned };
+  },
+  relicCount(id) { return (this.data.relics || {})[id] || 0; },
+  buyRelic(id) {
+    const r = CONFIG.realm.relics[id];
+    if (!r || !this.spendTokens(r.tokens)) return false;
+    this.data.relics[id] = this.relicCount(id) + 1;
+    this.joinRealm(); this.save(); this.emit({ type: 'relic', id });
+    return true;
+  },
+  vaultNext() { return CONFIG.realm.vault[(this.data.vault || 0) + 1] || null; },
+  buyVault() {
+    const nx = this.vaultNext();
+    if (!nx) return false;
+    if (nx.gold) { if (!this.spendGold(nx.gold)) return false; }
+    else if (!this.spendTokens(nx.tokens)) return false;
+    this.data.vault = (this.data.vault || 0) + 1;
+    this.joinRealm(); this.save(); this.emit({ type: 'vault' });
     return true;
   },
 
@@ -147,14 +237,14 @@ export const Economy = {
 
   goldRushActive(now = Date.now()) { return (this.data.goldRushUntil || 0) > now; },
   goldRushLeft(now = Date.now()) { return Math.max(0, (this.data.goldRushUntil || 0) - now); },
-  goldMult(now = Date.now()) { return this.goldRushActive(now) ? CONFIG.gemShop.goldRush.mult : 1; },
+  goldMult(now = Date.now()) { return this.goldRushActive(now) ? CONFIG.tokenShop.goldRush.mult : 1; },
 
-  // Gems mağazası satın alımı. Dönen değer: false ya da { item, ...detay }
-  buyGemItem(id) {
-    const it = CONFIG.gemShop[id];
+  // Token mağazası satın alımı. Dönen değer: false ya da { item, ...detay }
+  buyShopItem(id) {
+    const it = CONFIG.tokenShop[id];
     if (!it || id === 'revive') return false;
     if (id === 'idlePass' && this.data.idlePass) return false;
-    if (!this.spendGems(it.price)) return false;
+    if (!this.spendTokens(it.price)) return false;
     const res = { item: id };
     if (id === 'timeSkip') {
       // AFK oranıyla 2 saatlik kazanç (Gold Rush varsa o da geçerli)
@@ -174,21 +264,21 @@ export const Economy = {
 
   // Öldüğün dalgadan devam et (bir alt değil)
   revive(deathWave) {
-    if (!this.spendGems(CONFIG.gemShop.revive.price)) return false;
+    if (!this.spendTokens(CONFIG.tokenShop.revive.price)) return false;
     this.data.resumeWave = Math.max(1, Math.min(CONFIG.wave.maxWave, deathWave));
     this.save();
     return true;
   },
 
-  // Boss ilk yeniliş ödülü. Ödül verildiyse { gems, tomes } döner.
+  // Boss ilk yeniliş ödülü (Skill Tome). Ödül verildiyse { tomes } döner.
   bossFirstKill(w) {
     const list = this.data.bossesBeaten || (this.data.bossesBeaten = []);
     if (list.includes(w)) return null;
     list.push(w);
-    const { gems, tomes } = F.bossReward(w);
+    const { tomes } = F.bossReward(w);
     this.data.tomes = (this.data.tomes || 0) + tomes;
-    this.addGems(gems, 'boss');
-    return { gems, tomes };
+    this.save(); this.emit({ type: 'tomes', amount: tomes });
+    return { tomes };
   },
 
   spendGold(n) {
@@ -250,6 +340,7 @@ export const Economy = {
 
   recordWave(w) {
     if (w > this.data.bestWave) this.data.bestWave = w;
+    if (w > (this.data.seasonBest || 0)) this.data.seasonBest = w;   // DP'yi büyütür
 
   },
 

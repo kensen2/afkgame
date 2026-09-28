@@ -34,7 +34,7 @@
   <div class="hud-right">
     <div class="wallet-row">
       <div class="gold panel"><span class="coin"></span><b id="hud-gold">0</b></div>
-      <div class="gems panel" title="Gems"><span class="gem">💎</span><b id="hud-gems">0</b></div>
+      <div class="gems panel" title="DGN token (deposited + earned)"><span class="gem">◈</span><b id="hud-gems">0</b></div>
     </div>
     <div id="hud-rush" class="rush-chip hidden">💰 Gold Rush ×2 · <span id="hud-rush-t">0h</span></div>
     <div class="hud-buttons">
@@ -76,6 +76,7 @@
   <div class="title-stats" id="title-stats"></div>
   <button class="btn big" id="btn-play">PLAY</button>
   <button class="btn" id="btn-title-settings">⚙ Settings</button>
+  <a class="btn" id="btn-whitepaper" href="whitepaper.html" target="_blank" rel="noopener">📜 Whitepaper</a>
   <div class="title-spacer"></div>
 </div>
 
@@ -99,7 +100,7 @@
         <div class="shop-hero" id="shop-hero">—</div>
       </div>
       <div class="shop-wallet">
-        <div class="gold"><span class="coin"></span><b id="shop-gold">0</b> <span class="gems-inline">💎 <b id="shop-gems">0</b></span></div>
+        <div class="gold"><span class="coin"></span><b id="shop-gold">0</b> <span class="gems-inline">◈ <b id="shop-gems">0</b> DGN</span></div>
         <div class="sp">⭐ <b id="shop-sp">0</b> skill points · 📘 <b id="shop-tomes">0</b> tomes</div>
       </div>
       <button class="btn small close" id="btn-shop-close">✕</button>
@@ -107,7 +108,8 @@
     <div class="tabs">
       <button class="tab active" data-tab="upg">Upgrades</button>
       <button class="tab" data-tab="skl">Skills</button>
-      <button class="tab gems-tab" data-tab="gems">💎 Gems</button>
+      <button class="tab gems-tab" data-tab="realm">◈ Realm</button>
+      <button class="tab gems-tab" data-tab="store">Store</button>
       <button class="tab" data-tab="stats">Stats</button>
     </div>
     <div class="shop-body" id="shop-body"></div>
@@ -122,7 +124,7 @@
     <div class="death-count" id="death-count"></div>
     <div class="death-actions">
       <button class="btn big" id="btn-retry">↻ Try Again</button>
-      <button class="btn gem-btn" id="btn-revive">💖 Revive · 💎10</button>
+      <button class="btn gem-btn" id="btn-revive">💖 Revive · ◈1000</button>
       <button class="btn" id="btn-death-shop">🛒 Shop</button>
       <button class="btn" id="btn-death-menu">Choose Hero</button>
     </div>

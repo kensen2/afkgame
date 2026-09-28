@@ -7,6 +7,8 @@ import { loadSounds, Audio } from './core/audio.js';
 
 async function boot() {
   Economy.load();
+  Economy.joinRealm(); // herkes (bedava oyuncu da) günlük havuzdan pay alır
+  Economy.accrue();    // kapalıyken biriken günlük havuz payı
   // Menü müziği siteye girer girmez başlasın (kayıtlı ses ayarlarıyla)
   const st = Economy.data.settings;
   Audio.setMusicEnabled(st.music);

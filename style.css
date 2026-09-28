@@ -277,3 +277,12 @@ input[type=range]:disabled { opacity: 0.35; cursor: not-allowed; }
 .off-note { color: #6d6680; font-size: 12px; margin-bottom: 14px; }
 #screen-offline { z-index: 40; }
 .set-reset { grid-column: 2 / 3; padding: 6px 0; font-size: 12px; }
+
+/* ---- Realm (Ekonomi v4) ---- */
+.realm-card.wide { grid-column: 1 / -1; }
+.realm-card b { color: var(--text, #fff); }
+.realm-btns { display: flex; flex-direction: column; gap: 6px; }
+.item .warnc { color: #ffb45c; }
+.realm-dev { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.hint a { color: #8fe3ff; }
+#btn-whitepaper { text-decoration: none; display: inline-block; text-align: center; }

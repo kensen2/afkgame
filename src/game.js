@@ -202,12 +202,12 @@ export class Game {
       const each = Math.floor(total / n);
       for (let i = 0; i < n; i++) this.spawnCoin(e.pos, each + (i < total - each * n ? 1 : 0));
     }
-    // boss'un ilk yenilişi: +Gems ve +1 Skill Tome
+    // boss'un ilk yenilişi: Skill Tome (token sadece günlük havuzdan gelir)
     if (e.rank === 'boss') {
       const r = Economy.bossFirstKill(this.wave);
-      if (r) {
-        this.fx.floater(this.hero.pos.clone().setY(3.8), `+${r.gems} 💎`, 'gems');
-        setTimeout(() => this.ui.toast(`First boss kill! +${r.gems} Gems, +${r.tomes} Skill Tome`), 1200);
+      if (r && r.tomes) {
+        this.fx.floater(this.hero.pos.clone().setY(3.8), `+${r.tomes} 📘`, 'gems');
+        setTimeout(() => this.ui.toast(`First boss kill! +${r.tomes} Skill Tome${r.tomes > 1 ? 's' : ''} · Dungeon Power up`), 1200);
       }
     }
     const lv = Economy.addXp(e.xp);
