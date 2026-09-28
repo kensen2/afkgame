@@ -2,6 +2,8 @@
 // Dosyası olmayan birkaç efekt (büyü, kükreme vb.) hâlâ kodla üretiliyor.
 let ctx = null, master = null, sfxBus = null, ambient = null;
 let sfxOn = true, musicOn = true;
+let sfxVol = 0.8, musicVol = 0.6;   // 0..1 (ayarlar ekranındaki çubuklar)
+const SFX_BASE = 0.7, MUSIC_BASE = 0.6;
 
 function ensure() {
   if (!ctx) {
@@ -9,7 +11,7 @@ function ensure() {
     if (!AC) return null;
     ctx = new AC();
     master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
-    sfxBus = ctx.createGain(); sfxBus.gain.value = 0.55; sfxBus.connect(master);
+    sfxBus = ctx.createGain(); sfxBus.gain.value = SFX_BASE * sfxVol; sfxBus.connect(master);
   }
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
@@ -132,7 +134,7 @@ const MUSIC = {
   dungeon: ['dungeon1', 'dungeon2'],
   boss: ['boss'],
 };
-const MUSIC_VOL = 0.38;
+const musicTarget = () => (musicOn ? MUSIC_BASE * musicVol : 0);
 const music = { mode: null, el: null, idx: 0, fades: [] };
 
 function fadeTo(el, target, ms, onDone) {
@@ -156,7 +158,7 @@ function startTrack(mode) {
     music.idx++;
     startTrack(mode);
   });
-  el.play().then(() => fadeTo(el, musicOn ? MUSIC_VOL : 0, 1500)).catch(() => { /* kullanıcı etkileşimi bekleniyor */ });
+  el.play().then(() => fadeTo(el, musicTarget(), 1500)).catch(() => { /* kullanıcı etkileşimi bekleniyor */ });
   music.el = el;
 }
 
@@ -171,9 +173,18 @@ export const Audio = {
 
   setMusicEnabled(v) {
     musicOn = v;
-    if (music.el) fadeTo(music.el, v ? MUSIC_VOL : 0, 400);
+    if (music.el) fadeTo(music.el, musicTarget(), 400);
   },
   get musicEnabled() { return musicOn; },
+
+  setMusicVolume(v) {
+    musicVol = Math.max(0, Math.min(1, v));
+    if (music.el) music.el.volume = musicTarget();
+  },
+  setSfxVolume(v) {
+    sfxVol = Math.max(0, Math.min(1, v));
+    if (sfxBus) sfxBus.gain.value = SFX_BASE * sfxVol;
+  },
 
   // mode: 'menu' | 'dungeon' | 'boss' | null (sessiz)
   setMusic(mode) {

@@ -36,6 +36,7 @@
     <div class="hud-buttons">
       <button id="btn-shop" class="btn small" title="Shop (B)">🛒 Shop</button>
       <button id="btn-speed" class="btn small" title="Game speed (H)">1x</button>
+      <button id="btn-hud-settings" class="btn small" title="Settings">⚙</button>
       <button id="btn-pause" class="btn small" title="Pause (Esc)">⏸</button>
     </div>
   </div>
@@ -70,6 +71,7 @@
   <div class="subtitle">Descend into the dark. Hold the line against wave after wave.</div>
   <div class="title-stats" id="title-stats"></div>
   <button class="btn big" id="btn-play">PLAY</button>
+  <button class="btn" id="btn-title-settings">⚙ Settings</button>
   <div class="title-spacer"></div>
 </div>
 
@@ -134,14 +136,46 @@
   </div>
 </div>
 
+<!-- Ayarlar -->
+<div id="screen-settings" class="screen modal hidden">
+  <div class="panel settings">
+    <div class="shop-head">
+      <div class="shop-title">Settings</div>
+      <button class="btn small close" id="btn-settings-close">✕</button>
+    </div>
+    <div class="set-row">
+      <div class="set-label"><span>🎵</span> Music</div>
+      <button class="toggle" id="btn-music" aria-pressed="true"><span></span></button>
+      <input type="range" id="rng-music" min="0" max="100" step="1" aria-label="Music volume" />
+      <b class="set-val" id="val-music">60</b>
+    </div>
+    <div class="set-row">
+      <div class="set-label"><span>🔊</span> Sound effects</div>
+      <button class="toggle" id="btn-sound" aria-pressed="true"><span></span></button>
+      <input type="range" id="rng-sfx" min="0" max="100" step="1" aria-label="Sound effects volume" />
+      <b class="set-val" id="val-sfx">80</b>
+    </div>
+    <div class="set-row">
+      <div class="set-label"><span>⚔️</span> Auto skills</div>
+      <button class="toggle" id="btn-set-auto" aria-pressed="true"><span></span></button>
+      <div class="set-note">Hero casts skills automatically (A)</div>
+    </div>
+    <div class="set-row">
+      <div class="set-label"><span>⏩</span> Game speed</div>
+      <div class="seg" id="seg-speed">
+        <button data-v="1">1x</button><button data-v="1.5">1.5x</button><button data-v="2">2x</button><button data-v="2.5">2.5x</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Duraklat -->
 <div id="screen-pause" class="screen modal hidden">
   <div class="panel pause">
     <div class="shop-title">Paused</div>
     <button class="btn big" id="btn-resume">Resume</button>
     <button class="btn" id="btn-pause-shop">🛒 Shop</button>
-    <button class="btn" id="btn-sound">🔊 Sound: On</button>
-    <button class="btn" id="btn-music">🎵 Music: On</button>
+    <button class="btn" id="btn-pause-settings">⚙ Settings</button>
     <button class="btn" id="btn-quit">Main Menu</button>
     <button class="btn danger small" id="btn-reset">Reset Save</button>
     <div class="credits">Models: KayKit · Sound: Kenney · Music: "Midnight Tale", "Night Vigil", "Spellbound", "Strength of the Titans" by Kevin MacLeod (incompetech.com), licensed under CC BY 4.0</div>

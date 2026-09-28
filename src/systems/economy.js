@@ -28,7 +28,7 @@ function freshSave() {
     totalKills: 0,
     selectedHero: 'warrior',
     heroes: { warrior: freshHero(), lion: freshHero() },
-    settings: { auto: true, speed: 1, sound: true, music: true },
+    settings: { auto: true, speed: 1, sound: true, music: true, musicVol: 0.6, sfxVol: 0.8 },
   };
 }
 

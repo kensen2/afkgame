@@ -82,6 +82,21 @@ export class UI {
     const click = (id, fn) => $(id).addEventListener('click', () => { Audio.play('click'); fn(); });
     click('btn-play', () => { Audio.setMusic('menu'); this.showSelect(); });
     click('btn-music', () => this.toggleMusic());
+    click('btn-title-settings', () => this.openSettings('title'));
+    click('btn-hud-settings', () => this.openSettings('game'));
+    click('btn-pause-settings', () => { $('screen-pause').classList.add('hidden'); this.openSettings('pause'); });
+    click('btn-settings-close', () => this.closeSettings());
+    click('btn-set-auto', () => this.toggleAuto());
+    document.querySelectorAll('#seg-speed button').forEach((b) => b.addEventListener('click', () => {
+      Audio.play('click'); Economy.data.settings.speed = +b.dataset.v; Economy.save(); this.syncButtons();
+    }));
+    const slider = (id, key, apply) => {
+      const el = $(id);
+      el.addEventListener('input', () => { Economy.data.settings[key] = el.value / 100; apply(el.value / 100); this.syncButtons(); });
+      el.addEventListener('change', () => { Economy.save(); if (key === 'sfxVol') Audio.play('hit'); });
+    };
+    slider('rng-music', 'musicVol', (v) => Audio.setMusicVolume(v));
+    slider('rng-sfx', 'sfxVol', (v) => Audio.setSfxVolume(v));
     click('btn-start', () => this.startGame());
     click('btn-select-shop', () => this.openShop('select'));
     click('btn-shop', () => this.openShop('game'));
@@ -121,7 +136,8 @@ export class UI {
       else if (k === 'h') this.toggleSpeed();
       else if (k === 'b') { if ($('screen-shop').classList.contains('hidden')) this.openShop('game'); else this.closeShop(); }
       else if (k === 'escape') {
-        if (!$('screen-shop').classList.contains('hidden')) this.closeShop();
+        if (!$('screen-settings').classList.contains('hidden')) this.closeSettings();
+        else if (!$('screen-shop').classList.contains('hidden')) this.closeShop();
         else if (!$('screen-pause').classList.contains('hidden')) this.resume();
         else if (this.game.phase !== 'dead') this.pause();
       }
@@ -345,10 +361,21 @@ export class UI {
     a.classList.toggle('on', s.auto);
     a.innerHTML = `AUTO<br><small>${s.auto ? 'ON' : 'OFF'}</small>`;
     $('btn-speed').textContent = `${s.speed}x`;
-    $('btn-sound').textContent = s.sound ? '🔊 Sound: On' : '🔇 Sound: Off';
-    $('btn-music').textContent = s.music ? '🎵 Music: On' : '🎵 Music: Off';
+    const mv = s.musicVol ?? 0.6, sv = s.sfxVol ?? 0.8;
+    $('btn-music').setAttribute('aria-pressed', String(!!s.music));
+    $('btn-sound').setAttribute('aria-pressed', String(!!s.sound));
+    $('btn-set-auto').setAttribute('aria-pressed', String(!!s.auto));
+    for (const [id, val, vid, on] of [['rng-music', mv, 'val-music', s.music], ['rng-sfx', sv, 'val-sfx', s.sound]]) {
+      const el = $(id);
+      el.value = Math.round(val * 100); el.disabled = !on;
+      el.style.setProperty('--fill', `${Math.round(val * 100)}%`);
+      $(vid).textContent = on ? Math.round(val * 100) : 'Off';
+    }
+    document.querySelectorAll('#seg-speed button').forEach((b) => b.classList.toggle('on', +b.dataset.v === s.speed));
     Audio.setEnabled(s.sound);
     Audio.setMusicEnabled(s.music);
+    Audio.setMusicVolume(mv);
+    Audio.setSfxVolume(sv);
   }
 
   toggleAuto() { Economy.data.settings.auto = !Economy.data.settings.auto; Economy.save(); this.syncButtons(); }
@@ -359,6 +386,19 @@ export class UI {
     s.speed = steps[(i + 1) % steps.length];
     Economy.save(); this.syncButtons();
   }
+  // ---------- Ayarlar ----------
+  openSettings(from) {
+    this.settingsReturn = from;
+    if (from === 'game') { if (!this.game.hero || this.game.phase === 'dead') return; this.game.paused = true; }
+    this.syncButtons();
+    $('screen-settings').classList.remove('hidden');
+  }
+  closeSettings() {
+    $('screen-settings').classList.add('hidden');
+    if (this.settingsReturn === 'game') { this.game.paused = false; this.game.clock.getDelta(); }
+    else if (this.settingsReturn === 'pause') $('screen-pause').classList.remove('hidden');
+  }
+
   toggleMusic() { Economy.data.settings.music = !Economy.data.settings.music; Economy.save(); this.syncButtons(); }
   toggleSound() { Economy.data.settings.sound = !Economy.data.settings.sound; Economy.save(); this.syncButtons(); }
 
