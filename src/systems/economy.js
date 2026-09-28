@@ -28,7 +28,9 @@ function freshSave() {
     totalKills: 0,
     selectedHero: 'warrior',
     heroes: { warrior: freshHero(), lion: freshHero() },
-    settings: { auto: true, speed: 1, sound: true, music: true, musicVol: 0.1, sfxVol: 0.1, audioVer: 2 },
+    settings: { auto: true, speed: 1, sound: true, music: true, musicVol: 0.1, sfxVol: 0.1, audioVer: 2, offline: true },
+    lastSeen: 0,         // son görülme zamanı (çevrimdışı kazanç için)
+    offlineTotal: 0,
   };
 }
 
@@ -56,11 +58,30 @@ export const Economy = {
         }
       }
     } catch (e) { console.warn('Could not read save', e); }
+    this._awaySince = this.data.lastSeen || 0;
     return this.data;
   },
 
   save() {
+    this.data.lastSeen = Date.now();
     try { localStorage.setItem(KEY, JSON.stringify(this.data)); } catch (e) { /* tarayıcı depolamaya izin vermiyor */ }
+  },
+
+  // Çevrimdışı kazancı hesapla ve hesaba ekle. Rapor döner (yoksa null).
+  claimOffline(now = Date.now()) {
+    // açılışta okunan son görülme zamanı öncelikli (yükleme sırasında kayıt güncellense bile kaybolmasın)
+    const last = this._awaySince || this.data.lastSeen;
+    this._awaySince = null;
+    if (!last || !this.data.settings.offline) return null;
+    const away = Math.max(0, (now - last) / 1000);
+    if (away < CONFIG.offline.minSeconds) return null;
+    const secs = Math.min(away, CONFIG.offline.maxHours * 3600);
+    const gold = Math.floor(F.offlineGoldPerSec(this.data) * secs);
+    if (gold <= 0) return null;
+    this.addGold(gold);
+    this.data.offlineTotal = (this.data.offlineTotal || 0) + gold;
+    this.save();
+    return { away, secs, gold, capped: away > secs, wave: Math.max(1, this.data.resumeWave || 1), hero: this.data.selectedHero };
   },
 
   reset() { this.data = freshSave(); this.save(); this.emit(); },

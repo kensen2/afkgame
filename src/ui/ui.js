@@ -87,6 +87,8 @@ export class UI {
     click('btn-pause-settings', () => { $('screen-pause').classList.add('hidden'); this.openSettings('pause'); });
     click('btn-settings-close', () => this.closeSettings());
     click('btn-set-auto', () => this.toggleAuto());
+    click('btn-set-offline', () => { Economy.data.settings.offline = !Economy.data.settings.offline; Economy.save(); this.syncButtons(); });
+    click('btn-offline-collect', () => this.closeOffline());
     document.querySelectorAll('#seg-speed button').forEach((b) => b.addEventListener('click', () => {
       Audio.play('click'); Economy.data.settings.speed = +b.dataset.v; Economy.save(); this.syncButtons();
     }));
@@ -143,8 +145,16 @@ export class UI {
       }
     });
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden && this.game?.hero && !this.game.paused && this.game.phase !== 'dead') this.pause();
+      if (document.hidden) {
+        if (this.game?.hero && !this.game.paused && this.game.phase !== 'dead') this.pause();
+        Economy.save(); // son görülme zamanı
+      } else if (this.game) {
+        this.checkOffline();
+      }
     });
+    window.addEventListener('pagehide', () => Economy.save());
+    // oyun açıkken son görülme zamanını düzenli güncelle
+    setInterval(() => { if (!document.hidden) Economy.save(); }, 15000);
     Economy.on(() => this.updateGold());
   }
 
@@ -365,6 +375,7 @@ export class UI {
     $('btn-music').setAttribute('aria-pressed', String(!!s.music));
     $('btn-sound').setAttribute('aria-pressed', String(!!s.sound));
     $('btn-set-auto').setAttribute('aria-pressed', String(!!s.auto));
+    $('btn-set-offline').setAttribute('aria-pressed', String(s.offline !== false));
     for (const [id, val, vid, on] of [['rng-music', mv, 'val-music', s.music], ['rng-sfx', sv, 'val-sfx', s.sound]]) {
       const el = $(id);
       el.value = Math.round(val * 100); el.disabled = !on;
@@ -386,6 +397,33 @@ export class UI {
     s.speed = steps[(i + 1) % steps.length];
     Economy.save(); this.syncButtons();
   }
+  // ---------- Çevrimdışı kazanç ----------
+  checkOffline() {
+    const r = Economy.claimOffline();
+    if (r) this.showOffline(r);
+  }
+  showOffline(r) {
+    const h = Math.floor(r.away / 3600), m = Math.floor((r.away % 3600) / 60);
+    const dur = h > 0 ? `${h}h ${m}m` : `${Math.max(1, m)}m`;
+    $('off-away').textContent = `You were away for ${dur}`;
+    const hero = CONFIG.heroes[r.hero]?.name || 'Your hero';
+    $('off-sub').textContent = `${hero} kept fighting at Wave ${r.wave}`;
+    $('off-gold').textContent = `+${fmt(r.gold)}`;
+    $('off-note').textContent = r.capped
+      ? `Only the first ${CONFIG.offline.maxHours} hours count. Come back sooner to earn more.`
+      : `Offline earnings are capped at ${CONFIG.offline.maxHours} hours.`;
+    // kahraman portresi
+    const c = $('off-hero'), ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    if (Assets.heroes[r.hero]?.meta) drawFrame(ctx, r.hero, 'idle', 0, c.width, c.height, 0.95);
+    $('screen-offline').classList.remove('hidden');
+    Audio.play('buy');
+  }
+  closeOffline() {
+    $('screen-offline').classList.add('hidden');
+    this.updateGold();
+  }
+
   // ---------- Ayarlar ----------
   openSettings(from) {
     this.settingsReturn = from;

@@ -247,3 +247,15 @@ input[type=range]:disabled { opacity: 0.35; cursor: not-allowed; }
 .seg button { flex: 1; padding: 7px 0; border-radius: 8px; border: 1px solid #4a4060; background: #1c1826; color: var(--muted); font-weight: 800; cursor: pointer; font-family: inherit; }
 .seg button.on { background: linear-gradient(#ffd97a, #e2a531); color: #2a1a05; border-color: #ffe9a8; }
 @media (max-width: 520px) { .set-row { grid-template-columns: 1fr 52px; } .set-row input[type=range] { grid-column: 1 / 2; } .set-note, .seg { grid-column: 1 / 3; } }
+
+/* ---------- çevrimdışı kazanç ---------- */
+.offline { padding: 26px 34px 28px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: min(380px, 92vw); }
+.off-eyebrow { font-family: 'Cinzel', serif; color: var(--gold); letter-spacing: .3em; text-transform: uppercase; font-size: 14px; }
+#off-hero { width: 120px; height: 120px; }
+.off-away { font-family: 'Cinzel', serif; font-size: 24px; font-weight: 800; color: var(--ink); text-wrap: balance; }
+.off-sub { color: var(--muted); font-size: 14px; }
+.off-gold { margin: 12px 0 2px; font-size: 38px; font-weight: 800; color: var(--gold); display: flex; align-items: center; gap: 4px;
+  text-shadow: 0 0 20px rgba(244,192,78,0.4); font-variant-numeric: tabular-nums; }
+.off-gold .coin { width: 30px; height: 30px; }
+.off-note { color: #6d6680; font-size: 12px; margin-bottom: 14px; }
+#screen-offline { z-index: 40; }

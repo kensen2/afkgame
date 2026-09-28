@@ -34,6 +34,14 @@ export const CONFIG = {
   respawnCountdown: 20,
   respawnWavesBack: 1,
 
+  // Çevrimdışı (AFK) kazanç: oyun kapalıyken kahraman savaşmaya devam eder
+  offline: {
+    maxHours: 12,        // en fazla bu kadar saat birikir
+    minSeconds: 60,      // bundan kısa aralarda rapor gösterilmez
+    efficiency: 0.5,     // aktif oynamaya göre verim (%50)
+    waveSeconds: 20,     // bir dalganın ortalama süresi (yürüme + savaş)
+  },
+
   // ---- Genel (hesap) seviyesi ----
   account: {
     xpBase: 40,              // level 1→2 için gereken XP
@@ -188,6 +196,21 @@ export const F = {
       speed: h.speed, range: h.range,
     };
   },
+  // Bir dalgada düşen ortalama gold (elit/boss payı dahil yaklaşık)
+  waveGold(w) {
+    const pool = Object.values(CONFIG.enemies).filter((d) => d.unlock <= w);
+    const tw = pool.reduce((s, d) => s + d.weight, 0);
+    const avg = pool.reduce((s, d) => s + d.gold * d.weight, 0) / tw;
+    return F.enemyGold(avg, w) * F.waveCount(w) * 1.2;
+  },
+  // Çevrimdışı saniye başına gold: devam edeceğin dalgayı farm ediyormuş gibi
+  offlineGoldPerSec(save) {
+    const w = Math.max(1, save.resumeWave || 1);
+    const heroId = save.selectedHero || 'warrior';
+    const mult = F.heroStats(heroId, save).goldMult;
+    return (F.waveGold(w) * mult / CONFIG.offline.waveSeconds) * CONFIG.offline.efficiency;
+  },
+
   skillPower(skillDef, lvl) {
     return skillDef.power * (1 + (lvl - 1) * CONFIG.skillUpgrade.powerPer);
   },

@@ -35,6 +35,7 @@ async function boot() {
   game.showMenuScene();
   ui.syncButtons();
   ui.showTitle();
+  ui.checkOffline(); // uzun süre sonra gelindiyse "Welcome back" ekranı
 }
 
 boot();
