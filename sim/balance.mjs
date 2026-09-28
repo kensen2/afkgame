@@ -4,6 +4,10 @@
 import { CONFIG, F } from '../src/config.js';
 
 const heroId = process.argv[2] || 'warrior';
+// Deneme için ayar üzerine yazma: OVR='{"wave":{"hpGrowth":1.12}}' node sim/balance.mjs
+function merge(t, o) { for (const k in o) { if (o[k] && typeof o[k] === 'object' && !Array.isArray(o[k])) merge(t[k], o[k]); else t[k] = o[k]; } }
+if (process.env.OVR) merge(CONFIG, JSON.parse(process.env.OVR));
+const QUIET = !!process.env.QUIET;
 const save = {
   gold: 0, level: 1, xp: 0, skillPoints: 0, resumeWave: 1,
   heroes: { warrior: { upgrades: {}, skills: [1, 1, 1] }, lion: { upgrades: {}, skills: [1, 1, 1] } },
@@ -90,13 +94,20 @@ function shop() {
 }
 
 let total = 0;
-console.log(`Kahraman: ${CONFIG.heroes[heroId].name}`);
-console.log('Koşu | Ulaşılan | Süre(dk) | Toplam(dk) | Seviye | Geliştirmeler');
+const marks = {};
+if (!QUIET) {
+  console.log(`Kahraman: ${CONFIG.heroes[heroId].name}`);
+  console.log('Dalga başına gold:', [1, 10, 25, 50, 75, 100].map((w) => `w${w}=${Math.round(waveEnemies(w).gold)}`).join('  '));
+  console.log('Saldırı geliştirme maliyeti:', [0, 5, 10, 20, 40, 60].map((l) => `lv${l}=${F.upgradeCost('atk', l)}`).join('  '));
+  console.log('Koşu | Ulaşılan | Süre(dk) | Toplam(dk) | Seviye | Geliştirmeler');
+}
 for (let r = 1; r <= 400; r++) {
   const res = run();
   total += res.time;
   const u = save.heroes[heroId].upgrades;
-  console.log(`${String(r).padStart(4)} | ${String(res.reached).padStart(8)} | ${(res.time / 60).toFixed(1).padStart(8)} | ${(total / 60).toFixed(0).padStart(10)} | ${String(save.level).padStart(6)} | atk${u.atk} hp${u.hp} arm${u.armor} spd${u.atkSpd} crit${u.crit} reg${u.regen}`);
+  for (const m of [10, 20, 30, 50, 75, 100]) if (res.reached > m && !marks[m]) marks[m] = Math.round(total / 60);
+  if (!QUIET) console.log(`${String(r).padStart(4)} | ${String(res.reached).padStart(8)} | ${(res.time / 60).toFixed(1).padStart(8)} | ${(total / 60).toFixed(0).padStart(10)} | ${String(save.level).padStart(6)} | atk${u.atk} hp${u.hp} arm${u.armor} spd${u.atkSpd} crit${u.crit} reg${u.regen}`);
   shop();
-  if (res.reached > CONFIG.wave.maxWave) { console.log('100. dalga tamamlandı!'); break; }
+  if (res.reached > CONFIG.wave.maxWave) { if (!QUIET) console.log('100. dalga tamamlandı!'); break; }
 }
+console.log('Dalgaya ulaşma süresi (dk):', JSON.stringify(marks), ' | toplam gold:', Math.round(save.gold), ' seviye:', save.level);

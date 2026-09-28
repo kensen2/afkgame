@@ -18,6 +18,7 @@ function freshHero() {
 function freshSave() {
   return {
     version: 1,
+    econVer: 2,          // ekonomi sürümü (değişince eski ilerleme sıfırlanır)
     gold: 0,
     level: 1,
     xp: 0,
@@ -55,6 +56,14 @@ export const Economy = {
         for (const h of Object.keys(CONFIG.heroes)) {
           const fh = freshHero();
           this.data.heroes[h] = { ...fh, ...this.data.heroes[h], upgrades: { ...fh.upgrades, ...(this.data.heroes[h]?.upgrades || {}) } };
+        }
+        // Ekonomi v2: eski üstel ekonominin gold ve geliştirmeleri yeni dengeyle uyumsuz,
+        // bu yüzden ilerleme bir kereliğine sıfırlanır (ayarlar korunur)
+        if ((d.econVer || 1) < 2) {
+          const settings = this.data.settings;
+          this.data = freshSave();
+          this.data.settings = settings;
+          this.economyReset = true;
         }
       }
     } catch (e) { console.warn('Could not read save', e); }

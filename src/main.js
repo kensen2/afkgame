@@ -35,6 +35,7 @@ async function boot() {
   game.showMenuScene();
   ui.syncButtons();
   ui.showTitle();
+  if (Economy.economyReset) { Economy.save(); ui.toast('The economy was rebalanced. Progress has been reset.'); }
   ui.checkOffline(); // uzun süre sonra gelindiyse "Welcome back" ekranı
 }
 

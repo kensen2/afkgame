@@ -91,7 +91,7 @@ sim/balance.mjs            Denge simülasyonu: `node sim/balance.mjs warrior`
 
 Tüm sayılar `src/config.js` dosyasında. Değiştirdikten sonra `node sim/balance.mjs warrior` komutunu
 çalıştırırsan, oyuncunun kaçıncı denemede hangi dalgaya ulaştığını ve ne kadar süre oynadığını gösteren bir tablo çıkar.
-Şu anki ayarlarla tahmini ilerleme: dalga 10 için yaklaşık 5 dakika, dalga 20 için yaklaşık 30 dakika, dalga 100 için toplam 17-18 saat oyun.
+Şu anki ayarlarla tahmini ilerleme: dalga 10 için ~8 dakika, dalga 20 için ~70 dakika, dalga 50 için ~5 saat, dalga 100 için ~22 saat.
 
 ## Sonraki adımlar (kripto)
 
@@ -108,3 +108,15 @@ Solana entegrasyonunda bu fonksiyonların içi cüzdan ve zincir çağrılarıyl
   - Lisans: http://creativecommons.org/licenses/by/4.0/
 
 Efektleri değiştirmek için `src/core/audio.js` içindeki `BANK` listesine bak: her olayın hangi dosyaları, ses seviyesini ve perde aralığını kullandığı orada yazıyor.
+
+## Ekonomi (v2, kripto uyumlu)
+
+Sayılar küçük ve öngörülebilir kalsın diye ekonomi **doğrusal** büyür, üstel değil:
+
+- **Düşman altını:** `taban × (1 + 0.15 × (dalga − 1))`. Düşman başına taban 1-3 altın.
+  Dalga başına toplam: dalga 1 ≈ 3, dalga 25 ≈ 140, dalga 50 ≈ 380, dalga 100 ≈ 750 altın.
+- **Geliştirme maliyeti:** `taban × (seviye + 1)^1.35` (Saldırı/Can/Zırh). Örnek: Saldırı Lv10 ≈ 100, Lv40 ≈ 600 altın.
+- **Çevrimdışı kazanç:** aktif oynamanın %10'u, en fazla 12 saat.
+- Altınlar her zaman tam sayıdır.
+
+Ayarlar `src/config.js` içinde: `wave.goldPerWave`, `upgrades.*.baseCost/costExp`, `offline.efficiency`.

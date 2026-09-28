@@ -193,9 +193,15 @@ export class Game {
     this.audio.play(e.def.skel ? 'bones' : 'die');
     if (e.rank === 'boss') this.fx.shake(1);
     // gold paraları saç
-    const gold = e.gold * this.hero.stats.goldMult;
-    const n = e.rank === 'boss' ? 14 : e.rank === 'elite' ? 6 : Math.min(4, 1 + Math.floor(Math.random() * 3));
-    for (let i = 0; i < n; i++) this.spawnCoin(e.pos, gold / n);
+    // Tam sayı gold: küsurat olasılıkla yuvarlanır (1.4 gold → %40 ihtimalle 2, yoksa 1)
+    const raw = e.gold * this.hero.stats.goldMult;
+    const total = Math.floor(raw) + (Math.random() < raw % 1 ? 1 : 0);
+    if (total > 0) {
+      const want = e.rank === 'boss' ? 14 : e.rank === 'elite' ? 6 : Math.min(4, 1 + Math.floor(Math.random() * 3));
+      const n = Math.min(want, total);
+      const each = Math.floor(total / n);
+      for (let i = 0; i < n; i++) this.spawnCoin(e.pos, each + (i < total - each * n ? 1 : 0));
+    }
     const lv = Economy.addXp(e.xp);
     this.runXp += e.xp;
     if (lv > 0) {
