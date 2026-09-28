@@ -3,10 +3,22 @@ import { loadAll } from './core/assets.js';
 import { Economy } from './systems/economy.js';
 import { UI } from './ui/ui.js';
 import { Game } from './game.js';
-import { loadSounds } from './core/audio.js';
+import { loadSounds, Audio } from './core/audio.js';
 
 async function boot() {
   Economy.load();
+  // Menü müziği siteye girer girmez başlasın (kayıtlı ses ayarlarıyla)
+  const st = Economy.data.settings;
+  Audio.setMusicEnabled(st.music);
+  Audio.setMusicVolume(st.musicVol ?? 0.1);
+  Audio.setSfxVolume(st.sfxVol ?? 0.1);
+  Audio.setMusic('menu');
+  // Tarayıcı sesi engellediyse ilk etkileşimde başlat
+  const unlock = () => {
+    Audio.unlock();
+    ['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.removeEventListener(ev, unlock, true));
+  };
+  ['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.addEventListener(ev, unlock, true));
   const ui = new UI();
   try {
     await loadAll((p) => ui.loading(p));

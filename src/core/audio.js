@@ -214,6 +214,15 @@ export const Audio = {
     if (sfxBus) sfxBus.gain.value = SFX_BASE * sfxVol;
   },
 
+  // Tarayıcı otomatik çalmayı engellediyse ilk tıklama/tuşta müziği başlat
+  unlock() {
+    ensure();
+    const el = music.el;
+    if (el && el.paused && music.mode) {
+      el.play().then(() => fadeTo(el, musicTarget(), 1500)).catch(() => {});
+    }
+  },
+
   // mode: 'menu' | 'dungeon' | 'boss' | null (sessiz)
   setMusic(mode) {
     if (music.mode === mode) {
