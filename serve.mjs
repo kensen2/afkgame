@@ -26,7 +26,7 @@ http.createServer((req, res) => {
   });
 }).listen(PORT, () => {
   const url = `http://localhost:${PORT}`;
-  console.log(`\n  Zindan Dalgaları çalışıyor: ${url}\n  Kapatmak için bu pencereyi kapat veya Ctrl+C.\n`);
+  console.log(`\n  AFK Dungeon is running at: ${url}\n  Close this window or press Ctrl+C to stop.\n`);
   const cmd = process.platform === 'win32' ? `start "" "${url}"` : process.platform === 'darwin' ? `open ${url}` : `xdg-open ${url}`;
   exec(cmd);
 });

@@ -66,7 +66,7 @@ export async function loadAll(onProgress) {
 
 export function cloneDungeon(name) {
   const src = Assets.dungeon[name];
-  if (!src) { console.warn('eksik parça', name); return new THREE.Object3D(); }
+  if (!src) { console.warn('missing dungeon piece', name); return new THREE.Object3D(); }
   return src.clone(true);
 }
 

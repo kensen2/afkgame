@@ -94,11 +94,11 @@ export class UI {
     click('btn-reset', () => {
       const b = $('btn-reset');
       if (!b.dataset.armed) {
-        b.dataset.armed = '1'; b.textContent = 'Emin misin? Tüm ilerleme silinir — tekrar bas';
-        setTimeout(() => { delete b.dataset.armed; b.textContent = 'Kaydı Sıfırla'; }, 3000);
+        b.dataset.armed = '1'; b.textContent = 'Are you sure? All progress will be lost. Click again';
+        setTimeout(() => { delete b.dataset.armed; b.textContent = 'Reset Save'; }, 3000);
         return;
       }
-      delete b.dataset.armed; b.textContent = 'Kaydı Sıfırla';
+      delete b.dataset.armed; b.textContent = 'Reset Save';
       Economy.reset(); $('screen-pause').classList.add('hidden'); this.toMenu();
     });
     click('btn-retry', () => this.respawnNow());
@@ -133,14 +133,36 @@ export class UI {
   }
 
   // ---------- Yükleme ----------
-  loading(p) { $('load-fill').style.width = `${Math.round(p * 100)}%`; }
+  loading(p) {
+    $('load-fill').style.width = `${Math.round(p * 100)}%`;
+    $('load-pct').textContent = `${Math.round(p * 100)}%`;
+    if (!this._tipTimer) {
+      const tips = [
+        'Tip: Your hero fights on their own. Spend gold in the shop to grow stronger.',
+        'Tip: Every 5th wave is elite, every 10th wave brings a boss.',
+        'Tip: Level is shared by both heroes, but upgrades are per hero.',
+        'Tip: Press 1, 2, 3 to cast skills yourself, or leave AUTO on.',
+        'Tip: Press H to change game speed.',
+        'Tip: When you fall, you restart one wave back. Nothing you earned is lost.',
+        'Tip: Wave 100 hides the Lord of the Dungeon.',
+      ];
+      let i = Math.floor(Math.random() * tips.length);
+      const el = $('load-text');
+      el.textContent = tips[i];
+      this._tipTimer = setInterval(() => {
+        el.style.opacity = 0;
+        setTimeout(() => { i = (i + 1) % tips.length; el.textContent = tips[i]; el.style.opacity = 1; }, 400);
+      }, 3500);
+    }
+  }
 
   showTitle() {
     $('screen-loading').classList.add('hidden');
+    clearInterval(this._tipTimer);
     $('screen-title').classList.remove('hidden');
     const d = Economy.data;
     $('title-stats').innerHTML = d.bestWave > 0
-      ? `<span>En iyi dalga: <b>${d.bestWave}</b></span><span>Seviye: <b>${d.level}</b></span><span>Gold: <b>${fmt(d.gold)}</b></span>`
+      ? `<span>Best wave: <b>${d.bestWave}</b></span><span>Level: <b>${d.level}</b></span><span>Gold: <b>${fmt(d.gold)}</b></span>`
       : '';
   }
 
@@ -162,8 +184,8 @@ export class UI {
         <div class="role">${h.role}</div>
         <h2>${h.name}</h2>
         <div class="desc">${h.desc}</div>
-        ${[['Can', st.maxHp, maxes.maxHp, fmt(st.maxHp)], ['Hasar', st.atk, maxes.atk, st.atk.toFixed(1)], ['Zırh', st.armor, maxes.armor, Math.round(st.armor)],
-          ['Saldırı Hızı', st.atkSpd, maxes.atkSpd, st.atkSpd.toFixed(2)], ['Kritik', st.crit, maxes.crit, Math.round(st.crit * 100) + '%']]
+        ${[['Health', st.maxHp, maxes.maxHp, fmt(st.maxHp)], ['Damage', st.atk, maxes.atk, st.atk.toFixed(1)], ['Armor', st.armor, maxes.armor, Math.round(st.armor)],
+          ['Attack Speed', st.atkSpd, maxes.atkSpd, st.atkSpd.toFixed(2)], ['Crit', st.crit, maxes.crit, Math.round(st.crit * 100) + '%']]
           .map(([n, v, m, t]) => `<div class="stat-row"><span>${n}</span><div class="sb"><div style="width:${Math.min(100, v / m * 100)}%"></div></div><b>${t}</b></div>`).join('')}
         <div class="skills-mini">${h.skills.map((s, i) => `<span title="${s.desc}">${s.icon}<br>${s.name}<br><small>Lv ${Economy.skillLevel(id, i)}</small></span>`).join('')}</div>`;
       card.addEventListener('click', () => {
@@ -177,7 +199,7 @@ export class UI {
       this.previewers.push(new Previewer(card.querySelector('canvas'), id));
     }
     const sw = Economy.startWave();
-    $('start-hint').textContent = sw > 1 ? `Kaldığın yerden: Kat ${F.floorOf(sw) + 1}, Dalga ${sw}` : 'Kahramanın zindanda kendi kendine ilerler ve savaşır. Sen geliştir!';
+    $('start-hint').textContent = sw > 1 ? `Continue from Floor ${F.floorOf(sw) + 1}, Wave ${sw}` : 'Your hero walks and fights on their own. You handle the upgrades!';
   }
 
   startGame() {
@@ -264,14 +286,14 @@ export class UI {
   updateWave(game) {
     this._enemyTick = this._enemyTick || 0;
     const w = Math.max(1, game.phase === 'combat' || game.phase === 'dead' ? game.wave : game.wave + 1);
-    $('hud-floor').textContent = `Kat ${F.floorOf(w) + 1}`;
-    $('hud-wave').textContent = `Dalga ${w} / ${CONFIG.wave.maxWave}`;
+    $('hud-floor').textContent = `Floor ${F.floorOf(w) + 1}`;
+    $('hud-wave').textContent = `Wave ${w} / ${CONFIG.wave.maxWave}`;
     const alive = game.enemies.filter((e) => !e.dead).length;
     let txt;
-    if (game.phase === 'combat') txt = `${alive} düşman kaldı`;
+    if (game.phase === 'combat') txt = `${alive} enemies left`;
     else if (game.phase === 'walking' || game.phase === 'loot') {
       const nw = game.wave + 1;
-      txt = F.isBoss(nw) ? '⚠ Sıradaki: BOSS' : F.isElite(nw) ? 'Sıradaki: Elit dalga' : 'İlerliyor...';
+      txt = F.isBoss(nw) ? '⚠ Next: BOSS' : F.isElite(nw) ? 'Next: Elite wave' : 'Advancing...';
     } else txt = '';
     $('hud-enemies').textContent = txt;
   }
@@ -301,13 +323,13 @@ export class UI {
   }
 
   waveCleared(game) {
-    this.banner(`Dalga ${game.wave} temizlendi!`, 'clear');
+    this.banner(`Wave ${game.wave} cleared!`, 'clear');
     this.updateWave(game);
   }
 
   floorTransition(floorNo, name, mid) {
     const f = $('fade');
-    $('fade-small').textContent = `KAT ${floorNo}`;
+    $('fade-small').textContent = `FLOOR ${floorNo}`;
     $('fade-big').textContent = name;
     f.classList.remove('hidden');
     requestAnimationFrame(() => f.classList.add('show'));
@@ -321,10 +343,10 @@ export class UI {
     const s = Economy.data.settings;
     const a = $('btn-auto');
     a.classList.toggle('on', s.auto);
-    a.innerHTML = `OTO<br><small>${s.auto ? 'AÇIK' : 'KAPALI'}</small>`;
+    a.innerHTML = `AUTO<br><small>${s.auto ? 'ON' : 'OFF'}</small>`;
     $('btn-speed').textContent = `${s.speed}x`;
-    $('btn-sound').textContent = s.sound ? '🔊 Efektler: Açık' : '🔇 Efektler: Kapalı';
-    $('btn-music').textContent = s.music ? '🎵 Müzik: Açık' : '🎵 Müzik: Kapalı';
+    $('btn-sound').textContent = s.sound ? '🔊 Sound: On' : '🔇 Sound: Off';
+    $('btn-music').textContent = s.music ? '🎵 Music: On' : '🎵 Music: Off';
     Audio.setEnabled(s.sound);
     Audio.setMusicEnabled(s.music);
   }
@@ -376,7 +398,7 @@ export class UI {
   renderShop() {
     const hid = this.shopHero;
     const hdef = CONFIG.heroes[hid];
-    $('shop-hero').textContent = `${hdef.name} için geliştirmeler (her kahramanın kendi geliştirmeleri var, seviye ortak)`;
+    $('shop-hero').textContent = `Upgrades for ${hdef.name} (each hero has their own upgrades; level is shared)`;
     $('shop-gold').textContent = fmt(Economy.data.gold);
     $('shop-sp').textContent = Economy.data.skillPoints;
     const body = $('shop-body');
@@ -390,8 +412,8 @@ export class UI {
         const el = document.createElement('div');
         el.className = 'item';
         el.innerHTML = `<div class="ic">${u.icon}</div>
-          <div><div class="nm">${u.name}<small>Lv ${lvl}${u.max ? '/' + u.max : ''}</small></div><div class="ds">${u.desc}</div><div class="val">Şu an: ${cur}</div></div>
-          <button class="btn small" ${maxed || !Economy.canAfford(cost) ? 'disabled' : ''}>${maxed ? 'MAKS' : `<span class="coin"></span>${fmt(cost)}`}</button>`;
+          <div><div class="nm">${u.name}<small>Lv ${lvl}${u.max ? '/' + u.max : ''}</small></div><div class="ds">${u.desc}</div><div class="val">Current: ${cur}</div></div>
+          <button class="btn small" ${maxed || !Economy.canAfford(cost) ? 'disabled' : ''}>${maxed ? 'MAX' : `<span class="coin"></span>${fmt(cost)}`}</button>`;
         el.querySelector('button').addEventListener('click', () => {
           if (Economy.buyUpgrade(hid, key)) { Audio.play('buy'); this.renderShop(); } else Audio.play('denied');
         });
@@ -408,8 +430,8 @@ export class UI {
         el.className = 'item';
         el.innerHTML = `<div class="ic">${s.icon}</div>
           <div><div class="nm">${s.name}<small>Lv ${lvl}/${CONFIG.skillUpgrade.maxLevel}</small></div><div class="ds">${s.desc}</div>
-          <div class="val">Güç: %${pw} · Bekleme: ${cd} sn</div></div>
-          <button class="btn small" ${can ? '' : 'disabled'}>${maxed ? 'MAKS' : `<span class="coin"></span>${fmt(cost)} + ⭐1`}</button>`;
+          <div class="val">Power: ${pw}% · Cooldown: ${cd}s</div></div>
+          <button class="btn small" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : `<span class="coin"></span>${fmt(cost)} + ⭐1`}</button>`;
         el.querySelector('button').addEventListener('click', () => {
           if (Economy.buySkill(hid, i)) { Audio.play('buy'); this.renderShop(); } else Audio.play('denied');
         });
@@ -417,17 +439,17 @@ export class UI {
       });
       const note = document.createElement('div');
       note.className = 'hint'; note.style.gridColumn = '1 / -1';
-      note.textContent = 'Yetenek puanı her seviye atlayışta kazanılır. Seviye, tüm kahramanlar için ortaktır.';
+      note.textContent = 'You earn a skill point every time you level up. Level is shared by all heroes.';
       body.appendChild(note);
     } else {
       const st = F.heroStats(hid, Economy.data);
       const d = Economy.data;
       const g = document.createElement('div');
       g.className = 'stats-grid';
-      const rows = [['Maks. Can', fmt(st.maxHp)], ['Hasar', st.atk.toFixed(1)], ['Zırh', Math.round(st.armor) + ` (%${Math.round((1 - F.armorMult(st.armor)) * 100)} azaltma)`],
-        ['Saldırı Hızı', st.atkSpd.toFixed(2) + '/sn'], ['Kritik Şansı', Math.round(st.crit * 100) + '%'], ['Kritik Hasar', 'x' + st.critDmg],
-        ['Gold Bonusu', '+' + Math.round((st.goldMult - 1) * 100) + '%'], ['Yenilenme', (st.regen * 100).toFixed(1) + '%/sn'],
-        ['Genel Seviye', d.level], ['En İyi Dalga', d.bestWave], ['Toplam Öldürme', fmt(d.totalKills)], ['Başlangıç Dalgası', Economy.startWave()]];
+      const rows = [['Max Health', fmt(st.maxHp)], ['Damage', st.atk.toFixed(1)], ['Armor', Math.round(st.armor) + ` (${Math.round((1 - F.armorMult(st.armor)) * 100)}% reduction)`],
+        ['Attack Speed', st.atkSpd.toFixed(2) + '/s'], ['Crit Chance', Math.round(st.crit * 100) + '%'], ['Crit Damage', 'x' + st.critDmg],
+        ['Gold Bonus', '+' + Math.round((st.goldMult - 1) * 100) + '%'], ['Regeneration', (st.regen * 100).toFixed(1) + '%/s'],
+        ['Account Level', d.level], ['Best Wave', d.bestWave], ['Total Kills', fmt(d.totalKills)], ['Starting Wave', Economy.startWave()]];
       g.innerHTML = rows.map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('');
       body.appendChild(g);
     }
@@ -437,8 +459,8 @@ export class UI {
   showDeath(game) {
     const d = Economy.data;
     $('death-stats').innerHTML = [
-      ['Ulaşılan dalga', game.wave], ['En iyi', d.bestWave], ['Öldürülen', game.runKills], ['Kazanılan gold', fmt(game.runGold)],
-      ['Kazanılan XP', fmt(game.runXp)], ['Seviye', d.level], ['Sonraki başlangıç', `Dalga ${Economy.startWave()}`], ['Toplam gold', fmt(d.gold)],
+      ['Wave reached', game.wave], ['Best', d.bestWave], ['Kills', game.runKills], ['Gold earned', fmt(game.runGold)],
+      ['XP earned', fmt(game.runXp)], ['Level', d.level], ['Next start', `Wave ${Economy.startWave()}`], ['Total gold', fmt(d.gold)],
     ].map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('');
     $('screen-death').classList.remove('hidden');
     this.startCountdown();
@@ -458,8 +480,8 @@ export class UI {
   }
   stopCountdown() { clearInterval(this.countTimer); this.countTimer = null; }
   _renderCountdown() {
-    $('btn-retry').textContent = `↻ Şimdi Başla (${this.countLeft})`;
-    $('death-count').innerHTML = `<b>${this.countLeft}</b> saniye sonra <b>Dalga ${Economy.startWave()}</b>'dan otomatik başlıyor`;
+    $('btn-retry').textContent = `↻ Start Now (${this.countLeft})`;
+    $('death-count').innerHTML = `Restarting from <b>Wave ${Economy.startWave()}</b> in <b>${this.countLeft}</b> seconds`;
   }
   respawnNow() {
     this.stopCountdown();
@@ -471,7 +493,7 @@ export class UI {
   showVictory(game) {
     const d = Economy.data;
     $('victory-stats').innerHTML = [
-      ['Tamamlanan dalga', CONFIG.wave.maxWave], ['Seviye', d.level], ['Toplam öldürme', fmt(d.totalKills)], ['Toplam gold', fmt(d.gold)],
+      ['Waves cleared', CONFIG.wave.maxWave], ['Level', d.level], ['Total kills', fmt(d.totalKills)], ['Total gold', fmt(d.gold)],
     ].map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('');
     $('screen-victory').classList.remove('hidden');
   }

@@ -152,10 +152,10 @@ export class Game {
       this.ui.banner(`BOSS · ${boss.bossDef.name}`, 'boss');
     } else if (F.isElite(w)) {
       this.audio.play('wave');
-      this.ui.banner(`Dalga ${w} · ELİT`, 'elite');
+      this.ui.banner(`Wave ${w} · ELITE`, 'elite');
     } else {
       this.audio.play('wave');
-      this.ui.banner(`Dalga ${w}`);
+      this.ui.banner(`Wave ${w}`);
     }
     this.ui.updateWave(this);
   }
@@ -202,9 +202,9 @@ export class Game {
       this.hero.refreshStats();
       this.hero.heal(this.hero.stats.maxHp * 0.3);
       this.audio.play('levelup');
-      this.fx.floater(this.hero.pos.clone().setY(3.4), `SEVİYE ${Economy.data.level}!`, 'level');
+      this.fx.floater(this.hero.pos.clone().setY(3.4), `LEVEL ${Economy.data.level}!`, 'level');
       this.fx.burst(this.hero.pos.clone().setY(1), { count: 40, color: 0x7affc0, speed: 3, up: 5, size: 0.5, life: 1 });
-      this.ui.toast(`Seviye ${Economy.data.level}! +1 yetenek puanı`);
+      this.ui.toast(`Level ${Economy.data.level}! +1 skill point`);
     }
     this.ui.updateWave(this);
   }

@@ -1,6 +1,6 @@
-# Zindan Dalgaları
+# AFK Dungeon
 
-Tarayıcıda çalışan, 2.5D, dalga tabanlı ve otomatik ilerleyen bir zindan savaş oyunu.
+Tarayıcıda çalışan (oyun içi dil: İngilizce), 2.5D, dalga tabanlı ve otomatik ilerleyen bir zindan savaş oyunu.
 Three.js ile yazıldı. Kahramanlar senin 2D karakterlerin, düşmanlar ve zindan ise KayKit'in 3D modelleri.
 
 ## Nasıl çalıştırılır?

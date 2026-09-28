@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Zindan Dalgaları</title>
+<title>AFK Dungeon</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
@@ -27,51 +27,59 @@
     </div>
   </div>
   <div class="hud-center">
-    <div class="wave-title"><span id="hud-floor">Kat 1</span> · <span id="hud-wave">Dalga 1</span></div>
+    <div class="wave-title"><span id="hud-floor">Floor 1</span> · <span id="hud-wave">Wave 1</span></div>
     <div id="hud-enemies" class="wave-sub">—</div>
     <div id="boss-bar" class="hidden"><div class="boss-name" id="boss-name">Boss</div><div class="bar boss"><div id="boss-fill"></div></div></div>
   </div>
   <div class="hud-right">
     <div class="gold panel"><span class="coin"></span><b id="hud-gold">0</b></div>
     <div class="hud-buttons">
-      <button id="btn-shop" class="btn small" title="Dükkan (B)">🛒 Dükkan</button>
-      <button id="btn-speed" class="btn small" title="Oyun hızı (H)">1x</button>
-      <button id="btn-pause" class="btn small" title="Duraklat (Esc)">⏸</button>
+      <button id="btn-shop" class="btn small" title="Shop (B)">🛒 Shop</button>
+      <button id="btn-speed" class="btn small" title="Game speed (H)">1x</button>
+      <button id="btn-pause" class="btn small" title="Pause (Esc)">⏸</button>
     </div>
   </div>
   <div class="hud-bottom">
     <div id="skills"></div>
-    <button id="btn-auto" class="btn auto on" title="Otomatik yetenek (A)">OTO<br><small>AÇIK</small></button>
+    <button id="btn-auto" class="btn auto on" title="Auto skills (A)">AUTO<br><small>ON</small></button>
   </div>
 </div>
 
 <div id="banner" class="hidden"></div>
 <div id="toast" class="hidden"></div>
-<div id="fade" class="hidden"><div class="fade-inner"><div class="fade-small" id="fade-small">KAT 2</div><div class="fade-big" id="fade-big">—</div></div></div>
+<div id="fade" class="hidden"><div class="fade-inner"><div class="fade-small" id="fade-small">FLOOR 2</div><div class="fade-big" id="fade-big">—</div></div></div>
 
 <!-- Yükleme -->
 <div id="screen-loading" class="screen">
-  <div class="logo">ZİNDAN<span>DALGALARI</span></div>
-  <div class="loadbar"><div id="load-fill"></div></div>
-  <div class="hint" id="load-text">Zindan kazılıyor...</div>
+  <div class="load-bg"></div>
+  <div class="logo">AFK<span>DUNGEON</span></div>
+  <div class="load-stage">
+    <div class="load-hero warrior"></div>
+    <div class="load-center">
+      <div class="loadbar"><div id="load-fill"></div></div>
+      <div class="load-pct" id="load-pct">0%</div>
+    </div>
+    <div class="load-hero lion"></div>
+  </div>
+  <div class="hint load-tip" id="load-text">Digging the dungeon...</div>
 </div>
 
 <!-- Başlık -->
 <div id="screen-title" class="screen hidden">
-  <div class="logo big">ZİNDAN<span>DALGALARI</span></div>
-  <div class="subtitle">Karanlığın derinliklerine in. Dalga dalga gelen ordulara karşı dur.</div>
+  <div class="logo big">AFK<span>DUNGEON</span></div>
+  <div class="subtitle">Descend into the dark. Hold the line against wave after wave.</div>
   <div class="title-stats" id="title-stats"></div>
-  <button class="btn big" id="btn-play">OYNA</button>
-  <div class="footer-note">Modeller: KayKit (CC0) · Sesler: Kenney (CC0) · Müzik: Kevin MacLeod (incompetech.com), CC BY 4.0</div>
+  <button class="btn big" id="btn-play">PLAY</button>
+  <div class="footer-note">Models: KayKit (CC0) · Sound: Kenney (CC0) · Music: Kevin MacLeod (incompetech.com), CC BY 4.0</div>
 </div>
 
 <!-- Karakter seçimi -->
 <div id="screen-select" class="screen hidden">
-  <h1 class="screen-title">Kahramanını Seç</h1>
+  <h1 class="screen-title">Choose Your Hero</h1>
   <div class="cards" id="hero-cards"></div>
   <div class="select-actions">
-    <button class="btn" id="btn-select-shop">🛒 Dükkan</button>
-    <button class="btn big" id="btn-start">⚔️ ZİNDANA GİR</button>
+    <button class="btn" id="btn-select-shop">🛒 Shop</button>
+    <button class="btn big" id="btn-start">⚔️ ENTER THE DUNGEON</button>
   </div>
   <div class="hint" id="start-hint"></div>
 </div>
@@ -81,19 +89,19 @@
   <div class="shop panel">
     <div class="shop-head">
       <div>
-        <div class="shop-title">Dükkan</div>
+        <div class="shop-title">Shop</div>
         <div class="shop-hero" id="shop-hero">—</div>
       </div>
       <div class="shop-wallet">
         <div class="gold"><span class="coin"></span><b id="shop-gold">0</b></div>
-        <div class="sp">⭐ <b id="shop-sp">0</b> yetenek puanı</div>
+        <div class="sp">⭐ <b id="shop-sp">0</b> skill points</div>
       </div>
       <button class="btn small close" id="btn-shop-close">✕</button>
     </div>
     <div class="tabs">
-      <button class="tab active" data-tab="upg">Geliştirmeler</button>
-      <button class="tab" data-tab="skl">Yetenekler</button>
-      <button class="tab" data-tab="stats">İstatistikler</button>
+      <button class="tab active" data-tab="upg">Upgrades</button>
+      <button class="tab" data-tab="skl">Skills</button>
+      <button class="tab" data-tab="stats">Stats</button>
     </div>
     <div class="shop-body" id="shop-body"></div>
   </div>
@@ -102,13 +110,13 @@
 <!-- Ölüm -->
 <div id="screen-death" class="screen modal hidden">
   <div class="panel death">
-    <div class="death-title">YENİLDİN</div>
+    <div class="death-title">DEFEATED</div>
     <div class="death-stats" id="death-stats"></div>
     <div class="death-count" id="death-count"></div>
     <div class="death-actions">
-      <button class="btn big" id="btn-retry">↻ Tekrar Dene</button>
-      <button class="btn" id="btn-death-shop">🛒 Dükkan</button>
-      <button class="btn" id="btn-death-menu">Karakter Seç</button>
+      <button class="btn big" id="btn-retry">↻ Try Again</button>
+      <button class="btn" id="btn-death-shop">🛒 Shop</button>
+      <button class="btn" id="btn-death-menu">Choose Hero</button>
     </div>
   </div>
 </div>
@@ -116,12 +124,12 @@
 <!-- Zafer -->
 <div id="screen-victory" class="screen modal hidden">
   <div class="panel death">
-    <div class="death-title victory">ZİNDAN FETHEDİLDİ</div>
-    <div class="hint">100 dalganın hepsini geçtin ve Zindan Efendisi'ni yendin. Geliştirmelerin ve seviyen seninle kalıyor.</div>
+    <div class="death-title victory">DUNGEON CONQUERED</div>
+    <div class="hint">You cleared all 100 waves and defeated the Lord of the Dungeon. Your upgrades and level stay with you.</div>
     <div class="death-stats" id="victory-stats"></div>
     <div class="death-actions">
-      <button class="btn big" id="btn-victory-again">Baştan Başla</button>
-      <button class="btn" id="btn-victory-menu">Karakter Seç</button>
+      <button class="btn big" id="btn-victory-again">Start Over</button>
+      <button class="btn" id="btn-victory-menu">Choose Hero</button>
     </div>
   </div>
 </div>
@@ -129,13 +137,13 @@
 <!-- Duraklat -->
 <div id="screen-pause" class="screen modal hidden">
   <div class="panel pause">
-    <div class="shop-title">Duraklatıldı</div>
-    <button class="btn big" id="btn-resume">Devam Et</button>
-    <button class="btn" id="btn-pause-shop">🛒 Dükkan</button>
-    <button class="btn" id="btn-sound">🔊 Efektler: Açık</button>
-    <button class="btn" id="btn-music">🎵 Müzik: Açık</button>
-    <button class="btn" id="btn-quit">Menüye Dön</button>
-    <button class="btn danger small" id="btn-reset">Kaydı Sıfırla</button>
+    <div class="shop-title">Paused</div>
+    <button class="btn big" id="btn-resume">Resume</button>
+    <button class="btn" id="btn-pause-shop">🛒 Shop</button>
+    <button class="btn" id="btn-sound">🔊 Sound: On</button>
+    <button class="btn" id="btn-music">🎵 Music: On</button>
+    <button class="btn" id="btn-quit">Main Menu</button>
+    <button class="btn danger small" id="btn-reset">Reset Save</button>
   </div>
 </div>
 

@@ -50,13 +50,13 @@ export const CONFIG = {
   // maliyet = baseCost × costGrowth^(seviye)
   upgrades: {
     // kind 'mult': her seviye bir öncekinin üstüne katlanır (1+per)^seviye
-    atk:     { name: 'Saldırı',       icon: '⚔️', baseCost: 15, costGrowth: 1.27, per: 0.07, kind: 'mult', desc: 'Hasar ×1.07 (katlanarak)' },
-    hp:      { name: 'Can',           icon: '❤️', baseCost: 15, costGrowth: 1.27, per: 0.07, kind: 'mult', desc: 'Maksimum can ×1.07 (katlanarak)' },
-    armor:   { name: 'Zırh',          icon: '🛡️', baseCost: 25, costGrowth: 1.30, per: 3,    kind: 'flat', desc: 'Zırh +3' },
-    atkSpd:  { name: 'Saldırı Hızı',  icon: '💨', baseCost: 45, costGrowth: 1.45, per: 0.05, kind: 'pct',  desc: 'Saldırı hızı +%5', max: 20 },
-    crit:    { name: 'Kritik Şansı',  icon: '🎯', baseCost: 45, costGrowth: 1.45, per: 0.015,kind: 'flat', desc: 'Kritik şansı +%1.5', max: 25 },
-    goldBon: { name: 'Gold Bonusu',   icon: '💰', baseCost: 60, costGrowth: 1.50, per: 0.08, kind: 'pct',  desc: 'Düşen gold +%8', max: 30 },
-    regen:   { name: 'Yenilenme',     icon: '✨', baseCost: 50, costGrowth: 1.45, per: 0.004,kind: 'flat', desc: 'Saniyede canın %0.4\'ü', max: 15 },
+    atk:     { name: 'Attack',        icon: '⚔️', baseCost: 15, costGrowth: 1.27, per: 0.07, kind: 'mult', desc: 'Damage ×1.07 (stacks)' },
+    hp:      { name: 'Health',        icon: '❤️', baseCost: 15, costGrowth: 1.27, per: 0.07, kind: 'mult', desc: 'Max health ×1.07 (stacks)' },
+    armor:   { name: 'Armor',         icon: '🛡️', baseCost: 25, costGrowth: 1.30, per: 3,    kind: 'flat', desc: 'Armor +3' },
+    atkSpd:  { name: 'Attack Speed',  icon: '💨', baseCost: 45, costGrowth: 1.45, per: 0.05, kind: 'pct',  desc: 'Attack speed +5%', max: 20 },
+    crit:    { name: 'Crit Chance',   icon: '🎯', baseCost: 45, costGrowth: 1.45, per: 0.015,kind: 'flat', desc: 'Crit chance +1.5%', max: 25 },
+    goldBon: { name: 'Gold Bonus',    icon: '💰', baseCost: 60, costGrowth: 1.50, per: 0.08, kind: 'pct',  desc: 'Gold drops +8%', max: 30 },
+    regen:   { name: 'Regeneration',  icon: '✨', baseCost: 50, costGrowth: 1.45, per: 0.004,kind: 'flat', desc: 'Heal 0.4% of max health per second', max: 15 },
   },
 
   // ---- Yetenek geliştirme ----
@@ -72,33 +72,33 @@ export const CONFIG = {
   // ---- Kahramanlar ----
   heroes: {
     warrior: {
-      name: 'Sarı-Mavi Varior',
+      name: 'Blue-Gold Warrior',
       role: 'Tank',
-      desc: 'Kalkanı ve ağır zırhıyla dalgaları göğüsleyen şövalye.',
+      desc: 'A knight who weathers every wave behind shield and heavy armor.',
       hp: 220, atk: 13, armor: 8, atkSpd: 1.0, crit: 0.05, critDmg: 1.5,
       speed: 3.4, range: 1.9, hitFrame: 4, height: 2.35,
       skills: [
-        { id: 'bash',   name: 'Kalkan Darbesi', icon: '🛡️', cd: 6,  power: 1.6, stun: 1.6,
-          desc: 'Hedefe kalkanla vurur (%160 hasar), 1.6 sn sersemletir.' },
-        { id: 'guard',  name: 'Savunma Duruşu', icon: '🔰', cd: 14, power: 0.5, dur: 4,
-          desc: '4 sn boyunca alınan hasar %50 azalır, vuranlara %30 geri yansır.' },
-        { id: 'charge', name: 'Hücum',          icon: '💥', cd: 10, power: 2.0, dist: 7,
-          desc: 'İleri atılır, yolundaki herkese %200 hasar verip geri iter.' },
+        { id: 'bash',   name: 'Shield Bash', icon: '🛡️', cd: 6,  power: 1.6, stun: 1.6,
+          desc: 'Slams the target with the shield (160% damage) and stuns for 1.6s.' },
+        { id: 'guard',  name: 'Iron Stance', icon: '🔰', cd: 14, power: 0.5, dur: 4,
+          desc: 'Takes 50% less damage for 4s and reflects 30% back to attackers.' },
+        { id: 'charge', name: 'Charge',         icon: '💥', cd: 10, power: 2.0, dist: 7,
+          desc: 'Dashes forward, dealing 200% damage and knocking back everything in the way.' },
       ],
     },
     lion: {
-      name: 'Aslan Kılıçlı',
-      role: 'Saldırı',
-      desc: 'Hızlı ve ölümcül kılıç ustası. Az can, çok hasar.',
+      name: 'Lion Blade',
+      role: 'Damage',
+      desc: 'A fast, deadly swordsman. Low health, high damage.',
       hp: 150, atk: 21, armor: 3, atkSpd: 1.15, crit: 0.15, critDmg: 2.0,
       speed: 3.8, range: 2.0, hitFrame: 2, height: 2.45,
       skills: [
-        { id: 'spin',  name: 'Döner Kılıç', icon: '🌀', cd: 7,  power: 1.8, radius: 3.0,
-          desc: 'Etrafındaki tüm düşmanlara %180 hasar.' },
-        { id: 'roar',  name: 'Kükreme',     icon: '🦁', cd: 12, power: 0.6, radius: 4.5, fear: 2.2,
-          desc: 'Yakındakileri geri iter, %60 hasar verir ve 2.2 sn korkutur.' },
-        { id: 'rage',  name: 'Öfke',        icon: '🔥', cd: 16, power: 0.6, dur: 5,
-          desc: '5 sn boyunca saldırı hızı +%60, kritik şansı +%20.' },
+        { id: 'spin',  name: 'Whirlwind',   icon: '🌀', cd: 7,  power: 1.8, radius: 3.0,
+          desc: 'Deals 180% damage to every enemy around him.' },
+        { id: 'roar',  name: 'Roar',        icon: '🦁', cd: 12, power: 0.6, radius: 4.5, fear: 2.2,
+          desc: 'Knocks back nearby enemies, deals 60% damage and makes them flee for 2.2s.' },
+        { id: 'rage',  name: 'Rage',        icon: '🔥', cd: 16, power: 0.6, dur: 5,
+          desc: '+60% attack speed and +20% crit chance for 5s.' },
       ],
     },
   },
@@ -106,44 +106,44 @@ export const CONFIG = {
   // ---- Düşmanlar (KayKit) ----
   // unlock: hangi dalgadan itibaren çıkar, weight: çıkma ağırlığı
   enemies: {
-    Skeleton_Minion:  { name: 'İskelet Er',        hp: 30,  dmg: 5,  armor: 0, speed: 2.4, range: 1.6, atkCd: 1.3, gold: 3, xp: 3, unlock: 1,  weight: 10, kind: 'melee',
+    Skeleton_Minion:  { name: 'Skeleton Grunt',    hp: 30,  dmg: 5,  armor: 0, speed: 2.4, range: 1.6, atkCd: 1.3, gold: 3, xp: 3, unlock: 1,  weight: 10, kind: 'melee',
                         weapons: { r: 'Skeleton_Blade' }, attack: '1H_Melee_Attack_Chop', skel: true },
-    Skeleton_Warrior: { name: 'İskelet Savaşçı',   hp: 62,  dmg: 8,  armor: 4, speed: 1.8, range: 1.7, atkCd: 1.6, gold: 5, xp: 5, unlock: 3,  weight: 7,  kind: 'melee',
+    Skeleton_Warrior: { name: 'Skeleton Warrior',  hp: 62,  dmg: 8,  armor: 4, speed: 1.8, range: 1.7, atkCd: 1.6, gold: 5, xp: 5, unlock: 3,  weight: 7,  kind: 'melee',
                         weapons: { r: 'Skeleton_Axe', l: 'Skeleton_Shield_Large_A' }, attack: '1H_Melee_Attack_Slice_Diagonal', skel: true },
-    Skeleton_Rogue:   { name: 'İskelet Suikastçı', hp: 26,  dmg: 7,  armor: 0, speed: 3.6, range: 1.5, atkCd: 0.9, gold: 4, xp: 4, unlock: 4,  weight: 6,  kind: 'melee',
+    Skeleton_Rogue:   { name: 'Skeleton Assassin', hp: 26,  dmg: 7,  armor: 0, speed: 3.6, range: 1.5, atkCd: 0.9, gold: 4, xp: 4, unlock: 4,  weight: 6,  kind: 'melee',
                         weapons: { r: 'Skeleton_Blade', l: 'Skeleton_Blade' }, attack: 'Dualwield_Melee_Attack_Stab', skel: true },
-    Skeleton_Mage:    { name: 'İskelet Büyücü',    hp: 24,  dmg: 9,  armor: 0, speed: 2.0, range: 7.0, atkCd: 2.2, gold: 6, xp: 6, unlock: 6,  weight: 5,  kind: 'ranged', proj: 'orb',
+    Skeleton_Mage:    { name: 'Skeleton Mage',     hp: 24,  dmg: 9,  armor: 0, speed: 2.0, range: 7.0, atkCd: 2.2, gold: 6, xp: 6, unlock: 6,  weight: 5,  kind: 'ranged', proj: 'orb',
                         weapons: { r: 'Skeleton_Staff' }, attack: 'Spellcast_Shoot', skel: true },
-    Rogue:            { name: 'Haydut Nişancı',    hp: 32,  dmg: 8,  armor: 1, speed: 2.4, range: 8.0, atkCd: 2.0, gold: 7, xp: 7, unlock: 8,  weight: 5,  kind: 'ranged', proj: 'bolt',
+    Rogue:            { name: 'Bandit Marksman',   hp: 32,  dmg: 8,  armor: 1, speed: 2.4, range: 8.0, atkCd: 2.0, gold: 7, xp: 7, unlock: 8,  weight: 5,  kind: 'ranged', proj: 'bolt',
                         show: ['1H_Crossbow'], attack: '1H_Ranged_Shoot', tint: 0x7a6a8a },
-    Rogue_Hooded:     { name: 'Gölge Suikastçı',   hp: 38,  dmg: 10, armor: 1, speed: 3.8, range: 1.5, atkCd: 0.8, gold: 8, xp: 8, unlock: 11, weight: 5,  kind: 'melee',
+    Rogue_Hooded:     { name: 'Shadow Assassin',   hp: 38,  dmg: 10, armor: 1, speed: 3.8, range: 1.5, atkCd: 0.8, gold: 8, xp: 8, unlock: 11, weight: 5,  kind: 'melee',
                         show: ['Knife', 'Knife_Offhand'], attack: 'Dualwield_Melee_Attack_Slice', tint: 0x6a5a7a },
-    Barbarian:        { name: 'Yozlaşmış Barbar',  hp: 95,  dmg: 15, armor: 3, speed: 2.0, range: 1.9, atkCd: 2.0, gold: 10, xp: 10, unlock: 13, weight: 4, kind: 'melee',
+    Barbarian:        { name: 'Corrupted Barbarian', hp: 95,  dmg: 15, armor: 3, speed: 2.0, range: 1.9, atkCd: 2.0, gold: 10, xp: 10, unlock: 13, weight: 4, kind: 'melee',
                         show: ['2H_Axe'], attack: '2H_Melee_Attack_Chop', tint: 0x8a6a6a },
-    Knight:           { name: 'Kara Şövalye',      hp: 120, dmg: 11, armor: 12, speed: 1.9, range: 1.8, atkCd: 1.5, gold: 12, xp: 12, unlock: 16, weight: 4, kind: 'melee',
+    Knight:           { name: 'Dark Knight',       hp: 120, dmg: 11, armor: 12, speed: 1.9, range: 1.8, atkCd: 1.5, gold: 12, xp: 12, unlock: 16, weight: 4, kind: 'melee',
                         show: ['1H_Sword', 'Badge_Shield'], attack: '1H_Melee_Attack_Slice_Diagonal', tint: 0x55556a },
-    Mage:             { name: 'Kara Büyücü',       hp: 45,  dmg: 14, armor: 1, speed: 2.0, range: 8.0, atkCd: 2.4, gold: 12, xp: 12, unlock: 18, weight: 4, kind: 'ranged', proj: 'fire',
+    Mage:             { name: 'Dark Mage',         hp: 45,  dmg: 14, armor: 1, speed: 2.0, range: 8.0, atkCd: 2.4, gold: 12, xp: 12, unlock: 18, weight: 4, kind: 'ranged', proj: 'fire',
                         show: ['2H_Staff'], attack: 'Spellcast_Shoot', tint: 0x6a5a8a },
   },
 
   // Boss sırası (dalga 10, 20, 30...). Liste bitince başa döner.
   // 100. dalgadaki final boss
-  finalBoss: { type: 'Knight', name: 'Zindan Efendisi Malakor', summon: true, hpMult: 1.5 },
+  finalBoss: { type: 'Knight', name: 'Malakor, Lord of the Dungeon', summon: true, hpMult: 1.5 },
 
   bosses: [
-    { type: 'Skeleton_Warrior', name: 'Kemik Lordu' },
-    { type: 'Barbarian',        name: 'Kasap Grom' },
-    { type: 'Skeleton_Mage',    name: 'Nekromant Morth', summon: true },
-    { type: 'Knight',           name: 'Kara Şövalye Valdor' },
-    { type: 'Mage',             name: 'Alev Cadısı Ysra', summon: true },
+    { type: 'Skeleton_Warrior', name: 'The Bone Lord' },
+    { type: 'Barbarian',        name: 'Grom the Butcher' },
+    { type: 'Skeleton_Mage',    name: 'Morth the Necromancer', summon: true },
+    { type: 'Knight',           name: 'Valdor the Black Knight' },
+    { type: 'Mage',             name: 'Ysra the Flame Witch', summon: true },
   ],
 
   // Kat temaları (her 10 dalgada bir sıradakine geçilir)
   floors: [
-    { name: 'Kemik Mahzeni',     fog: 0x0a0c12, torch: 0xff8a3d, ambient: 0x3a3f55, tile: 'floor_tile_large' },
-    { name: 'Unutulmuş Zindan',  fog: 0x0c0914, torch: 0xb57bff, ambient: 0x3a3055, tile: 'floor_tile_large' },
-    { name: 'Kan Salonu',        fog: 0x120707, torch: 0xff4a2a, ambient: 0x4a2a2a, tile: 'floor_tile_large' },
-    { name: 'Zümrüt Mahzen',     fog: 0x06110e, torch: 0x4dffa0, ambient: 0x2a4a40, tile: 'floor_tile_large' },
+    { name: 'Bone Crypt',        fog: 0x0a0c12, torch: 0xff8a3d, ambient: 0x3a3f55, tile: 'floor_tile_large' },
+    { name: 'Forgotten Halls',   fog: 0x0c0914, torch: 0xb57bff, ambient: 0x3a3055, tile: 'floor_tile_large' },
+    { name: 'Blood Hall',        fog: 0x120707, torch: 0xff4a2a, ambient: 0x4a2a2a, tile: 'floor_tile_large' },
+    { name: 'Emerald Vault',     fog: 0x06110e, torch: 0x4dffa0, ambient: 0x2a4a40, tile: 'floor_tile_large' },
   ],
 };
 

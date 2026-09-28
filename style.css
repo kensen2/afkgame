@@ -49,7 +49,7 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
 .hint { color: var(--muted); font-size: 14px; text-align: center; }
 .footer-note { position: absolute; bottom: 14px; color: #6d6680; font-size: 12px; }
 .loadbar { width: min(360px, 80vw); height: 10px; border-radius: 6px; background: #1c1826; overflow: hidden; border: 1px solid var(--panel-b); }
-#load-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--gold-d), var(--gold)); transition: width .2s; }
+#load-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--gold-d), var(--gold)); }
 .title-stats { display: flex; gap: 22px; color: var(--muted); font-size: 14px; }
 .title-stats b { color: var(--ink); }
 .screen-title { font-family: 'Cinzel', serif; color: var(--gold); margin: 0; font-size: 32px; text-shadow: 0 2px 0 #000; }
@@ -198,3 +198,24 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
 .death-count { margin: -8px 0 18px; color: var(--muted); font-size: 15px; }
 .death-count b { color: var(--gold); font-size: 17px; }
 .death-title.victory { color: var(--gold); font-size: 38px; text-shadow: 0 0 30px rgba(244,192,78,0.55); margin-bottom: 8px; }
+
+/* ---------- yükleme ekranı: oyundan bir sahne + animasyonlu kahramanlar ---------- */
+#screen-loading { background: #07060b; overflow: hidden; }
+.load-bg { position: absolute; inset: -4%; background: url('assets/ui/loading.jpg') center / cover no-repeat;
+  filter: brightness(0.42) saturate(1.1) blur(2px); animation: loadzoom 18s ease-in-out infinite alternate; }
+#screen-loading::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 55%, rgba(7,6,11,0.1) 30%, rgba(7,6,11,0.85) 100%); }
+#screen-loading > :not(.load-bg) { position: relative; z-index: 1; }
+@keyframes loadzoom { from { transform: scale(1); } to { transform: scale(1.08) translateX(-1.5%); } }
+.load-stage { display: flex; align-items: flex-end; gap: 22px; }
+.load-center { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-bottom: 26px; }
+.load-pct { font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; letter-spacing: .05em; }
+.load-hero { background-repeat: no-repeat; background-position: 0 0; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.7)); }
+.load-hero.warrior { width: 116px; height: 127px; background-image: url('assets/heroes/warrior_idle.png');
+  background-size: 800% 100%; animation: sprite8 0.92s steps(8) infinite; }
+.load-hero.lion { width: 132px; height: 135px; background-image: url('assets/heroes/lion_idle.png');
+  background-size: 400% 100%; animation: sprite4 0.68s steps(4) infinite; transform: scaleX(-1); }
+@keyframes sprite8 { to { background-position: 114.2857% 0; } }
+@keyframes sprite4 { to { background-position: 133.3333% 0; } }
+.load-tip { min-height: 22px; max-width: 520px; transition: opacity .4s; }
+@media (max-width: 560px) { .load-hero.warrior { width: 76px; height: 83px; } .load-hero.lion { width: 86px; height: 88px; } .loadbar { width: 50vw; } }

@@ -14,7 +14,7 @@ async function boot() {
   } catch (e) {
     console.error(e);
     document.getElementById('load-text').textContent =
-      'Dosyalar yüklenemedi. Oyunu "baslat.bat" ile (yerel sunucu üzerinden) açtığından emin ol.';
+      'Could not load game files. Start the game through a local server (baslat.bat) or its web address.';
     return;
   }
   const game = new Game(document.getElementById('game'), document.getElementById('overlay'), ui);

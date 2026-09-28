@@ -53,7 +53,7 @@ export const Economy = {
           this.data.heroes[h] = { ...fh, ...this.data.heroes[h], upgrades: { ...fh.upgrades, ...(this.data.heroes[h]?.upgrades || {}) } };
         }
       }
-    } catch (e) { console.warn('Kayıt okunamadı', e); }
+    } catch (e) { console.warn('Could not read save', e); }
     return this.data;
   },
 
