@@ -81,26 +81,35 @@ export const CONFIG = {
 
   // ---- Yetenek geliştirme ----
   skillUpgrade: {
-    baseCost: 12, costExp: 2.0,     // gold maliyeti = baseCost × seviye^costExp
+    baseCost: 50, costExp: 2.2,     // gold maliyeti = baseCost × seviye^costExp  (v3.1: 12×lv² çok ucuzdu)
     pointCost: 1,                   // yetenek puanı maliyeti
     powerPer: 0.20,                 // her seviye etki +%20
     cdReducePer: 0.04,              // her seviye bekleme süresi -%4
     minCdMult: 0.5,
     maxLevel: 10,
-    tomeFrom: 6,                    // Lv6 ve üstüne çıkmak için +1 Skill Tome gerekir
+    // Lv4 ve üstü Skill Tome ister. Anahtar = ulaşılacak seviye, değer = gereken Tome.
+    // Bir yetenek için toplam 11 Tome, bir kahramanın 3 yeteneği için 33.
+    tomes: { 4: 1, 5: 1, 6: 1, 7: 1, 8: 2, 9: 2, 10: 3 },
   },
 
   // ---- Gems (değerli para) ----
-  // Gerçek parayla alınır (ileride Solana: USDC/SOL). Oyun içinden az miktarda gelir.
-  // Gold da Gems de ASLA paraya çevrilmez (para sadece içeri girer).
+  // Oyunun kendi token'ıyla alınır (Solana). Oyun içinden az miktarda gelir.
+  // Gold da Gems de ASLA token'a / paraya çevrilmez (para sadece içeri girer).
+  // Gems'in fiyatı DOLAR cinsinden sabittir; token kuru oynadıkça ödenen token miktarı değişir,
+  // mağaza fiyatları değişmez. Satın alma anında: token = gems × priceUsd × tokensPerUsd.
   gems: {
-    bossFirstKill: 5,        // her boss'un ilk yenilişi +5 Gems (+1 Skill Tome)
-    bossFirstTome: 1,
-    finalBossBonus: 100,     // 100. dalga ilk kez yenilince +100 Gems
-    usdcRate: 100,           // 1 USDC = 100 Gems
-    packs: [                 // ileride Solana'da satılacak paketler
+    priceUsd: 0.01,          // 1 Gem ≈ $0.01 (100 Gems ≈ $1)
+    token: { symbol: 'TOKEN', tokensPerUsd: 10000 },   // tahmini; lansmanda piyasa kuru kullanılacak
+    packs: [                 // dolar bazlı paketler (büyük pakette bonus)
       { usd: 1, gems: 100 }, { usd: 5, gems: 550 }, { usd: 10, gems: 1200 }, { usd: 25, gems: 3200 },
     ],
+    // Boss'un İLK yenilişi ödülü (dalga → Gems / Skill Tome). Tekrar yenmek ödül vermez.
+    bossRewards: {
+      10: { gems: 5,  tomes: 1 }, 20: { gems: 5,  tomes: 2 }, 30: { gems: 10, tomes: 2 },
+      40: { gems: 10, tomes: 3 }, 50: { gems: 15, tomes: 3 }, 60: { gems: 15, tomes: 3 },
+      70: { gems: 20, tomes: 4 }, 80: { gems: 20, tomes: 4 }, 90: { gems: 25, tomes: 4 },
+      100: { gems: 150, tomes: 5 },
+    },
   },
   gemShop: {
     timeSkip: { name: 'Time Skip',  icon: '⏩', price: 30,  hours: 2,
@@ -110,7 +119,7 @@ export const CONFIG = {
     idlePass: { name: 'Idle Pass',  icon: '🌙', price: 300, permanent: true, efficiency: 0.25, maxHours: 24,
                 desc: 'Permanent: offline gold rate 10% → 25% and cap 12h → 24h.' },
     tome:     { name: 'Skill Tome', icon: '📘', price: 20,
-                desc: 'Needed to raise a skill to Lv 6 and above. Bosses drop one the first time you beat them.' },
+                desc: 'Needed to raise a skill to Lv 4 and above. Bosses drop them the first time you beat them.' },
     revive:   { name: 'Revive',     icon: '💖', price: 10,
                 desc: 'On the defeat screen: continue from the wave you fell on, not one wave back.' },
   },
@@ -227,6 +236,11 @@ export const F = {
   },
   bossHpScale: (w) => CONFIG.boss.hpScaleByWave?.[w] ?? 1,
   skillCost: (lvl) => Math.round(CONFIG.skillUpgrade.baseCost * Math.pow(lvl, CONFIG.skillUpgrade.costExp)),
+  // lvl → lvl+1 için gereken Skill Tome
+  skillTomes: (lvl) => CONFIG.skillUpgrade.tomes[lvl + 1] || 0,
+  bossReward: (w) => CONFIG.gems.bossRewards[w] || { gems: 0, tomes: 0 },
+  gemsForUsd: (usd) => Math.round(usd / CONFIG.gems.priceUsd),
+  tokensForGems: (gems) => Math.round(gems * CONFIG.gems.priceUsd * CONFIG.gems.token.tokensPerUsd),
   armorMult: (armor) => 1 - armor / (armor + CONFIG.armorK),
 
   // Kahramanın tüm bonuslar dahil istatistikleri

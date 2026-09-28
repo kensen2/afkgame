@@ -24,7 +24,7 @@ export function simulate(heroId = 'warrior', { payer = false, ovr = null, log = 
   };
   for (const h of Object.values(save.heroes)) for (const k of Object.keys(CONFIG.upgrades)) h.upgrades[k] = 0;
   const hero = save.heroes[heroId];
-  let gemsSpent = payer ? G.idlePass.price : 0;
+  let gemsSpent = payer ? G.idlePass.price : 0, tomesBought = 0, tomesEarned = 0;
   const rush = payer ? G.goldRush.mult : 1;
 
   function waveEnemies(w) {
@@ -77,9 +77,13 @@ export function simulate(heroId = 'warrior', { payer = false, ovr = null, log = 
       for (;;) {
         const l = hero.skills[i];
         if (save.skillPoints < 1 || l >= CONFIG.skillUpgrade.maxLevel || save.gold < F.skillCost(l)) break;
-        const tome = l + 1 >= CONFIG.skillUpgrade.tomeFrom;
-        if (tome && save.tomes < 1) break;
-        if (tome) save.tomes--;
+        const tome = F.skillTomes(l);
+        if (save.tomes < tome) {
+          if (!payer) break;
+          // harcayan: eksik Tome'ları satın alır
+          gemsSpent += (tome - save.tomes) * G.tome.price; tomesBought += tome - save.tomes; save.tomes = tome;
+        }
+        save.tomes -= tome;
         save.gold -= F.skillCost(l); save.skillPoints--; hero.skills[i]++;
       }
     }
@@ -119,8 +123,8 @@ export function simulate(heroId = 'warrior', { payer = false, ovr = null, log = 
       save.gold += e.gold * st.goldMult * rush;
       levelUp(e.xp);
       if (F.isBoss(w) && !save.bosses.has(w)) {
-        save.bosses.add(w); save.tomes += CONFIG.gems.bossFirstTome;
-        save.gems += CONFIG.gems.bossFirstKill + (w === CONFIG.wave.maxWave ? CONFIG.gems.finalBossBonus : 0);
+        const br = F.bossReward(w);
+        save.bosses.add(w); save.tomes += br.tomes; save.gems += br.gems; tomesEarned += br.tomes;
       }
       hp += st.maxHp * 0.15;
       if (marks[w] === undefined && [10, 20, 30, 50, 75, 100].includes(w)) marks[w] = Math.round(total / 60);
@@ -141,7 +145,7 @@ export function simulate(heroId = 'warrior', { payer = false, ovr = null, log = 
     hp = st.maxHp * frac;
   }
   if (payer) gemsSpent += Math.ceil(total / 86400) * G.goldRush.price;
-  return { marks, level: save.level, deaths, waves, avgFight: fight / Math.max(1, waves), maxFight, gemsEarned: save.gems, gemsSpent, usd: gemsSpent / CONFIG.gems.usdcRate, upgrades: hero.upgrades, skills: hero.skills };
+  return { marks, level: save.level, deaths, waves, avgFight: fight / Math.max(1, waves), maxFight, gemsEarned: save.gems, gemsSpent, usd: gemsSpent * CONFIG.gems.priceUsd, tomesBought, tomesEarned, upgrades: hero.upgrades, skills: hero.skills };
 }
 
 export const TARGETS = {

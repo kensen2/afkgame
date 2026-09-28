@@ -119,12 +119,19 @@ Bedava oyuncu oyunu bitirebilir ama yavaş; ödeme zaman ve konfor kazandırır,
 
 | | Gold | Gems 💎 |
 |---|---|---|
-| Nereden | Düşmanlar, AFK, Time Skip | İleride Solana yatırımı (1 USDC = 100 Gems). Oyun içinden: her boss'un ilk yenilişi +5 (+1 Skill Tome), 100. dalga +100 |
+| Nereden | Düşmanlar, AFK, Time Skip | Oyunun token'ıyla satın alma (Solana; fiyat dolar bazlı, 1 Gem ≈ $0.01). Boss ilk yenilişleri (toplam 275 Gems) |
 | Nereye | Geliştirmeler, yetenekler | Gems mağazası |
+
+**Boss ilk yeniliş ödülleri** (`gems.bossRewards`): 10: 5💎 1📘 · 20: 5💎 2📘 · 30: 10💎 2📘 · 40: 10💎 3📘 · 50: 15💎 3📘 ·
+60: 15💎 3📘 · 70: 20💎 4📘 · 80: 20💎 4📘 · 90: 25💎 4📘 · 100: 150💎 5📘 (toplam 275💎, 31📘).
+
+**Yetenek maliyeti** (`skillUpgrade`): altın = 50 × seviye^2.2, her seviye +1 yetenek puanı.
+Lv4+ Skill Tome ister: Lv4–7 1'er, Lv8–9 2'şer, Lv10 3 (bir yetenek 11, bir kahraman 33 Tome).
+Bedava oyuncu boss'lardan 31 Tome alır; eksiği Gems ile (Tome = 20💎).
 
 **Gems mağazası** (dükkanda 💎 Gems sekmesi; Deposit butonu şimdilik "Coming soon · Solana"):
 Time Skip 30 (2 saatlik AFK altını), Gold Rush 50 (24 saat ×2 altın), Idle Pass 300 (kalıcı: AFK %25, 24 saat),
-Skill Tome 20 (yetenek Lv6+ için), Revive 10 (ölüm ekranında: aynı dalgadan devam).
+Skill Tome 20, Revive 10 (ölüm ekranında: aynı dalgadan devam).
 Test için `?dev=1` ile açınca Gems sekmesinde "+100 Gems (test)" butonu çıkar.
 
 **İlerleme eğrisi** (`src/config.js`)
@@ -139,10 +146,12 @@ Test için `?dev=1` ile açınca Gems sekmesinde "+100 Gems (test)" butonu çık
 | Dalga | Hedef bedava | Warrior | Lion | Hedef harcayan (~$10) | Warrior | Lion |
 |---|---|---|---|---|---|---|
 | 10 | 5 dk | 3 dk | 4 dk | 5 dk | 3 dk | 4 dk |
-| 20 | 40 dk | 43 dk | 66 dk | 40 dk | 22 dk | 35 dk |
-| 30 | 2 sa | 1.9 sa | 2.3 sa | 1.5 sa | 1.0 sa | 1.2 sa |
-| 50 | 12 sa | 10.7 sa | 11.1 sa | 5 sa | 4.7 sa | 5.3 sa |
-| 75 | 35 sa | 39.8 sa | 37.9 sa | 14 sa | 18.3 sa | 17.6 sa |
-| 100 | 80 sa | 73.6 sa | 69.8 sa | 30 sa | 34.0 sa | 32.0 sa |
+| 20 | 40 dk | 42 dk | 69 dk | 40 dk | 23 dk | 37 dk |
+| 30 | 2 sa | 1.8 sa | 2.5 sa | 1.5 sa | 1.0 sa | 1.4 sa |
+| 50 | 12 sa | 11.8 sa | 12.0 sa | 5 sa | 5.4 sa | 5.8 sa |
+| 75 | 35 sa | 41.8 sa | 38.8 sa | 14 sa | 19.1 sa | 18.0 sa |
+| 100 | 80 sa | 75.2 sa | 70.7 sa | 30 sa | 34.3 sa | 32.0 sa |
+
+Harcayan profil ≈ $13: Idle Pass + her 2 saatte Time Skip + Gold Rush + eksik Skill Tome'lar.
 
 Sonraki fazlar (sunucu kaydı, cüzdanla giriş, Solana yatırımı, NFT kahraman) `docs/YENI_SOHBET_PROMPT.md` içinde.

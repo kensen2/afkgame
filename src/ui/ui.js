@@ -549,16 +549,16 @@ export class UI {
         const lvl = Economy.skillLevel(hid, i);
         const maxed = lvl >= CONFIG.skillUpgrade.maxLevel;
         const cost = Economy.skillCost(hid, i);
-        const tome = !maxed && Economy.skillNeedsTome(hid, i);
-        const can = !maxed && Economy.canAfford(cost) && Economy.data.skillPoints >= CONFIG.skillUpgrade.pointCost && (!tome || (Economy.data.tomes || 0) >= 1);
+        const tome = maxed ? 0 : Economy.skillTomes(hid, i);
+        const can = !maxed && Economy.canAfford(cost) && Economy.data.skillPoints >= CONFIG.skillUpgrade.pointCost && (Economy.data.tomes || 0) >= tome;
         const pw = Math.round(F.skillPower(s, lvl) * 100), cd = F.skillCd(s, lvl).toFixed(1);
         const el = document.createElement('div');
         el.className = 'item';
         el.innerHTML = `<div class="ic">${s.icon}</div>
           <div><div class="nm">${s.name}<small>Lv ${lvl}/${CONFIG.skillUpgrade.maxLevel}</small></div><div class="ds">${s.desc}</div>
           <div class="val">Power: ${pw}% · Cooldown: ${cd}s</div>
-          ${tome ? `<div class="req">📘 Lv ${lvl + 1} needs a Skill Tome (you have ${Economy.data.tomes || 0})</div>` : ''}</div>
-          <button class="btn small" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : `<span class="coin"></span>${fmt(cost)} + ⭐1${tome ? ' + 📘1' : ''}`}</button>`;
+          ${tome ? `<div class="req">📘 Lv ${lvl + 1} needs ${tome} Skill Tome${tome > 1 ? 's' : ''} (you have ${Economy.data.tomes || 0})</div>` : ''}</div>
+          <button class="btn small" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : `<span class="coin"></span>${fmt(cost)} + ⭐1${tome ? ` + 📘${tome}` : ''}`}</button>`;
         el.querySelector('button').addEventListener('click', () => {
           if (Economy.buySkill(hid, i)) { Audio.play('buy'); this.renderShop(); } else Audio.play('denied');
         });
@@ -566,7 +566,7 @@ export class UI {
       });
       const note = document.createElement('div');
       note.className = 'hint'; note.style.gridColumn = '1 / -1';
-      note.textContent = `You earn a skill point every time you level up. Lv ${CONFIG.skillUpgrade.tomeFrom}+ needs a Skill Tome: beat a boss for the first time or buy one in the Gems tab.`;
+      note.textContent = 'You earn a skill point every time you level up. Lv 4+ also needs Skill Tomes: bosses drop them the first time you beat them, or buy them in the Gems tab.';
       body.appendChild(note);
     } else if (this.shopTab === 'gems') {
       this.renderGemShop(body);
@@ -589,7 +589,7 @@ export class UI {
     const dep = document.createElement('div');
     dep.className = 'deposit';
     dep.innerHTML = `<div><div class="t">💎 Get Gems</div>
-        <div class="s">Deposit USDC or SOL on Solana. Gems can't be withdrawn or sold.</div>
+        <div class="s">Pay with our token on Solana at the live rate. Gems can't be withdrawn or sold.</div>
         <div class="packs">${CONFIG.gems.packs.map((p) => `$${p.usd} = ${fmt(p.gems)}`).join(' · ')}</div></div>
       <button class="btn small" disabled>Coming soon · Solana</button>`;
     body.appendChild(dep);
@@ -620,7 +620,7 @@ export class UI {
     }
     const note = document.createElement('div');
     note.className = 'hint'; note.style.gridColumn = '1 / -1';
-    note.textContent = `Free Gems: +${CONFIG.gems.bossFirstKill} and a Skill Tome the first time you beat each boss, +${CONFIG.gems.finalBossBonus} for the final boss.`;
+    note.textContent = 'Free Gems and Skill Tomes: every boss rewards you the first time you beat it, and later bosses give more.';
     body.appendChild(note);
     if (DEV) {
       const b = document.createElement('button');

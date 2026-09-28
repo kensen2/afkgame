@@ -185,12 +185,10 @@ export const Economy = {
     const list = this.data.bossesBeaten || (this.data.bossesBeaten = []);
     if (list.includes(w)) return null;
     list.push(w);
-    const G = CONFIG.gems;
-    let gems = G.bossFirstKill;
-    if (w === CONFIG.wave.maxWave) gems += G.finalBossBonus;
-    this.data.tomes = (this.data.tomes || 0) + G.bossFirstTome;
+    const { gems, tomes } = F.bossReward(w);
+    this.data.tomes = (this.data.tomes || 0) + tomes;
     this.addGems(gems, 'boss');
-    return { gems, tomes: G.bossFirstTome };
+    return { gems, tomes };
   },
 
   spendGold(n) {
@@ -234,16 +232,16 @@ export const Economy = {
   skillLevel(heroId, i) { return this.data.heroes[heroId].skills[i]; },
   skillCost(heroId, i) { return F.skillCost(this.skillLevel(heroId, i)); },
   // bir sonraki seviye Skill Tome istiyor mu (Lv5 → Lv6 ve sonrası)
-  skillNeedsTome(heroId, i) { return this.skillLevel(heroId, i) + 1 >= CONFIG.skillUpgrade.tomeFrom; },
+  skillTomes(heroId, i) { return F.skillTomes(this.skillLevel(heroId, i)); },
   buySkill(heroId, i) {
     const lvl = this.skillLevel(heroId, i);
     if (lvl >= CONFIG.skillUpgrade.maxLevel) return false;
     if (this.data.skillPoints < CONFIG.skillUpgrade.pointCost) return false;
-    const tome = this.skillNeedsTome(heroId, i);
-    if (tome && (this.data.tomes || 0) < 1) return false;
+    const tome = F.skillTomes(lvl);
+    if ((this.data.tomes || 0) < tome) return false;
     const cost = F.skillCost(lvl);
     if (!this.spendGold(cost)) return false;
-    if (tome) this.data.tomes--;
+    this.data.tomes -= tome;
     this.data.skillPoints -= CONFIG.skillUpgrade.pointCost;
     this.data.heroes[heroId].skills[i]++;
     this.save(); this.emit({ type: 'skill', heroId, i });
