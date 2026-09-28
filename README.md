@@ -30,7 +30,7 @@ Alternatifler:
 - Kahraman koridorda kendi kendine yürür. Dalga gelince durur ve en yakın düşmana saldırır.
 - Her 5. dalga **elit** dalgadır (turuncu auralı, güçlü düşmanlar). Her 10. dalga **boss** dalgasıdır.
 - Her 10 dalgada bir **kat** değişir: Kemik Mahzeni → Unutulmuş Zindan → Kan Salonu → Zümrüt Mahzen (sonra başa döner).
-- Düşmanlar gold ve XP düşürür. XP ile **genel seviye** artar. Seviye iki kahraman için ortaktır; her seviyede +%3 can, +%3 hasar ve 1 yetenek puanı gelir.
+- Düşmanlar gold ve XP düşürür. XP ile **genel seviye** artar. Seviye iki kahraman için ortaktır; her seviyede +%2 can, +%2 hasar ve 1 yetenek puanı gelir.
 - Gold ile **dükkandan** geliştirme alınır. Geliştirmeler her kahraman için ayrı tutulur.
 - Ölünce toplanan gold ve XP kaybolmaz. 20 saniyelik geri sayımdan sonra öldüğün dalganın bir altından otomatik devam edersin (10'da öldüysen 9'dan). Geri sayım sırasında dükkana girebilirsin; dükkandayken sayaç durur.
 - Son dalga **100**. 100. dalgada final boss **Zindan Efendisi Malakor** var. Onu yenince oyun kazanılır.
@@ -84,14 +84,15 @@ src/core/audio.js          Dosyasız, kodla üretilen ses efektleri
 assets/heroes/             Videolardan çıkarılmış saydam sprite sheet'ler + sprites.json
 assets/enemies|weapons|dungeon/  KayKit modelleri (gereksiz animasyonlar temizlendi)
 lib/                       Three.js r170 (internet olmadan da çalışsın diye)
-sim/balance.mjs            Denge simülasyonu: `node sim/balance.mjs warrior`
+sim/balance.mjs            Denge simülasyonu: `node sim/balance.mjs` (bedava + harcayan)
+sim/model.mjs              Simülasyon modeli (simulate fonksiyonu)
 ```
 
 ## Dengeyi değiştirmek
 
 Tüm sayılar `src/config.js` dosyasında. Değiştirdikten sonra `node sim/balance.mjs warrior` komutunu
 çalıştırırsan, oyuncunun kaçıncı denemede hangi dalgaya ulaştığını ve ne kadar süre oynadığını gösteren bir tablo çıkar.
-Şu anki ayarlarla tahmini ilerleme: dalga 10 için ~8 dakika, dalga 20 için ~70 dakika, dalga 50 için ~5 saat, dalga 100 için ~22 saat.
+Güncel tahmini süreler aşağıdaki "Ekonomi (v3)" tablosunda.
 
 ## Sonraki adımlar (kripto)
 
@@ -109,14 +110,39 @@ Solana entegrasyonunda bu fonksiyonların içi cüzdan ve zincir çağrılarıyl
 
 Efektleri değiştirmek için `src/core/audio.js` içindeki `BANK` listesine bak: her olayın hangi dosyaları, ses seviyesini ve perde aralığını kullandığı orada yazıyor.
 
-## Ekonomi (v2, kripto uyumlu)
+## Ekonomi (v3, Solana'ya hazır)
 
-Sayılar küçük ve öngörülebilir kalsın diye ekonomi **doğrusal** büyür, üstel değil:
+**İlke:** para sadece içeri girer, dışarı çıkmaz. Gold da Gems de paraya çevrilemez; "oyna-kazan" vaadi yok.
+Bedava oyuncu oyunu bitirebilir ama yavaş; ödeme zaman ve konfor kazandırır, oyunu kilitlemez.
 
-- **Düşman altını:** `taban × (1 + 0.15 × (dalga − 1))`. Düşman başına taban 1-3 altın.
-  Dalga başına toplam: dalga 1 ≈ 3, dalga 25 ≈ 140, dalga 50 ≈ 380, dalga 100 ≈ 750 altın.
-- **Geliştirme maliyeti:** `taban × (seviye + 1)^1.35` (Saldırı/Can/Zırh). Örnek: Saldırı Lv10 ≈ 100, Lv40 ≈ 600 altın.
-- **Çevrimdışı kazanç:** aktif oynamanın %10'u, en fazla 12 saat.
-- Altınlar her zaman tam sayıdır.
+**İki para birimi**
 
-Ayarlar `src/config.js` içinde: `wave.goldPerWave`, `upgrades.*.baseCost/costExp`, `offline.efficiency`.
+| | Gold | Gems 💎 |
+|---|---|---|
+| Nereden | Düşmanlar, AFK, Time Skip | İleride Solana yatırımı (1 USDC = 100 Gems). Oyun içinden: her boss'un ilk yenilişi +5 (+1 Skill Tome), 100. dalga +100 |
+| Nereye | Geliştirmeler, yetenekler | Gems mağazası |
+
+**Gems mağazası** (dükkanda 💎 Gems sekmesi; Deposit butonu şimdilik "Coming soon · Solana"):
+Time Skip 30 (2 saatlik AFK altını), Gold Rush 50 (24 saat ×2 altın), Idle Pass 300 (kalıcı: AFK %25, 24 saat),
+Skill Tome 20 (yetenek Lv6+ için), Revive 10 (ölüm ekranında: aynı dalgadan devam).
+Test için `?dev=1` ile açınca Gems sekmesinde "+100 Gems (test)" butonu çıkar.
+
+**İlerleme eğrisi** (`src/config.js`)
+- 10. dalga boss'unun canı %50 (`boss.hpScaleByWave`).
+- Altın: `taban × (1 + 0.20 × (dalga − 1))`.
+- Attack/Health/Armor maliyeti parçalı: Lv0–20 üs 1.35, Lv21–40 üs 2.4, Lv41+ üs 3.0 (`costSegs`), süreksizlik yok.
+- Düşmanlar üç evrede güçlenir (1–25 / 25–60 / 60+). Duvarı can değil hasar yapar, böylece savaşlar kısa kalır.
+- AFK ve Time Skip oyuncunun **gerçek** aktif kazanç hızını (`activeRate`) kullanır; duvara dayanmışken şişkin AFK olmaz.
+
+**Simülasyon** (`node sim/balance.mjs`, 1x hız, aktif oyun süresi, AFK hariç):
+
+| Dalga | Hedef bedava | Warrior | Lion | Hedef harcayan (~$10) | Warrior | Lion |
+|---|---|---|---|---|---|---|
+| 10 | 5 dk | 3 dk | 4 dk | 5 dk | 3 dk | 4 dk |
+| 20 | 40 dk | 43 dk | 66 dk | 40 dk | 22 dk | 35 dk |
+| 30 | 2 sa | 1.9 sa | 2.3 sa | 1.5 sa | 1.0 sa | 1.2 sa |
+| 50 | 12 sa | 10.7 sa | 11.1 sa | 5 sa | 4.7 sa | 5.3 sa |
+| 75 | 35 sa | 39.8 sa | 37.9 sa | 14 sa | 18.3 sa | 17.6 sa |
+| 100 | 80 sa | 73.6 sa | 69.8 sa | 30 sa | 34.0 sa | 32.0 sa |
+
+Sonraki fazlar (sunucu kaydı, cüzdanla giriş, Solana yatırımı, NFT kahraman) `docs/YENI_SOHBET_PROMPT.md` içinde.

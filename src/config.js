@@ -8,10 +8,10 @@ export const CONFIG = {
   // ---- Dalga / zorluk ----
   wave: {
     hpGrowth: 1.12,          // düşman canı  = taban × hpGrowth^(dalga-1)
-    dmgGrowth: 1.07,         // düşman hasarı = taban × dmgGrowth^(dalga-1)
+    dmgGrowth: 1.04,         // düşman hasarı = taban × dmgGrowth^(dalga-1)  (v3: ilk 25 dalga yumuşak)
     // Ekonomi DOĞRUSAL büyür (kripto için sayılar küçük ve öngörülebilir kalsın):
     // gold = taban × (1 + goldPerWave × (dalga-1))
-    goldPerWave: 0.15,
+    goldPerWave: 0.20,       // v3: 0.15 → 0.20 (gelir artmaya devam eder, maliyet daha hızlı artar)
     xpPerWave: 0.06,
     baseCount: 3,            // ilk dalgadaki düşman sayısı
     countPerWave: 0.45,      // her dalgada eklenen düşman
@@ -22,12 +22,18 @@ export const CONFIG = {
     walkDistance: 16,        // dalgalar arası yürüme mesafesi (birim)
     spawnAhead: 11,          // düşmanların kahramanın ne kadar önünde doğacağı
     maxWave: 100,
-    lateStart: 30,           // bu dalgadan sonra düşmanlar daha yavaş güçlenir
-    lateHpGrowth: 1.065,
-    lateDmgGrowth: 1.04,            // son dalga: 100. dalgadaki final boss yenilince oyun kazanılır
+    // v3 ayarı (sim/balance.mjs ile hedef sürelere oturtuldu):
+    lateStart: 25,           // 25–50 arası "yumuşak duvar": düşman canı hızlı büyür
+    lateHpGrowth: 1.10,
+    lateDmgGrowth: 1.14,     // duvarı can değil hasar yapar: savaşlar kısa kalır, oyuncu ölüp güçlenir
+    endStart: 60,            // bu dalgadan sonra büyüme yavaşlar (son oyun uzun ama duvar değil)
+    endHpGrowth: 1.06,
+    endDmgGrowth: 1.09,      // son dalga: 100. dalgadaki final boss yenilince oyun kazanılır
   },
   elite: { hp: 3, dmg: 1.5, gold: 3, xp: 3, scale: 1.25 },
-  boss:  { hp: 9, dmg: 1.7, gold: 12, xp: 12, scale: 1.6 },
+  boss:  { hp: 9, dmg: 1.7, gold: 12, xp: 12, scale: 1.6,
+           // Belirli boss'lara özel can çarpanı (genel çarpan aynı kalır). 10. dalga: yeni başlayanlar takılmasın
+           hpScaleByWave: { 10: 0.5 } },
 
   // Düşmanların genel güç çarpanı (can ve hasar). 0.75 = %25 daha zayıf
   enemyPower: 0.75,
@@ -58,11 +64,15 @@ export const CONFIG = {
 
   // ---- Gold ile geliştirmeler (her kahraman için ayrı) ----
   // maliyet = baseCost × (seviye+1)^costExp   (üstel değil, polinom: sayılar küçük kalır)
+  // v3 "yumuşak duvar": Attack / Health / Armor parçalı eğri kullanır (costSegs).
+  //   seviye 0–20 üs 1.35, 21–40 üs 2.4, 41+ üs 3.0. Parçalar süreksizlik olmadan bağlanır.
+  //   (Taslakta 1.8 / 2.2 idi; simülasyonda 80 saat hedefi için yetmedi.)
+  costSegs: [[20, 1.35], [40, 2.4], [Infinity, 3.0]],
   upgrades: {
     // kind 'mult': her seviye bir öncekinin üstüne katlanır (1+per)^seviye
-    atk:     { name: 'Attack',        icon: '⚔️', baseCost: 4,  costExp: 1.35, per: 0.07, kind: 'mult', desc: 'Damage ×1.07 (stacks)' },
-    hp:      { name: 'Health',        icon: '❤️', baseCost: 4,  costExp: 1.35, per: 0.07, kind: 'mult', desc: 'Max health ×1.07 (stacks)' },
-    armor:   { name: 'Armor',         icon: '🛡️', baseCost: 6,  costExp: 1.35, per: 3,    kind: 'flat', desc: 'Armor +3' },
+    atk:     { name: 'Attack',        icon: '⚔️', baseCost: 14, costExp: 1.35, segs: true, per: 0.07, kind: 'mult', desc: 'Damage ×1.07 (stacks)' },
+    hp:      { name: 'Health',        icon: '❤️', baseCost: 14, costExp: 1.35, segs: true, per: 0.07, kind: 'mult', desc: 'Max health ×1.07 (stacks)' },
+    armor:   { name: 'Armor',         icon: '🛡️', baseCost: 21, costExp: 1.35, segs: true, per: 3,    kind: 'flat', desc: 'Armor +3' },
     atkSpd:  { name: 'Attack Speed',  icon: '💨', baseCost: 10, costExp: 1.9, per: 0.05, kind: 'pct',  desc: 'Attack speed +5%', max: 20 },
     crit:    { name: 'Crit Chance',   icon: '🎯', baseCost: 10, costExp: 1.9, per: 0.015,kind: 'flat', desc: 'Crit chance +1.5%', max: 25 },
     goldBon: { name: 'Gold Bonus',    icon: '💰', baseCost: 15, costExp: 2.0, per: 0.08, kind: 'pct',  desc: 'Gold drops +8%', max: 30 },
@@ -77,6 +87,32 @@ export const CONFIG = {
     cdReducePer: 0.04,              // her seviye bekleme süresi -%4
     minCdMult: 0.5,
     maxLevel: 10,
+    tomeFrom: 6,                    // Lv6 ve üstüne çıkmak için +1 Skill Tome gerekir
+  },
+
+  // ---- Gems (değerli para) ----
+  // Gerçek parayla alınır (ileride Solana: USDC/SOL). Oyun içinden az miktarda gelir.
+  // Gold da Gems de ASLA paraya çevrilmez (para sadece içeri girer).
+  gems: {
+    bossFirstKill: 5,        // her boss'un ilk yenilişi +5 Gems (+1 Skill Tome)
+    bossFirstTome: 1,
+    finalBossBonus: 100,     // 100. dalga ilk kez yenilince +100 Gems
+    usdcRate: 100,           // 1 USDC = 100 Gems
+    packs: [                 // ileride Solana'da satılacak paketler
+      { usd: 1, gems: 100 }, { usd: 5, gems: 550 }, { usd: 10, gems: 1200 }, { usd: 25, gems: 3200 },
+    ],
+  },
+  gemShop: {
+    timeSkip: { name: 'Time Skip',  icon: '⏩', price: 30,  hours: 2,
+                desc: 'Instantly collect 2 hours of offline gold (uses your offline rate).' },
+    goldRush: { name: 'Gold Rush',  icon: '💰', price: 50,  hours: 24, mult: 2,
+                desc: 'Double gold from every source for 24 hours.' },
+    idlePass: { name: 'Idle Pass',  icon: '🌙', price: 300, permanent: true, efficiency: 0.25, maxHours: 24,
+                desc: 'Permanent: offline gold rate 10% → 25% and cap 12h → 24h.' },
+    tome:     { name: 'Skill Tome', icon: '📘', price: 20,
+                desc: 'Needed to raise a skill to Lv 6 and above. Bosses drop one the first time you beat them.' },
+    revive:   { name: 'Revive',     icon: '💖', price: 10,
+                desc: 'On the defeat screen: continue from the wave you fell on, not one wave back.' },
   },
 
   // ---- Kahramanlar ----
@@ -85,7 +121,7 @@ export const CONFIG = {
       name: 'Blue-Gold Warrior',
       role: 'Tank',
       desc: 'A knight who weathers every wave behind shield and heavy armor.',
-      hp: 220, atk: 13, armor: 8, atkSpd: 1.0, crit: 0.05, critDmg: 1.5,
+      hp: 220, atk: 18, armor: 12, atkSpd: 1.1, crit: 0.05, critDmg: 1.8,   // v3: Lion ile fark ≤%20
       speed: 3.4, range: 1.9, hitFrame: 4, height: 2.94,
       skills: [
         { id: 'bash',   name: 'Shield Bash', icon: '🛡️', cd: 6,  power: 1.6, stun: 1.6,
@@ -100,7 +136,7 @@ export const CONFIG = {
       name: 'Lion Blade',
       role: 'Damage',
       desc: 'A fast, deadly swordsman. Low health, high damage.',
-      hp: 150, atk: 21, armor: 3, atkSpd: 1.15, crit: 0.15, critDmg: 2.0,
+      hp: 170, atk: 16, armor: 3, atkSpd: 1.15, crit: 0.15, critDmg: 2.0,   // v3: atk 21 → 16, hp 150 → 170
       speed: 3.8, range: 2.0, hitFrame: 2, height: 3.06,
       skills: [
         { id: 'spin',  name: 'Whirlwind',   icon: '🌀', cd: 7,  power: 1.8, radius: 3.0,
@@ -163,20 +199,33 @@ export const F = {
   isElite: (w) => !F.isBoss(w) && w % CONFIG.wave.eliteEvery === 0,
   floorOf: (w) => Math.floor((w - 1) / CONFIG.wave.wavesPerFloor),
   // dalga lateStart'a kadar hızlı, sonrasında daha yavaş büyüme
-  _grow: (g, late, w) => {
-    const L = CONFIG.wave.lateStart;
-    return w <= L ? Math.pow(g, w - 1) : Math.pow(g, L - 1) * Math.pow(late, w - L);
+  // üç evreli büyüme: 1..lateStart hızlı, lateStart..endStart orta, endStart sonrası yavaş
+  _grow: (g, late, end, w) => {
+    const L = CONFIG.wave.lateStart, E = CONFIG.wave.endStart ?? Infinity;
+    if (w <= L) return Math.pow(g, w - 1);
+    if (w <= E) return Math.pow(g, L - 1) * Math.pow(late, w - L);
+    return Math.pow(g, L - 1) * Math.pow(late, E - L) * Math.pow(end, w - E);
   },
-  enemyHp: (base, w) => base * CONFIG.enemyPower * F._grow(CONFIG.wave.hpGrowth, CONFIG.wave.lateHpGrowth, w),
-  enemyDmg: (base, w) => base * CONFIG.enemyPower * F._grow(CONFIG.wave.dmgGrowth, CONFIG.wave.lateDmgGrowth, w),
+  enemyHp: (base, w) => base * CONFIG.enemyPower * F._grow(CONFIG.wave.hpGrowth, CONFIG.wave.lateHpGrowth, CONFIG.wave.endHpGrowth, w),
+  enemyDmg: (base, w) => base * CONFIG.enemyPower * F._grow(CONFIG.wave.dmgGrowth, CONFIG.wave.lateDmgGrowth, CONFIG.wave.endDmgGrowth, w),
   enemyGold: (base, w) => base * (1 + CONFIG.wave.goldPerWave * (w - 1)),
   enemyXp: (base, w) => base * (1 + CONFIG.wave.xpPerWave * (w - 1)),
   waveCount: (w) => Math.min(CONFIG.wave.maxCount, Math.floor(CONFIG.wave.baseCount + (w - 1) * CONFIG.wave.countPerWave)),
   xpToNext: (lvl) => Math.round(CONFIG.account.xpBase * Math.pow(lvl, CONFIG.account.xpExp)),
   upgradeCost: (key, lvl) => {
     const u = CONFIG.upgrades[key];
-    return Math.round(u.baseCost * Math.pow(lvl + 1, u.costExp));
+    if (!u.segs) return Math.round(u.baseCost * Math.pow(lvl + 1, u.costExp));
+    // parçalı polinom: her parçanın sonunda değer korunur, üs değişir
+    const x = lvl + 1;
+    let v = u.baseCost, start = 1;
+    for (const [end, exp] of CONFIG.costSegs) {
+      const e = end + 1;                       // seviye 'end' → x = end+1
+      if (x <= e) return Math.round(v * Math.pow(x / start, exp));
+      v *= Math.pow(e / start, exp); start = e;
+    }
+    return Math.round(v);
   },
+  bossHpScale: (w) => CONFIG.boss.hpScaleByWave?.[w] ?? 1,
   skillCost: (lvl) => Math.round(CONFIG.skillUpgrade.baseCost * Math.pow(lvl, CONFIG.skillUpgrade.costExp)),
   armorMult: (armor) => 1 - armor / (armor + CONFIG.armorK),
 
@@ -206,12 +255,18 @@ export const F = {
     return F.enemyGold(avg, w) * F.waveCount(w) * 1.2;
   },
   // Çevrimdışı saniye başına gold: devam edeceğin dalgayı farm ediyormuş gibi
+  // v3: oyuncunun GERÇEK aktif kazanç hızını (activeRate, gold/sn) esas alır; duvara dayanmış
+  // oyuncu "20 sn'de bir dalga" varsayımıyla şişkin AFK almasın. Tavan: formül hızı.
   offlineGoldPerSec(save) {
     const w = Math.max(1, save.resumeWave || 1);
     const heroId = save.selectedHero || 'warrior';
     const mult = F.heroStats(heroId, save).goldMult;
-    return (F.waveGold(w) * mult / CONFIG.offline.waveSeconds) * CONFIG.offline.efficiency;
+    const formula = F.waveGold(w) * mult / CONFIG.offline.waveSeconds;
+    const base = save.activeRate > 0 ? Math.min(formula, save.activeRate) : formula;
+    return base * F.offlineEfficiency(save);
   },
+  offlineEfficiency: (save) => (save.idlePass ? CONFIG.gemShop.idlePass.efficiency : CONFIG.offline.efficiency),
+  offlineMaxHours: (save) => (save.idlePass ? CONFIG.gemShop.idlePass.maxHours : CONFIG.offline.maxHours),
 
   skillPower(skillDef, lvl) {
     return skillDef.power * (1 + (lvl - 1) * CONFIG.skillUpgrade.powerPer);

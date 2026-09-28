@@ -1,113 +1,33 @@
-// Denge simülasyonu: node sim/balance.mjs [warrior|lion]
-// Oyuncunun her ölümden sonra gold'unu en ucuz geliştirmelere harcadığını varsayar
-// ve 50 dalgaya kadar ilerleme eğrisini yazdırır.
+// Denge simülasyonu (Ekonomi v3)
+//   node sim/balance.mjs [warrior|lion]            → bedava + harcayan oyuncu süreleri
+//   node sim/balance.mjs lion --payer --verbose    → sadece harcayan, koşu koşu döküm
+//   OVR='{"wave":{"goldPerWave":0.2}}' node sim/balance.mjs   → ayar üzerine yazma
+// Çıktı: {"10":dk,"20":dk,...} = o dalgayı geçme süresi (dakika, 1x oyun hızı, aktif oyun)
 import { CONFIG, F } from '../src/config.js';
+import { simulate, TARGETS } from './model.mjs';
 
-const heroId = process.argv[2] || 'warrior';
-// Deneme için ayar üzerine yazma: OVR='{"wave":{"hpGrowth":1.12}}' node sim/balance.mjs
-function merge(t, o) { for (const k in o) { if (o[k] && typeof o[k] === 'object' && !Array.isArray(o[k])) merge(t[k], o[k]); else t[k] = o[k]; } }
-if (process.env.OVR) merge(CONFIG, JSON.parse(process.env.OVR));
-const QUIET = !!process.env.QUIET;
-const save = {
-  gold: 0, level: 1, xp: 0, skillPoints: 0, resumeWave: 1,
-  heroes: { warrior: { upgrades: {}, skills: [1, 1, 1] }, lion: { upgrades: {}, skills: [1, 1, 1] } },
-};
-for (const h of Object.values(save.heroes)) for (const k of Object.keys(CONFIG.upgrades)) h.upgrades[k] = 0;
+const args = process.argv.slice(2);
+const heroes = args.filter((a) => CONFIG.heroes[a]);
+const ovr = process.env.OVR ? JSON.parse(process.env.OVR) : null;
+const verbose = args.includes('--verbose') && !process.env.QUIET;
+const modes = args.includes('--payer') ? [true] : args.includes('--free') ? [false] : [false, true];
+const hm = (m) => (m === undefined ? '—' : m >= 120 ? `${(m / 60).toFixed(1)}s` : `${m}dk`);
 
-function waveEnemies(w) {
-  // buildWave ile aynı dağılımın ortalaması
-  const pool = Object.entries(CONFIG.enemies).filter(([, d]) => d.unlock <= w);
-  const tw = pool.reduce((s, [, d]) => s + d.weight, 0);
-  const avg = (key) => pool.reduce((s, [, d]) => s + d[key] * d.weight, 0) / tw;
-  const avgDps = pool.reduce((s, [, d]) => s + (d.dmg / d.atkCd) * d.weight, 0) / tw;
-  let n = F.waveCount(w), hp = 0, dps = 0, gold = 0, xp = 0;
-  if (F.isBoss(w)) {
-    const b = CONFIG.bosses[(w / CONFIG.wave.bossEvery - 1) % CONFIG.bosses.length];
-    const d = CONFIG.enemies[b.type];
-    const adds = Math.min(6, 2 + Math.floor(w / 15));
-    hp = F.enemyHp(d.hp, w) * CONFIG.boss.hp + adds * F.enemyHp(avg('hp'), w);
-    dps = F.enemyDmg(d.dmg / d.atkCd, w) * CONFIG.boss.dmg * 0.8 + adds * F.enemyDmg(avgDps, w);
-    gold = F.enemyGold(d.gold, w) * CONFIG.boss.gold + adds * F.enemyGold(avg('gold'), w);
-    xp = F.enemyXp(d.xp, w) * CONFIG.boss.xp + adds * F.enemyXp(avg('xp'), w);
-    n = adds + 1;
-  } else {
-    const elites = F.isElite(w) ? 1 + Math.floor(w / 20) : 0;
-    const m = n + elites * (CONFIG.elite.hp - 1);
-    hp = F.enemyHp(avg('hp'), w) * m;
-    dps = F.enemyDmg(avgDps, w) * (n + elites * (CONFIG.elite.dmg - 1));
-    gold = F.enemyGold(avg('gold'), w) * (n + elites * (CONFIG.elite.gold - 1));
-    xp = F.enemyXp(avg('xp'), w) * (n + elites * (CONFIG.elite.xp - 1));
-  }
-  return { n, hp, dps, gold, xp };
+if (!process.env.QUIET) {
+  console.log('Dalga başına gold:', [1, 10, 25, 50, 75, 100].map((w) => `w${w}=${Math.round(F.waveGold(w))}`).join('  '));
+  console.log('Attack maliyeti:', [0, 10, 20, 21, 30, 40, 41, 50, 60].map((l) => `lv${l}=${F.upgradeCost('atk', l)}`).join('  '));
 }
-
-function levelUp(xp) {
-  save.xp += xp;
-  while (save.xp >= F.xpToNext(save.level)) { save.xp -= F.xpToNext(save.level); save.level++; save.skillPoints++; }
-}
-
-function run() {
-  const st = F.heroStats(heroId, save);
-  const skillMult = 1.35; // yetenekler + sıçrayan hasar katkısı (yaklaşık)
-  const heroDps = st.atk * st.atkSpd * (1 + st.crit * (st.critDmg - 1)) * skillMult;
-  let hp = st.maxHp, w = save.resumeWave, time = 0, gold = 0;
-  for (;; w++) {
-    const e = waveEnemies(w);
-    const tKill = e.hp / heroDps;
-    const engaged = Math.min(1, 3.5 / e.n); // aynı anda hepsi vuramaz
-    const taken = e.dps * F.armorMult(st.armor) * tKill * 0.55 * Math.max(engaged, 0.45) * (heroId === 'warrior' ? 0.8 : 1);
-    const net = taken - st.maxHp * st.regen * tKill;
-    time += tKill + CONFIG.wave.walkDistance / (st.speed * 0.8) + 2;
-    if (hp - net <= 0) { const frac = Math.max(0, hp / net) * 0.8; gold += e.gold * st.goldMult * frac; levelUp(e.xp * frac); break; }
-    hp -= net;
-    gold += e.gold * st.goldMult;
-    levelUp(e.xp);
-    hp = Math.min(st.maxHp, hp + st.maxHp * 0.15);
-    if (w >= CONFIG.wave.maxWave) { w++; break; }
-  }
-  save.resumeWave = Math.max(1, w - CONFIG.respawnWavesBack);
-  save.gold += gold;
-  return { reached: w, time, gold };
-}
-
-function shop() {
-  const h = save.heroes[heroId];
-  const keys = ['atk', 'hp', 'armor', 'atkSpd', 'crit', 'regen'];
-  for (;;) {
-    let best = null, bc = Infinity;
-    for (const k of keys) {
-      const u = CONFIG.upgrades[k];
-      if (u.max !== undefined && h.upgrades[k] >= u.max) continue;
-      const c = F.upgradeCost(k, h.upgrades[k]) * (k === 'atk' || k === 'hp' ? 1 : 1.3);
-      if (c < bc) { bc = c; best = k; }
-    }
-    const real = F.upgradeCost(best, h.upgrades[best]);
-    if (save.gold < real) break;
-    save.gold -= real; h.upgrades[best]++;
-  }
-  // yetenekler
-  for (let i = 0; i < 3; i++) {
-    while (save.skillPoints > 0 && h.skills[i] < 10 && save.gold >= F.skillCost(h.skills[i])) {
-      save.gold -= F.skillCost(h.skills[i]); save.skillPoints--; h.skills[i]++;
-    }
+for (const heroId of heroes.length ? heroes : ['warrior', 'lion']) {
+  for (const payer of modes) {
+    const log = verbose ? (r, res, total, save) => {
+      const u = save.heroes[heroId].upgrades;
+      console.log(`${String(r).padStart(5)} | w${String(res.reached).padStart(3)} | ${(total / 3600).toFixed(1).padStart(6)}s | lv${save.level} | atk${u.atk} hp${u.hp} arm${u.armor} spd${u.atkSpd} crit${u.crit} reg${u.regen} | skills ${save.heroes[heroId].skills.join('/')}`);
+    } : null;
+    const r = simulate(heroId, { payer, ovr, log });
+    const tgt = TARGETS[payer ? 'payer' : 'free'];
+    const who = payer ? 'Harcayan' : 'Bedava  ';
+    console.log(`${CONFIG.heroes[heroId].name.padEnd(18)} ${who} ` + [10, 20, 30, 50, 75, 100].map((m) => `w${m}=${hm(r.marks[m])}(${hm(tgt[m])})`).join(' ')
+      + ` | seviye ${r.level}, ölüm ${r.deaths}, kazanılan 💎${r.gemsEarned}` + (payer ? `, harcanan 💎${r.gemsSpent} ≈ $${r.usd.toFixed(1)}` : ''));
+    if (process.env.JSON) console.log(JSON.stringify(r.marks));
   }
 }
-
-let total = 0;
-const marks = {};
-if (!QUIET) {
-  console.log(`Kahraman: ${CONFIG.heroes[heroId].name}`);
-  console.log('Dalga başına gold:', [1, 10, 25, 50, 75, 100].map((w) => `w${w}=${Math.round(waveEnemies(w).gold)}`).join('  '));
-  console.log('Saldırı geliştirme maliyeti:', [0, 5, 10, 20, 40, 60].map((l) => `lv${l}=${F.upgradeCost('atk', l)}`).join('  '));
-  console.log('Koşu | Ulaşılan | Süre(dk) | Toplam(dk) | Seviye | Geliştirmeler');
-}
-for (let r = 1; r <= 400; r++) {
-  const res = run();
-  total += res.time;
-  const u = save.heroes[heroId].upgrades;
-  for (const m of [10, 20, 30, 50, 75, 100]) if (res.reached > m && !marks[m]) marks[m] = Math.round(total / 60);
-  if (!QUIET) console.log(`${String(r).padStart(4)} | ${String(res.reached).padStart(8)} | ${(res.time / 60).toFixed(1).padStart(8)} | ${(total / 60).toFixed(0).padStart(10)} | ${String(save.level).padStart(6)} | atk${u.atk} hp${u.hp} arm${u.armor} spd${u.atkSpd} crit${u.crit} reg${u.regen}`);
-  shop();
-  if (res.reached > CONFIG.wave.maxWave) { if (!QUIET) console.log('100. dalga tamamlandı!'); break; }
-}
-console.log('Dalgaya ulaşma süresi (dk):', JSON.stringify(marks), ' | toplam gold:', Math.round(save.gold), ' seviye:', save.level);

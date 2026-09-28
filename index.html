@@ -32,7 +32,11 @@
     <div id="boss-bar" class="hidden"><div class="boss-name" id="boss-name">Boss</div><div class="bar boss"><div id="boss-fill"></div></div></div>
   </div>
   <div class="hud-right">
-    <div class="gold panel"><span class="coin"></span><b id="hud-gold">0</b></div>
+    <div class="wallet-row">
+      <div class="gold panel"><span class="coin"></span><b id="hud-gold">0</b></div>
+      <div class="gems panel" title="Gems"><span class="gem">💎</span><b id="hud-gems">0</b></div>
+    </div>
+    <div id="hud-rush" class="rush-chip hidden">💰 Gold Rush ×2 · <span id="hud-rush-t">0h</span></div>
     <div class="hud-buttons">
       <button id="btn-shop" class="btn small" title="Shop (B)">🛒 Shop</button>
       <button id="btn-speed" class="btn small" title="Game speed (H)">1x</button>
@@ -95,14 +99,15 @@
         <div class="shop-hero" id="shop-hero">—</div>
       </div>
       <div class="shop-wallet">
-        <div class="gold"><span class="coin"></span><b id="shop-gold">0</b></div>
-        <div class="sp">⭐ <b id="shop-sp">0</b> skill points</div>
+        <div class="gold"><span class="coin"></span><b id="shop-gold">0</b> <span class="gems-inline">💎 <b id="shop-gems">0</b></span></div>
+        <div class="sp">⭐ <b id="shop-sp">0</b> skill points · 📘 <b id="shop-tomes">0</b> tomes</div>
       </div>
       <button class="btn small close" id="btn-shop-close">✕</button>
     </div>
     <div class="tabs">
       <button class="tab active" data-tab="upg">Upgrades</button>
       <button class="tab" data-tab="skl">Skills</button>
+      <button class="tab gems-tab" data-tab="gems">💎 Gems</button>
       <button class="tab" data-tab="stats">Stats</button>
     </div>
     <div class="shop-body" id="shop-body"></div>
@@ -117,6 +122,7 @@
     <div class="death-count" id="death-count"></div>
     <div class="death-actions">
       <button class="btn big" id="btn-retry">↻ Try Again</button>
+      <button class="btn gem-btn" id="btn-revive">💖 Revive · 💎10</button>
       <button class="btn" id="btn-death-shop">🛒 Shop</button>
       <button class="btn" id="btn-death-menu">Choose Hero</button>
     </div>

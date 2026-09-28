@@ -17,7 +17,7 @@ export class Enemy {
     this.scene = scene;
     this.bossDef = bossDef;
     const R = rank === 'boss' ? CONFIG.boss : rank === 'elite' ? CONFIG.elite : { hp: 1, dmg: 1, gold: 1, xp: 1, scale: 1 };
-    this.maxHp = F.enemyHp(this.def.hp, wave) * R.hp * (bossDef?.hpMult || 1);
+    this.maxHp = F.enemyHp(this.def.hp, wave) * R.hp * (bossDef?.hpMult || 1) * (rank === 'boss' ? F.bossHpScale(wave) : 1);
     this.hp = this.maxHp;
     this.dmg = F.enemyDmg(this.def.dmg, wave) * R.dmg;
     this.armor = this.def.armor * (1 + wave * 0.05);

@@ -194,13 +194,21 @@ export class Game {
     if (e.rank === 'boss') this.fx.shake(1);
     // gold paraları saç
     // Tam sayı gold: küsurat olasılıkla yuvarlanır (1.4 gold → %40 ihtimalle 2, yoksa 1)
-    const raw = e.gold * this.hero.stats.goldMult;
+    const raw = e.gold * this.hero.stats.goldMult * Economy.goldMult();
     const total = Math.floor(raw) + (Math.random() < raw % 1 ? 1 : 0);
     if (total > 0) {
       const want = e.rank === 'boss' ? 14 : e.rank === 'elite' ? 6 : Math.min(4, 1 + Math.floor(Math.random() * 3));
       const n = Math.min(want, total);
       const each = Math.floor(total / n);
       for (let i = 0; i < n; i++) this.spawnCoin(e.pos, each + (i < total - each * n ? 1 : 0));
+    }
+    // boss'un ilk yenilişi: +Gems ve +1 Skill Tome
+    if (e.rank === 'boss') {
+      const r = Economy.bossFirstKill(this.wave);
+      if (r) {
+        this.fx.floater(this.hero.pos.clone().setY(3.8), `+${r.gems} 💎`, 'gems');
+        setTimeout(() => this.ui.toast(`First boss kill! +${r.gems} Gems, +${r.tomes} Skill Tome`), 1200);
+      }
     }
     const lv = Economy.addXp(e.xp);
     this.runXp += e.xp;
@@ -243,6 +251,7 @@ export class Game {
         const spd = 6 + c.t * 14;
         if (len < 0.5) {
           const got = Economy.addGold(c.value);
+          Economy.noteActiveGold(got);
           this.runGold += got;
           this.audio.play('coin');
           this.fx.floater(hp.clone().setY(2.8), `+${got}`, 'gold');
@@ -344,6 +353,7 @@ export class Game {
 
   step(dt) {
     this.time += dt;
+    Economy.tickActive(dt);
     const hero = this.hero;
 
     if (this.phase === 'walking') {

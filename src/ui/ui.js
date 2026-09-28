@@ -6,6 +6,12 @@ import { Assets } from '../core/assets.js';
 import { Audio } from '../core/audio.js';
 
 const $ = (id) => document.getElementById(id);
+// ?dev=1 → Gems sekmesinde test için "+100 Gems" butonu (canlıda görünmez)
+const DEV = new URLSearchParams(location.search).has('dev');
+const fmtDur = (ms) => {
+  const m = Math.ceil(ms / 60000);
+  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+};
 const fmt = (n) => {
   n = Math.floor(n);
   if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
@@ -139,6 +145,11 @@ export class UI {
       Economy.reset(); $('screen-pause').classList.add('hidden'); this.toMenu();
     });
     click('btn-retry', () => this.respawnNow());
+    click('btn-revive', () => {
+      if (!this.game || this.game.phase !== 'dead') return;
+      if (Economy.revive(this.game.wave)) { Audio.play('levelup'); this.toast(`Revived! Continuing from Wave ${this.game.wave}`); this.respawnNow(); }
+      else { Audio.play('denied'); this.toast('Not enough Gems'); }
+    });
     click('btn-victory-again', () => { $('screen-victory').classList.add('hidden'); this.game.startRun(this.selected); });
     click('btn-victory-menu', () => { $('screen-victory').classList.add('hidden'); this.toMenu(); });
     click('btn-death-shop', () => { $('screen-death').classList.add('hidden'); this.openShop('death'); });
@@ -264,6 +275,7 @@ export class UI {
   // ---------- HUD ----------
   onRunStart(game) {
     $('hud').classList.remove('hidden');
+    this.updateRush();
     const h = game.hero;
     $('hud-hero').textContent = h.def.name;
     const pc = $('portrait').getContext('2d');
@@ -305,6 +317,8 @@ export class UI {
     $('hp-fill').style.width = `${hpk * 100}%`;
     $('hp-text').textContent = `${fmt(h.hp)} / ${fmt(h.stats.maxHp)}`;
     const d = Economy.data;
+    // Gold Rush sayacı (saniyede bir yeterli)
+    if ((this._rushTick = (this._rushTick || 0) + 1) % 30 === 0) this.updateRush();
     const need = F.xpToNext(d.level);
     $('xp-fill').style.width = `${Math.min(100, d.xp / need * 100)}%`;
     $('xp-text').textContent = `${fmt(d.xp)} / ${fmt(need)} XP`;
@@ -346,10 +360,21 @@ export class UI {
 
   updateGold() {
     $('hud-gold').textContent = fmt(Economy.data.gold);
+    $('hud-gems').textContent = fmt(Economy.data.gems || 0);
     if (!$('screen-shop').classList.contains('hidden')) {
       $('shop-gold').textContent = fmt(Economy.data.gold);
+      $('shop-gems').textContent = fmt(Economy.data.gems || 0);
       $('shop-sp').textContent = Economy.data.skillPoints;
+      $('shop-tomes').textContent = Economy.data.tomes || 0;
     }
+    const rb = $('btn-revive');
+    if (rb) rb.disabled = !Economy.canAffordGems(CONFIG.gemShop.revive.price);
+  }
+
+  updateRush() {
+    const left = Economy.goldRushLeft();
+    $('hud-rush').classList.toggle('hidden', left <= 0);
+    if (left > 0) $('hud-rush-t').textContent = fmtDur(left);
   }
 
   banner(text, cls = '') {
@@ -430,8 +455,8 @@ export class UI {
     $('off-sub').textContent = `${hero} kept fighting at Wave ${r.wave}`;
     $('off-gold').textContent = `+${fmt(r.gold)}`;
     $('off-note').textContent = r.capped
-      ? `Only the first ${CONFIG.offline.maxHours} hours count. Come back sooner to earn more.`
-      : `Offline earnings are capped at ${CONFIG.offline.maxHours} hours.`;
+      ? `Only the first ${r.maxHours} hours count. Come back sooner to earn more.`
+      : `Offline earnings are capped at ${r.maxHours} hours.`;
     // kahraman portresi
     const c = $('off-hero'), ctx = c.getContext('2d');
     ctx.clearRect(0, 0, c.width, c.height);
@@ -499,6 +524,8 @@ export class UI {
     $('shop-hero').textContent = `Upgrades for ${hdef.name} (each hero has their own upgrades; level is shared)`;
     $('shop-gold').textContent = fmt(Economy.data.gold);
     $('shop-sp').textContent = Economy.data.skillPoints;
+    $('shop-gems').textContent = fmt(Economy.data.gems || 0);
+    $('shop-tomes').textContent = Economy.data.tomes || 0;
     const body = $('shop-body');
     body.innerHTML = '';
     if (this.shopTab === 'upg') {
@@ -522,14 +549,16 @@ export class UI {
         const lvl = Economy.skillLevel(hid, i);
         const maxed = lvl >= CONFIG.skillUpgrade.maxLevel;
         const cost = Economy.skillCost(hid, i);
-        const can = !maxed && Economy.canAfford(cost) && Economy.data.skillPoints >= CONFIG.skillUpgrade.pointCost;
+        const tome = !maxed && Economy.skillNeedsTome(hid, i);
+        const can = !maxed && Economy.canAfford(cost) && Economy.data.skillPoints >= CONFIG.skillUpgrade.pointCost && (!tome || (Economy.data.tomes || 0) >= 1);
         const pw = Math.round(F.skillPower(s, lvl) * 100), cd = F.skillCd(s, lvl).toFixed(1);
         const el = document.createElement('div');
         el.className = 'item';
         el.innerHTML = `<div class="ic">${s.icon}</div>
           <div><div class="nm">${s.name}<small>Lv ${lvl}/${CONFIG.skillUpgrade.maxLevel}</small></div><div class="ds">${s.desc}</div>
-          <div class="val">Power: ${pw}% · Cooldown: ${cd}s</div></div>
-          <button class="btn small" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : `<span class="coin"></span>${fmt(cost)} + ⭐1`}</button>`;
+          <div class="val">Power: ${pw}% · Cooldown: ${cd}s</div>
+          ${tome ? `<div class="req">📘 Lv ${lvl + 1} needs a Skill Tome (you have ${Economy.data.tomes || 0})</div>` : ''}</div>
+          <button class="btn small" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : `<span class="coin"></span>${fmt(cost)} + ⭐1${tome ? ' + 📘1' : ''}`}</button>`;
         el.querySelector('button').addEventListener('click', () => {
           if (Economy.buySkill(hid, i)) { Audio.play('buy'); this.renderShop(); } else Audio.play('denied');
         });
@@ -537,8 +566,10 @@ export class UI {
       });
       const note = document.createElement('div');
       note.className = 'hint'; note.style.gridColumn = '1 / -1';
-      note.textContent = 'You earn a skill point every time you level up. Level is shared by all heroes.';
+      note.textContent = `You earn a skill point every time you level up. Lv ${CONFIG.skillUpgrade.tomeFrom}+ needs a Skill Tome: beat a boss for the first time or buy one in the Gems tab.`;
       body.appendChild(note);
+    } else if (this.shopTab === 'gems') {
+      this.renderGemShop(body);
     } else {
       const st = F.heroStats(hid, Economy.data);
       const d = Economy.data;
@@ -553,6 +584,52 @@ export class UI {
     }
   }
 
+  renderGemShop(body) {
+    const d = Economy.data;
+    const dep = document.createElement('div');
+    dep.className = 'deposit';
+    dep.innerHTML = `<div><div class="t">💎 Get Gems</div>
+        <div class="s">Deposit USDC or SOL on Solana. Gems can't be withdrawn or sold.</div>
+        <div class="packs">${CONFIG.gems.packs.map((p) => `$${p.usd} = ${fmt(p.gems)}`).join(' · ')}</div></div>
+      <button class="btn small" disabled>Coming soon · Solana</button>`;
+    body.appendChild(dep);
+    const offRate = Math.round(F.offlineEfficiency(d) * 100);
+    for (const [id, it] of Object.entries(CONFIG.gemShop)) {
+      let status = '', disabled = !Economy.canAffordGems(it.price), label = `💎${it.price}`;
+      if (id === 'timeSkip') status = `≈ +${fmt(F.offlineGoldPerSec(d) * it.hours * 3600 * Economy.goldMult())} gold at Wave ${Math.max(1, d.resumeWave || 1)} (${offRate}% rate)`;
+      if (id === 'goldRush' && Economy.goldRushActive()) status = `Active: ${fmtDur(Economy.goldRushLeft())} left (buying adds 24h)`;
+      if (id === 'idlePass' && d.idlePass) { status = 'Owned'; disabled = true; label = 'OWNED'; }
+      if (id === 'tome') status = `You have ${d.tomes || 0}`;
+      if (id === 'revive') { status = 'Use it from the defeat screen.'; disabled = true; label = `💎${it.price}`; }
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.innerHTML = `<div class="ic">${it.icon}</div>
+        <div><div class="nm">${it.name}</div><div class="ds">${it.desc}</div>${status ? `<div class="req">${status}</div>` : ''}</div>
+        <button class="btn small gem-buy" ${disabled ? 'disabled' : ''}>${label}</button>`;
+      el.querySelector('button').addEventListener('click', () => {
+        const r = Economy.buyGemItem(id);
+        if (!r) { Audio.play('denied'); return; }
+        Audio.play('buy');
+        if (id === 'timeSkip') this.toast(`Time Skip: +${fmt(r.gold)} gold`);
+        else if (id === 'goldRush') { this.toast('Gold Rush active: ×2 gold'); this.updateRush(); }
+        else if (id === 'idlePass') this.toast('Idle Pass unlocked!');
+        else this.toast(`${it.name} purchased`);
+        this.renderShop();
+      });
+      body.appendChild(el);
+    }
+    const note = document.createElement('div');
+    note.className = 'hint'; note.style.gridColumn = '1 / -1';
+    note.textContent = `Free Gems: +${CONFIG.gems.bossFirstKill} and a Skill Tome the first time you beat each boss, +${CONFIG.gems.finalBossBonus} for the final boss.`;
+    body.appendChild(note);
+    if (DEV) {
+      const b = document.createElement('button');
+      b.className = 'btn small'; b.style.gridColumn = '1 / -1'; b.textContent = '+100 Gems (test)';
+      b.addEventListener('click', () => { Economy.addGems(100, 'dev'); this.renderShop(); });
+      body.appendChild(b);
+    }
+  }
+
   // ---------- Ölüm ----------
   showDeath(game) {
     const d = Economy.data;
@@ -560,6 +637,8 @@ export class UI {
       ['Wave reached', game.wave], ['Best', d.bestWave], ['Kills', game.runKills], ['Gold earned', fmt(game.runGold)],
       ['XP earned', fmt(game.runXp)], ['Level', d.level], ['Next start', `Wave ${Economy.startWave()}`], ['Total gold', fmt(d.gold)],
     ].map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('');
+    $('btn-revive').innerHTML = `💖 Revive at Wave ${game.wave} · 💎${CONFIG.gemShop.revive.price}`;
+    this.updateGold();
     $('screen-death').classList.remove('hidden');
     this.startCountdown();
   }
