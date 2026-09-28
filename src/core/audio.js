@@ -22,11 +22,10 @@ function ensure() {
 // rastgele biri seçilir ve perdesi hafifçe değiştirilir (tekrar hissi olmasın).
 // ---------------------------------------------------------------------
 const BANK = {
-  swing:  { files: ['drawKnife1', 'drawKnife2', 'drawKnife3'], vol: 0.45, pitch: [0.9, 1.15], gap: 60 },
   hit:    { files: ['impactMetal_medium_000', 'impactMetal_medium_001', 'impactMetal_medium_002', 'impactMetal_medium_003', 'impactMetal_medium_004'], vol: 0.55, pitch: [0.85, 1.1], gap: 45,
-            layer: { files: ['chop'], vol: 0.35 } },
+            layer: { files: ['chop'], vol: 0.45 }, thump: { f0: 150, vol: 0.55 } },
   crit:   { files: ['impactMetal_heavy_000', 'impactMetal_heavy_001', 'impactMetal_heavy_002', 'impactMetal_heavy_003', 'impactMetal_heavy_004'], vol: 0.8, pitch: [0.85, 1.0], gap: 60,
-            layer: { files: ['knifeSlice'], vol: 0.5 } },
+            layer: { files: ['knifeSlice'], vol: 0.5 }, thump: { f0: 120, vol: 0.8, dur: 0.22 } },
   hurt:   { files: ['impactMetal_light_000', 'impactMetal_light_001', 'impactMetal_light_002', 'impactMetal_light_003'], vol: 0.45, pitch: [0.7, 0.85], gap: 90,
             layer: { files: ['cloth1', 'cloth2'], vol: 0.4 } },
   bones:  { files: ['impactMining_002', 'impactMining_004', 'impactWood_light_002', 'impactWood_light_003'], vol: 0.7, pitch: [0.8, 1.1], gap: 50 },
@@ -34,8 +33,8 @@ const BANK = {
   coin:   { files: ['handleCoins', 'handleCoins2'], vol: 0.22, pitch: [1.0, 1.25], gap: 120 },
   buy:    { files: ['handleCoins2'], vol: 0.55, pitch: [1, 1], gap: 50 },
   shield: { files: ['impactMetal_heavy_001', 'impactMetal_heavy_003'], vol: 0.9, pitch: [0.6, 0.72], gap: 80 },
-  skill:  { files: ['drawKnife2', 'knifeSlice'], vol: 0.7, pitch: [0.75, 0.9], gap: 80,
-            layer: { files: ['impactMetal_heavy_002'], vol: 0.5 } },
+  skill:  { files: ['impactMetal_heavy_002', 'impactMetal_heavy_004'], vol: 0.7, pitch: [0.75, 0.9], gap: 80,
+            layer: { files: ['knifeSlice'], vol: 0.45 }, thump: { f0: 110, vol: 0.7, dur: 0.25 } },
   levelup:{ files: ['maximize_006'], vol: 0.7, pitch: [1, 1], gap: 300, layer: { files: ['confirmation_004'], vol: 0.6 } },
   wave:   { files: ['doorOpen_2'], vol: 0.55, pitch: [0.8, 0.9], gap: 500 },
   click:  { files: ['click_002', 'select_001'], vol: 0.45, pitch: [0.95, 1.05], gap: 40 },
@@ -80,6 +79,7 @@ function playBank(key) {
     const lf = b.layer.files[Math.floor(Math.random() * b.layer.files.length)];
     playBuffer(lf, b.layer.vol, rate);
   }
+  if (b.thump) thump(b.thump.f0 * rate, b.thump.vol, b.thump.dur || 0.16);
   return true;
 }
 
@@ -107,6 +107,28 @@ function noise({ dur = 0.2, vol = 0.3, freq = 1000, q = 1, type = 'bandpass', f1
   const g = ctx.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   s.connect(f); f.connect(g); g.connect(sfxBus); s.start(t);
 }
+// Vuruşa ağırlık veren kısa, alçak "tok" ses
+function thump(f0, vol, dur) {
+  const t = ctx.currentTime;
+  const o = ctx.createOscillator(); const g = ctx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(40, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(sfxBus); o.start(t); o.stop(t + dur + 0.02);
+}
+
+// Kılıç savurma: yüksekten alçağa hızla kayan kısa bir "vuş"
+function whoosh() {
+  const t = ctx.currentTime, dur = 0.16 + Math.random() * 0.04;
+  const s = ctx.createBufferSource(); s.buffer = noiseBuffer(dur);
+  const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 2.2;
+  const hi = 2600 + Math.random() * 900;
+  f.frequency.setValueAtTime(hi, t); f.frequency.exponentialRampToValueAtTime(380, t + dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.55, t + dur * 0.35); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(sfxBus); s.start(t);
+}
+
 const SYNTH = {
   cast: () => { tone({ type: 'sine', f0: 300, f1: 900, dur: 0.3, vol: 0.12 }); noise({ dur: 0.3, vol: 0.1, freq: 3000, q: 4 }); },
   bolt: () => noise({ dur: 0.12, vol: 0.25, freq: 2500, f1: 900, q: 2 }),
@@ -118,7 +140,7 @@ const SYNTH = {
   },
   defeat: () => { playBuffer('minimize_004', 0.6, 0.8); [392, 330, 262, 196].forEach((f, i) => tone({ type: 'triangle', f0: f, dur: 0.45, vol: 0.14, delay: 0.1 + i * 0.2 })); },
   // dosya yüklenemezse yedekler
-  swing: () => noise({ dur: 0.16, vol: 0.25, freq: 2500, f1: 600, q: 0.8 }),
+  swing: () => { const now = performance.now(); if (now - (lastPlay.swing || 0) < 70) return; lastPlay.swing = now; whoosh(); },
   hit: () => { noise({ dur: 0.12, vol: 0.4, freq: 900, f1: 200, q: 1.2 }); tone({ type: 'square', f0: 140, f1: 60, dur: 0.1, vol: 0.15 }); },
   crit: () => noise({ dur: 0.18, vol: 0.5, freq: 1800, f1: 300, q: 1 }),
   hurt: () => tone({ type: 'sawtooth', f0: 180, f1: 90, dur: 0.15, vol: 0.18 }),
