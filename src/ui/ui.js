@@ -176,11 +176,14 @@ export class UI {
       }
     });
     document.addEventListener('visibilitychange', () => {
+      // Oyun sekme gizliyken de oynamaya devam eder (bkz. Game.backgroundTick); duraklatmıyoruz.
       if (document.hidden) {
-        if (this.game?.hero && !this.game.paused && this.game.phase !== 'dead') this.pause();
         Economy.save(); // son görülme zamanı
       } else if (this.game) {
-        this.checkOffline();
+        this.game.clock.getDelta();   // gizli geçen süreyi ikinci kez sayma
+        this.updateGold(); this.updateRush?.();
+        if (this.game.hero) this.updateWave(this.game);
+        this.checkOffline();          // oyun çalışıyorsa son görülme taze olduğundan ödül çıkmaz
       }
     });
     window.addEventListener('pagehide', () => Economy.save());
@@ -399,6 +402,7 @@ export class UI {
   }
 
   floorTransition(floorNo, name, mid) {
+    if (document.hidden) { mid(); return; }   // arka planda geçiş animasyonunu atla
     const f = $('fade');
     $('fade-small').textContent = `FLOOR ${floorNo}`;
     $('fade-big').textContent = name;
@@ -729,13 +733,20 @@ export class UI {
   startCountdown() {
     this.stopCountdown();
     this.countLeft = CONFIG.respawnCountdown;
+    // gerçek saate göre say: sekme arka plandayken zamanlayıcılar kısılsa da doğru biter
+    this.countEnd = Date.now() + CONFIG.respawnCountdown * 1000;
+    this._cdLast = Date.now();
     this._renderCountdown();
-    this.countTimer = setInterval(() => {
-      if ($('screen-death').classList.contains('hidden')) return; // dükkandayken bekle
-      this.countLeft--;
-      this._renderCountdown();
-      if (this.countLeft <= 0) this.respawnNow();
-    }, 1000);
+    this.countTimer = setInterval(() => this.tickCountdown(), 250);
+  }
+  tickCountdown() {
+    if (!this.countTimer) return;
+    const now = Date.now(), el = now - this._cdLast;
+    this._cdLast = now;
+    if ($('screen-death').classList.contains('hidden')) { this.countEnd += el; return; } // dükkandayken bekle
+    const left = Math.max(0, Math.ceil((this.countEnd - now) / 1000));
+    if (left !== this.countLeft) { this.countLeft = left; this._renderCountdown(); }
+    if (left <= 0) this.respawnNow();
   }
   stopCountdown() { clearInterval(this.countTimer); this.countTimer = null; }
   _renderCountdown() {

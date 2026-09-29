@@ -192,7 +192,7 @@ function startTrack(mode) {
 
 export const Audio = {
   play(name) {
-    if (!sfxOn || !ensure()) return;
+    if (!sfxOn || document.hidden || !ensure()) return;   // arka plandayken efekt çalma (müzik devam eder)
     if (playBank(name)) return;
     SYNTH[name]?.();
   },

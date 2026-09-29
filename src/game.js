@@ -11,6 +11,18 @@ import { buildWave } from './systems/waves.js';
 import { cloneDungeon, cloneWeapon } from './core/assets.js';
 import { Audio } from './core/audio.js';
 
+// Arka planda kısılmayan zamanlayıcı (Web Worker). Worker açılamazsa setInterval'e düşer.
+function startTicker(fn, ms) {
+  try {
+    const src = `setInterval(() => postMessage(0), ${ms});`;
+    const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    w.onmessage = fn;
+    return w;
+  } catch (e) {
+    return setInterval(fn, ms);
+  }
+}
+
 export class Game {
   constructor(canvas, overlay, ui) {
     this.ui = ui;
@@ -50,6 +62,30 @@ export class Game {
     window.addEventListener('resize', () => this.resize());
     this.clock = new THREE.Clock();
     this.renderer.setAnimationLoop(() => this.frame());
+    // Arka plan: sekme gizliyken tarayıcı requestAnimationFrame'i durdurur.
+    // Oyun durmasın diye gizliyken simülasyonu bir Web Worker zamanlayıcısıyla yürütürüz
+    // (worker zamanlayıcıları arka planda kısılmaz). Görüntü çizilmez, sadece savaş devam eder.
+    this._bgLast = performance.now();
+    this._bgSave = 0;
+    startTicker(() => this.backgroundTick(), 250);
+  }
+
+  get running() { return !!this.hero && !this.paused; }
+
+  backgroundTick() {
+    const now = performance.now();
+    let real = (now - this._bgLast) / 1000;
+    this._bgLast = now;
+    if (!document.hidden) return;          // görünürken normal döngü (frame) çalışır
+    this.ui.tickCountdown?.();
+    if (!this.running) return;
+    real = Math.min(real, 5);              // çok uzun kesintileri çevrimdışı kazanç karşılar
+    const dt = real * (Economy.data.settings.speed || 1);
+    const steps = Math.ceil(dt / 0.034);
+    for (let s = 0; s < steps && this.hero; s++) this.step(dt / steps);
+    // son görülme zamanını taze tut: dönüşte oyun zaten oynadığı için çevrimdışı ödül verilmez
+    this._bgSave += real;
+    if (this._bgSave >= 10) { this._bgSave = 0; Economy.save(); }
   }
 
   resize() {
