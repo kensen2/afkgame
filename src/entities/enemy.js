@@ -25,11 +25,11 @@ export class Enemy {
     this.xp = F.enemyXp(this.def.xp, wave) * R.xp;
     this.speed = this.def.speed * (rank === 'boss' ? 0.85 : 1) * (0.92 + Math.random() * 0.16);
     this.range = this.def.range;
-    this.scale = R.scale;
+    this.scale = R.scale * (this.def.scale || 1);
     this.radius = 0.5 * this.scale;
     this.name = bossDef?.name || this.def.name;
 
-    const { scene: model, animations } = cloneEnemy(type);
+    const { scene: model, animations } = cloneEnemy(this.def.model || type);
     this.model = model;
     this.group = new THREE.Group();
     this.group.add(model);

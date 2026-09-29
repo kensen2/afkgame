@@ -71,11 +71,11 @@ export class Dungeon {
     const g = new THREE.Group();
     const x = i * SEG;
     g.position.x = x;
-    const tileName = this.theme.tile;
-    // zemin: 2 sıra karo (z = -2, +2)
+    const th = this.theme;
+    const pickW = (list) => { const tot = list.reduce((a, [, w]) => a + w, 0); let x = r() * tot; for (const [n, w] of list) { x -= w; if (x <= 0) return n; } return list[0][0]; };
+    // zemin: 2 sıra karo (z = -2, +2); katın karo listesinden rastgele
     for (const z of [-2, 2]) {
-      let name = tileName;
-      if (r() < 0.08 && z === -2) name = 'floor_tile_large_rocks';
+      const name = th.tiles[Math.floor(r() * th.tiles.length)];
       const t = cloneDungeon(name);
       t.position.set(0, 0, z);
       t.rotation.y = Math.floor(r() * 4) * Math.PI / 2;
@@ -83,20 +83,14 @@ export class Dungeon {
     }
     // ön zemin: ekranın altına kadar kesintisiz uzansın (kamera yaklaşıp uzaklaşınca boşluk görünmesin)
     for (const z of [6, 10, 14]) {
-      const t = cloneDungeon('floor_tile_large');
+      const t = cloneDungeon(th.tiles[0]);
       t.position.set(0, 0, z);
       t.rotation.y = Math.floor(r() * 4) * Math.PI / 2;
       g.add(t);
     }
 
     // arka duvar
-    const wr = r();
-    let wall = 'wall';
-    if (wr < 0.12) wall = 'wall_arched';
-    else if (wr < 0.22) wall = 'wall_cracked';
-    else if (wr < 0.30) wall = 'wall_window_closed';
-    else if (wr < 0.36) wall = 'wall_gated';
-    const w = cloneDungeon(wall);
+    const w = cloneDungeon(pickW(th.walls));
     w.position.set(0, 0, WALL_Z);
     g.add(w);
     // ikinci kat duvar (daha yüksek görünüm)
@@ -127,19 +121,14 @@ export class Dungeon {
       g.add(flame);
       this.torches.push({ pos: new THREE.Vector3(x, 3.2, WALL_Z + 1.4), flame, seg: i, phase: r() * 10 });
     } else if (r() < 0.55) {
-      const banners = ['banner_patternA_red', 'banner_thin_red', 'banner_patternC_brown', 'banner_shield_red'];
-      const b = cloneDungeon(banners[Math.floor(r() * banners.length)]);
+      const b = cloneDungeon(th.banners[Math.floor(r() * th.banners.length)]);
       b.position.set(0.3, 0.4, WALL_Z);
       g.add(b);
     }
 
     // duvar dibi dekor
     const dr = r();
-    const decoSets = [
-      ['barrel_large', 0.7], ['barrel_small_stack', 0.8], ['crates_stacked', 0.7], ['keg_decorated', 0.6],
-      ['chest', 1], ['trunk_large_A', 0.9], ['table_medium_broken', 0.9], ['sword_shield_broken', 1],
-      ['candle_triple', 1.2], ['coin_stack_small', 1],
-    ];
+    const decoSets = th.deco;
     if (dr < 0.6) {
       const [name, s] = decoSets[Math.floor(r() * decoSets.length)];
       const d = cloneDungeon(name);

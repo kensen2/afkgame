@@ -17,11 +17,15 @@ export const Assets = {
   spriteMeta: null,
 };
 
-const DUNGEON = ['floor_tile_large', 'floor_tile_large_rocks', 'floor_tile_big_spikes', 'wall', 'wall_arched', 'wall_cracked',
+// Temel parçalar + katların (CONFIG.floors) kullandığı tüm parçalar
+const BASE_DUNGEON = ['floor_tile_large', 'floor_tile_large_rocks', 'floor_tile_big_spikes', 'wall', 'wall_arched', 'wall_cracked',
   'wall_broken', 'wall_pillar', 'wall_doorway', 'wall_gated', 'wall_window_closed', 'pillar', 'pillar_decorated', 'column',
   'torch_mounted', 'torch_lit', 'barrel_large', 'barrel_small_stack', 'crates_stacked', 'keg_decorated', 'chest', 'chest_gold',
   'coin', 'coin_stack_small', 'coin_stack_large', 'rubble_half', 'banner_patternA_red', 'banner_thin_red', 'banner_patternC_brown',
   'banner_shield_red', 'sword_shield_broken', 'candle_triple', 'table_medium_broken', 'trunk_large_A', 'keyring_hanging'];
+const DUNGEON = [...new Set([...BASE_DUNGEON, ...CONFIG.floors.flatMap((f) => [...f.tiles, ...f.walls.map((x) => x[0]), ...f.banners, ...f.deco.map((x) => x[0])])])];
+// Aynı modeli kullanan düşman varyantları (def.model) modeli bir kez yükler
+const ENEMY_MODELS = [...new Set(Object.entries(CONFIG.enemies).map(([k, d]) => d.model || k))];
 const WEAPONS = ['Skeleton_Blade', 'Skeleton_Axe', 'Skeleton_Staff', 'Skeleton_Crossbow', 'Skeleton_Shield_Small_A', 'Skeleton_Shield_Large_A', 'Skeleton_Arrow'];
 
 function loadGLB(url) {
@@ -37,7 +41,7 @@ export async function loadAll(onProgress) {
   const track = (p) => p.then((v) => { done++; onProgress?.(done / jobs.length); return v; });
 
   jobs.push(track(fetch('assets/heroes/sprites.json').then((r) => r.json()).then((m) => { Assets.spriteMeta = m; })));
-  for (const name of Object.keys(CONFIG.enemies)) {
+  for (const name of ENEMY_MODELS) {
     jobs.push(track(loadGLB(`assets/enemies/${name}${EXT}`).then((g) => { Assets.enemies[name] = g; })));
   }
   for (const name of WEAPONS) {

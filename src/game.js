@@ -303,7 +303,7 @@ export class Game {
   spawnProjectile(e) {
     const kind = e.def.proj;
     let mesh;
-    const color = kind === 'fire' ? 0xff6a1a : kind === 'orb' ? 0xa066ff : 0xdddddd;
+    const color = kind === 'fire' ? 0xff6a1a : kind === 'orb' ? 0xa066ff : kind === 'frost' ? 0x7fd8ff : kind === 'bomb' ? 0x3a3530 : 0xdddddd;
     if (kind === 'bolt') {
       mesh = cloneWeapon('Skeleton_Arrow');
       mesh.scale.setScalar(1.4);

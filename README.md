@@ -29,7 +29,8 @@ Alternatifler:
 
 - Kahraman koridorda kendi kendine yürür. Dalga gelince durur ve en yakın düşmana saldırır.
 - Her 5. dalga **elit** dalgadır (turuncu auralı, güçlü düşmanlar). Her 10. dalga **boss** dalgasıdır.
-- Her 10 dalgada bir **kat** değişir: Kemik Mahzeni → Unutulmuş Zindan → Kan Salonu → Zümrüt Mahzen (sonra başa döner).
+- Her 10 dalgada bir **kat** değişir. Her katın kendi zemini, duvarları, bayrak rengi, dekoru ve ışığı var:
+  Bone Crypt → Forgotten Halls → Blood Hall → Emerald Vault → The Deep Mines → Sunken Sewers → Iron Barracks → Frost Catacombs → Gilded Treasury → Malakor's Throne.
 - Düşmanlar gold ve XP düşürür. XP ile **genel seviye** artar. Seviye iki kahraman için ortaktır; her seviyede +%2 can, +%2 hasar ve 1 yetenek puanı gelir.
 - Gold ile **dükkandan** geliştirme alınır. Geliştirmeler her kahraman için ayrı tutulur.
 - Ölünce toplanan gold ve XP kaybolmaz. 10 saniyelik geri sayımdan sonra öldüğün dalganın bir altından otomatik devam edersin (10'da öldüysen 9'dan). Geri sayım sırasında dükkana girebilirsin; dükkandayken sayaç durur.
@@ -58,8 +59,18 @@ Alternatifler:
 | Barbarian | Yozlaşmış Barbar | Ağır, iki elli balta | 13 |
 | Knight | Kara Şövalye | Zırhlı tank | 16 |
 | Mage | Kara Büyücü | Uzaktan ateş topu | 18 |
+| Skeleton_Warrior (varyant) | Skeleton Brute | Çift baltalı, iri iskelet | 22 |
+| Skeleton_Rogue (varyant) | Skeleton Crossbowman | Uzaktan arbalet | 26 |
+| Barbarian (varyant) | Blood Berserker | Hızlı, çift balta | 31 |
+| Mage (varyant) | Frost Witch | Uzaktan buz büyüsü | 36 |
+| Knight (varyant) | Iron Warden | İki elli kılıç, çok dayanıklı | 42 |
+| Rogue (varyant) | Goblin Bomber | Bomba fırlatır | 47 |
+| Knight (varyant) | Thorn Guard | Dikenli kalkan, yüksek zırh | 53 |
 
-**Boss'lar:** Kemik Lordu (10), Kasap Grom (20), Nekromant Morth (30, iskelet çağırır), Kara Şövalye Valdor (40), Alev Cadısı Ysra (50). Liste 60-90 arasında başa döner. 100. dalgada final boss: Zindan Efendisi Malakor.
+Varyantlar aynı ücretsiz modellerin içindeki kullanılmayan silahlarla, renk ve boy farkıyla yapıldı (`src/config.js` → `model` alanı).
+KayKit'in ücretsiz (GitHub/CC0) karakter paketleri sadece Skeletons ve Adventurers; ikisindeki 9 karakter de oyunda.
+
+**Boss'lar:** Kemik Lordu (10), Kasap Grom (20), Nekromant Morth (30, çağırır), Kara Şövalye Valdor (40), Alev Cadısı Ysra (50, çağırır), Ossuk the Bonecrusher (60), Warden Korr (70), Neria the Frost Queen (80, çağırır), Gorvath the Gold-Mad (90). 100. dalgada final boss: Zindan Efendisi Malakor.
 
 Kaynaklar: `KayKit-Character-Pack-Skeletons-1.0`, `KayKit-Character-Pack-Adventures-1.0` ve `KayKit-Dungeon-Remastered-1.0` (github.com/KayKit-Game-Assets).
 KayKit'in Mystery Monthly serisindeki karakterler ücretli. İndirirsen `assets/enemies/` klasörüne koyup
