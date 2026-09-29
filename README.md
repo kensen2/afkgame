@@ -32,7 +32,7 @@ Alternatifler:
 - Her 10 dalgada bir **kat** değişir: Kemik Mahzeni → Unutulmuş Zindan → Kan Salonu → Zümrüt Mahzen (sonra başa döner).
 - Düşmanlar gold ve XP düşürür. XP ile **genel seviye** artar. Seviye iki kahraman için ortaktır; her seviyede +%2 can, +%2 hasar ve 1 yetenek puanı gelir.
 - Gold ile **dükkandan** geliştirme alınır. Geliştirmeler her kahraman için ayrı tutulur.
-- Ölünce toplanan gold ve XP kaybolmaz. 20 saniyelik geri sayımdan sonra öldüğün dalganın bir altından otomatik devam edersin (10'da öldüysen 9'dan). Geri sayım sırasında dükkana girebilirsin; dükkandayken sayaç durur.
+- Ölünce toplanan gold ve XP kaybolmaz. 10 saniyelik geri sayımdan sonra öldüğün dalganın bir altından otomatik devam edersin (10'da öldüysen 9'dan). Geri sayım sırasında dükkana girebilirsin; dükkandayken sayaç durur.
 - Son dalga **100**. 100. dalgada final boss **Zindan Efendisi Malakor** var. Onu yenince oyun kazanılır.
 - Düşmanlar genel olarak %25 zayıflatıldı (`src/config.js` → `enemyPower: 0.75`).
 - Kayıt tarayıcının hafızasında (localStorage) tutulur.

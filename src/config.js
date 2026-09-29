@@ -39,7 +39,7 @@ export const CONFIG = {
   enemyPower: 0.75,
 
   // Ölünce: geri sayım (sn) sonra öldüğün dalganın 1 altından otomatik yeniden başlar
-  respawnCountdown: 20,
+  respawnCountdown: 10,
   respawnWavesBack: 1,
 
   // Çevrimdışı (AFK) kazanç: oyun kapalıyken kahraman savaşmaya devam eder
