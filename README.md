@@ -30,7 +30,7 @@ Alternatifler:
 - Kahraman koridorda kendi kendine yürür. Dalga gelince durur ve en yakın düşmana saldırır.
 - Her 5. dalga **elit** dalgadır (turuncu auralı, güçlü düşmanlar). Her 10. dalga **boss** dalgasıdır.
 - Her 10 dalgada bir **kat** değişir. Her katın kendi zemini, duvarları, bayrak rengi, dekoru ve ışığı var:
-  Bone Crypt → Forgotten Halls → Blood Hall → Emerald Vault → The Deep Mines → Sunken Sewers → Iron Barracks → Frost Catacombs → Gilded Treasury → Malakor's Throne.
+  Iron Barracks → Forgotten Halls → Blood Hall → Emerald Vault → The Deep Mines → Sunken Sewers → Bone Crypt → Frost Catacombs → Gilded Treasury → Malakor's Throne.
 - Düşmanlar gold ve XP düşürür. XP ile **genel seviye** artar. Seviye iki kahraman için ortaktır; her seviyede +%2 can, +%2 hasar ve 1 yetenek puanı gelir.
 - Gold ile **dükkandan** geliştirme alınır. Geliştirmeler her kahraman için ayrı tutulur.
 - Ölünce toplanan gold ve XP kaybolmaz. 10 saniyelik geri sayımdan sonra öldüğün dalganın bir altından otomatik devam edersin (10'da öldüysen 9'dan). Geri sayım sırasında dükkana girebilirsin; dükkandayken sayaç durur.
