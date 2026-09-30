@@ -231,20 +231,28 @@ export const Economy = {
   keyCount(id) { return (this.data.keys || {})[id] || 0; },
   keyPackPrice(k) { return F.keyPackTokens(k); },
   keySinglePrice(k) { return F.tokensForUsd(k.singleUsd); },
-  // 10'lu paket: sadece yatırılan tokenle
+  // Bu sezon o kademede kullanılmış anahtar (açılmış dalga) sayısı
+  keysUsedInTier(k) { return Math.max(0, Math.min(10, (this.data.opened || 0) - k.from + 1)); },
+  // Kademe başına en fazla 10 anahtar: elde duran + bu sezon kullanılan
+  keyRoom(k) { return Math.max(0, 10 - this.keyCount(k.id) - this.keysUsedInTier(k)); },
+  // Anahtar ancak o kademenin kapısına gelince alınabilir (ör. Silver için 30. dalga açılmış olmalı)
+  keyUnlocked(k) { return Math.max(CONFIG.v5.freeMaxWave, this.data.opened || 0) >= k.from - 1; },
+  // Paket: kalan hak kadar (en fazla 10), paket birim fiyatıyla; sadece yatırılan tokenle
+  keyPackCount(k) { return this.keyUnlocked(k) ? Math.min(10, this.keyRoom(k)) : 0; },
+  keyPackCost(k) { return Math.round(this.keyPackPrice(k) / 10 * this.keyPackCount(k)); },
   buyKeyPack(id) {
     const k = CONFIG.v5.keys.find((x) => x.id === id), d = this.data;
-    const price = this.keyPackPrice(k);
-    if (d.depositBal < price) return false;
+    const n = this.keyPackCount(k), price = this.keyPackCost(k);
+    if (n <= 0 || d.depositBal < price) return false;
     d.balance -= price; d.depositBal -= price; d.spentDungeon += price;
-    d.keys[id] = this.keyCount(id) + 10;
+    d.keys[id] = this.keyCount(id) + n;
     this.save(); this.emit({ type: 'keys', id });
-    return true;
+    return n;
   },
   // Tek anahtar (sadece Bronze): her türlü bakiyeyle, pahalı
   buyKeySingle(id) {
     const k = CONFIG.v5.keys.find((x) => x.id === id);
-    if (!k?.singleUsd || !this.spendTokens(this.keySinglePrice(k))) return false;
+    if (!k?.singleUsd || !this.keyUnlocked(k) || this.keyRoom(k) <= 0 || !this.spendTokens(this.keySinglePrice(k))) return false;
     this.data.keys[id] = this.keyCount(id) + 1;
     this.save(); this.emit({ type: 'keys', id });
     return true;

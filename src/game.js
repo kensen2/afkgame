@@ -423,7 +423,8 @@ export class Game {
       }
     }
     if (this.phase === 'gate') {
-      this.gateT += dt / (Economy.data.settings.speed || 1);
+      // anahtar almak için dükkân/cüzdan açıksa kapı sayacı bekler
+      if (!this.ui.isShopOpen() && document.getElementById('screen-wallet').classList.contains('hidden')) this.gateT += dt / (Economy.data.settings.speed || 1);
       if (this.gateT >= CONFIG.v5.gateSeconds) {
         this.ui.hideGate();
         // kapı ekranındayken anahtar aldıysa devam et, yoksa döngüye dön

@@ -521,7 +521,8 @@ export class UI {
   // ---------- Dükkan ----------
   openShop(from) {
     this.shopReturn = from;
-    if (from === 'game') { if (this.game.phase === 'dead') return; this.game.paused = true; }
+    // dükkân açıkken oyun arka planda devam eder (AFK)
+    if (from === 'game' && this.game.phase === 'dead') return;
     if (from === 'select') $('screen-select').classList.add('hidden');
     $('screen-shop').classList.remove('hidden');
     Audio.play('page');
@@ -532,15 +533,18 @@ export class UI {
     $('screen-shop').classList.add('hidden');
     const from = this.shopReturn;
     if (this.game.hero) { this.game.hero.refreshStats(); this.buildSkills(this.game.hero); }
-    if (from === 'game') { this.game.paused = false; this.game.clock.getDelta(); }
-    else if (from === 'pause') $('screen-pause').classList.remove('hidden');
+    if (from === 'pause') $('screen-pause').classList.remove('hidden');
     else if (from === 'death') $('screen-death').classList.remove('hidden');
     else if (from === 'select') this.showSelect();
   }
 
   get shopHero() { return this.game.hero ? this.game.hero.id : this.selected; }
 
+  isShopOpen() { return !$('screen-shop').classList.contains('hidden'); }
+
   renderShop() {
+    // alınan geliştirmeler dükkân kapanmadan kahramana işlesin (oyun arkada devam ediyor)
+    if (this.game?.hero) { this.game.hero.refreshStats(); }
     const hid = this.shopHero;
     const hdef = CONFIG.heroes[hid];
     $('shop-hero').textContent = `Upgrades for ${hdef.name} (each hero has their own upgrades; level is shared)`;
@@ -648,18 +652,26 @@ export class UI {
     head.innerHTML = `Waves 1–${CONFIG.v5.freeMaxWave} are free. Every wave after that needs one key: it is used the first time you enter the wave and stays open for the season. Unused keys carry over to the next season. <b>Opened up to wave ${Math.max(CONFIG.v5.freeMaxWave, d.opened || 0)}.</b>`;
     body.appendChild(head);
     for (const k of CONFIG.v5.keys) {
-      const pack = Economy.keyPackPrice(k), have = Economy.keyCount(k.id);
-      const canPack = d.depositBal >= pack;
+      const have = Economy.keyCount(k.id), used = Economy.keysUsedInTier(k), room = Economy.keyRoom(k);
+      const unlocked = Economy.keyUnlocked(k);
+      const n = Economy.keyPackCount(k), cost = Economy.keyPackCost(k);
+      const canPack = n > 0 && d.depositBal >= cost;
+      const single = k.singleUsd ? Economy.keySinglePrice(k) : 0;
+      const canSingle = single && unlocked && room > 0 && Economy.canAffordTokens(single);
+      let status;
+      if (!unlocked) status = `🔒 Reach wave ${k.from - 1} to unlock`;
+      else if (room <= 0) status = `All 10 keys for this tier are yours this season`;
+      else status = `${n} key${n > 1 ? 's' : ''}: ◈${fmt(cost)} (${usd(cost)})${canPack ? '' : ' · needs deposited DGN'}`;
       const el = document.createElement('div');
-      el.className = 'item';
-      const single = k.singleUsd ? `<button class="btn small gem-buy" data-s="1" ${Economy.canAffordTokens(Economy.keySinglePrice(k)) ? '' : 'disabled'}>1 · ◈${fmt(Economy.keySinglePrice(k))}</button>` : '';
+      el.className = 'item' + (unlocked ? '' : ' locked');
       el.innerHTML = `<div class="ic">${k.icon}</div>
-        <div><div class="nm">${k.name}<small>×${have}</small></div>
-        <div class="ds">Opens waves ${k.from}–${k.to}. Production at wave ${k.to}: ${Math.round(F.rateAt(k.to)).toLocaleString('en-US')}/h</div>
-        <div class="val">10 keys: ◈${fmt(pack)} (${usd(pack)})${canPack ? '' : ' · needs deposited DGN'}</div></div>
-        <div class="key-btns"><button class="btn small gem-buy" data-p="1" ${canPack ? '' : 'disabled'}>10 · ◈${fmt(pack)}</button>${single}</div>`;
+        <div><div class="nm">${k.name}<small>×${have}${used ? ` · ${used} used` : ''}</small></div>
+        <div class="ds">Opens waves ${k.from}–${k.to}. Production at wave ${k.to}: ${Math.round(F.rateAt(k.to)).toLocaleString('en-US')}/h. Max 10 per season.</div>
+        <div class="val">${status}</div></div>
+        <div class="key-btns"><button class="btn small gem-buy" data-p="1" ${canPack ? '' : 'disabled'}>${!unlocked ? '🔒' : room <= 0 ? 'MAX' : `${n} · ◈${fmt(cost)}`}</button>${single ? `<button class="btn small gem-buy" data-s="1" ${canSingle ? '' : 'disabled'}>1 · ◈${fmt(single)}</button>` : ''}</div>`;
       el.querySelector('[data-p]').addEventListener('click', () => {
-        if (Economy.buyKeyPack(k.id)) { Audio.play('buy'); this.toast(`${k.icon} 10 ${k.name}s added. Your production pays back what you deposited; pool earnings start 48h after your first deposit.`); this.renderShop(); }
+        const got = Economy.buyKeyPack(k.id);
+        if (got) { Audio.play('buy'); this.toast(`${k.icon} ${got} ${k.name}${got > 1 ? 's' : ''} added. Your production pays back what you deposited; pool earnings start 48h after your first deposit.`); this.renderShop(); }
         else { Audio.play('denied'); this.toast('Key packs are bought with deposited DGN. Open your Wallet to deposit.'); }
       });
       el.querySelector('[data-s]')?.addEventListener('click', () => {
