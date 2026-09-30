@@ -275,22 +275,27 @@ export class Hero {
     const dist = Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z);
     if (dist > this.stats.range + t.radius + 0.6) return;
     const { dmg, crit } = this.rollDamage(1);
-    t.takeDamage(dmg, game, crit);
-    // vuruş hissi: kılıç izi, darbe yıldızı, küçük geri itme, anlık donma (hit-stop)
-    game.fx.slash(this.pos.clone().add(new THREE.Vector3(this.facing * 0.55, 1.35, 0.3)), {
-      facing: this.facing, color: crit ? 0xfff0a0 : this.slashColor, radius: crit ? 1.9 : 1.55, width: crit ? 0.75 : 0.5, dur: crit ? 0.26 : 0.2,
+    const facing = this.facing;
+    // kılıç dalgası: kılıçtan çıkar, hedefe uçar; hasar ve darbe efekti çarptığı anda
+    const from = this.pos.clone().add(new THREE.Vector3(facing * 0.6, 1.35, 0.3));
+    const to = t.pos.clone(); to.y = 1.3; to.z += 0.2;
+    game.fx.slashWave(from, to, {
+      facing, color: crit ? 0xfff0a0 : this.slashColor, size: crit ? 1.45 : 1.1,
+      onArrive: () => {
+        if (t.dead) return;
+        t.takeDamage(dmg, game, crit);
+        const ip = t.pos.clone(); ip.y = 1.3;
+        game.fx.impact(ip, { color: crit ? 0xffe27a : 0xffffff, size: crit ? 1.8 : 1.1 });
+        game.fx.burst(ip, { count: crit ? 16 : 8, color: crit ? 0xffdd44 : t.def.skel ? 0xe8e0c8 : 0xff6a4a, speed: crit ? 6 : 4, size: crit ? 0.5 : 0.35, life: 0.35 });
+        t.knockback(new THREE.Vector3(facing, 0, 0), crit ? 0.35 : 0.12);
+        game.hitStop(crit ? 0.075 : 0.04);
+        game.audio.play(crit ? 'crit' : 'hit');
+        if (crit) game.fx.shake(0.35);
+        // dalga yanındaki bir düşmana daha sıçrayabilir (%35 hasar)
+        const other = game.enemies.find((e) => e !== t && !e.dead && e.active && Math.hypot(e.pos.x - t.pos.x, e.pos.z - t.pos.z) < 1.6);
+        if (other) { other.takeDamage(dmg * 0.35, game, false); game.fx.impact(other.pos.clone().setY(1.3), { color: this.slashColor, size: 0.8 }); }
+      },
     });
-    const ip = t.pos.clone(); ip.y = 1.3;
-    game.fx.impact(ip, { color: crit ? 0xffe27a : 0xffffff, size: crit ? 1.8 : 1.1 });
-    t.knockback(new THREE.Vector3(this.facing, 0, 0), crit ? 0.35 : 0.12);
-    game.hitStop(crit ? 0.075 : 0.04);
-    // kılıç savruluşu bir yakın düşmana daha sıçrayabilir (%35 hasar)
-    const other = game.enemies.find((e) => e !== t && !e.dead && e.active && Math.hypot(e.pos.x - this.pos.x, e.pos.z - this.pos.z) < this.stats.range + 0.6 && Math.sign(e.pos.x - this.pos.x) === this.facing);
-    if (other) other.takeDamage(dmg * 0.35, game, false);
-    const p = t.pos.clone(); p.y = 1.2;
-    game.fx.burst(p, { count: crit ? 16 : 8, color: crit ? 0xffdd44 : t.def.skel ? 0xe8e0c8 : 0xff6a4a, speed: crit ? 6 : 4, size: crit ? 0.5 : 0.35, life: 0.35 });
-    game.audio.play(crit ? 'crit' : 'hit');
-    if (crit) game.fx.shake(0.35);
   }
 
   dispose() {

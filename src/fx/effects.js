@@ -50,6 +50,7 @@ export class Effects {
     this.rings = [];
     this.floaters = [];
     this.slashes = [];
+    this.waves = [];
     this.shakeAmt = 0;
     this.tmp = new THREE.Vector3();
   }
@@ -114,6 +115,24 @@ export class Effects {
     this.slashes.push({ m, t: 0, dur });
   }
 
+  // Kılıç dalgası: hilal şeklinde iz kılıçtan çıkıp hedefe uçar, varınca onArrive çağrılır.
+  slashWave(from, to, { facing = 1, color = 0xffffff, size = 1.1, speed = 16, onArrive = null } = {}) {
+    const geo = arcGeo(size, size * 0.5, 1.35, -1.35, 24);
+    const mat = new THREE.ShaderMaterial({
+      vertexShader: slashVert, fragmentShader: slashFrag,
+      uniforms: { uProg: { value: 1.02 }, uFade: { value: 1 }, uColor: { value: new THREE.Color(color) } },
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    });
+    const m = new THREE.Mesh(geo, mat);
+    m.quaternion.copy(this.camera.quaternion);
+    m.scale.set(facing * 0.6, 0.6, 1);
+    m.position.copy(from);
+    m.renderOrder = 7;
+    this.scene.add(m);
+    const dist = from.distanceTo(to);
+    this.waves.push({ m, from: from.clone(), to: to.clone(), t: 0, dur: Math.max(0.05, dist / speed), onArrive, arrived: false, after: 0, facing });
+  }
+
   // Darbe anındaki kısa parlak yıldız
   impact(pos, { color = 0xffffff, size = 1.1, life = 0.09 } = {}) {
     const s = this._sprite();
@@ -175,6 +194,24 @@ export class Effects {
       sl.m.material.uniforms.uFade.value = k < 0.45 ? 1 : Math.max(0, 1 - (k - 0.45) / 0.55);
       if (k >= 1) { this.scene.remove(sl.m); sl.m.geometry.dispose(); sl.m.material.dispose(); this.slashes.splice(i, 1); }
     }
+    for (let i = this.waves.length - 1; i >= 0; i--) {
+      const w = this.waves[i];
+      if (!w.arrived) {
+        w.t += dt;
+        const k = Math.min(1, w.t / w.dur);
+        w.m.position.lerpVectors(w.from, w.to, k);
+        const sc = 0.6 + k * 0.5;                        // uçarken büyür
+        w.m.scale.set(w.facing * sc, sc, 1);
+        if (k >= 1) { w.arrived = true; w.onArrive?.(); }
+      } else {
+        w.after += dt;                                   // çarpınca biraz daha büyüyüp söner
+        const k = w.after / 0.14;
+        const sc = 1.1 + k * 0.4;
+        w.m.scale.set(w.facing * sc, sc, 1);
+        w.m.material.uniforms.uFade.value = Math.max(0, 1 - k);
+        if (k >= 1) { this.scene.remove(w.m); w.m.geometry.dispose(); w.m.material.dispose(); this.waves.splice(i, 1); }
+      }
+    }
     this.shakeAmt = Math.max(0, this.shakeAmt - dt * 2.5);
   }
 
@@ -192,5 +229,7 @@ export class Effects {
     this.floaters = [];
     for (const sl of this.slashes) { this.scene.remove(sl.m); sl.m.geometry.dispose(); sl.m.material.dispose(); }
     this.slashes = [];
+    for (const w of this.waves) { this.scene.remove(w.m); w.m.geometry.dispose(); w.m.material.dispose(); }
+    this.waves = [];
   }
 }
