@@ -1,5 +1,6 @@
 // 2D sprite kahraman: 3D sahnede kameraya dönük düzlem (billboard).
 import * as THREE from 'three';
+import { HexShield } from '../fx/hexshield.js';
 import { Assets } from '../core/assets.js';
 import { CONFIG, F } from '../config.js';
 import { Economy } from '../systems/economy.js';
@@ -49,10 +50,12 @@ export class Hero {
     this.light = new THREE.PointLight(0xffc488, 10, 9, 1.6);
     this.light.position.set(0.5, 2.5, 2);
     this.group.add(this.light);
-    // koruma kalkanı efekti
-    this.bubble = new THREE.Mesh(new THREE.SphereGeometry(1.75, 24, 16), new THREE.MeshBasicMaterial({ color: 0x55aaff, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false }));
-    this.bubble.position.y = 1.5; this.bubble.visible = false;
-    this.group.add(this.bubble);
+    // koruma kalkanı: altıgen petekli enerji kalkanı (Iron Stance)
+    this.shield = new HexShield(1.8);
+    this.shield.mesh.position.y = 1.45;
+    this.group.add(this.shield.mesh);
+    // kılıç izi rengi: Warrior beyaz-mavi, Lion beyaz-altın
+    this.slashColor = this.id === 'lion' ? 0xffc860 : 0x8fc8ff;
     scene.add(this.group);
 
     this.pos = this.group.position;
@@ -142,6 +145,9 @@ export class Hero {
     let dmg = amount * F.armorMult(this.stats.armor);
     if (this.buffs.guard > 0) {
       dmg *= 1 - this.guardReduce;
+      // darbe kalkanda dalga yaratır
+      const from = source?.pos ? source.pos.clone().setY(1.3) : this.pos.clone().add(new THREE.Vector3(this.facing * 2, 1.3, 0));
+      this.shield.hit(from);
       if (source && !source.dead) source.takeDamage(amount * 0.3, game, false, true);
     }
     this.hp -= dmg;
@@ -171,8 +177,8 @@ export class Hero {
     } else {
       this.mat.emissive.setRGB(1, 1, 1); this.mat.emissiveIntensity = 0.55;
     }
-    this.bubble.visible = this.buffs.guard > 0;
-    if (this.bubble.visible) this.bubble.material.opacity = 0.14 + Math.sin(game.time * 8) * 0.05;
+    if (this.buffs.guard > 0 && !this.dead) this.shield.open(); else this.shield.close();
+    this.shield.update(dt, game.time);
 
     if (this.dead) {
       this.deathT += dt;
@@ -270,16 +276,25 @@ export class Hero {
     if (dist > this.stats.range + t.radius + 0.6) return;
     const { dmg, crit } = this.rollDamage(1);
     t.takeDamage(dmg, game, crit);
+    // vuruş hissi: kılıç izi, darbe yıldızı, küçük geri itme, anlık donma (hit-stop)
+    game.fx.slash(this.pos.clone().add(new THREE.Vector3(this.facing * 0.55, 1.35, 0.3)), {
+      facing: this.facing, color: crit ? 0xfff0a0 : this.slashColor, radius: crit ? 1.9 : 1.55, width: crit ? 0.75 : 0.5, dur: crit ? 0.26 : 0.2,
+    });
+    const ip = t.pos.clone(); ip.y = 1.3;
+    game.fx.impact(ip, { color: crit ? 0xffe27a : 0xffffff, size: crit ? 1.8 : 1.1 });
+    t.knockback(new THREE.Vector3(this.facing, 0, 0), crit ? 0.35 : 0.12);
+    game.hitStop(crit ? 0.075 : 0.04);
     // kılıç savruluşu bir yakın düşmana daha sıçrayabilir (%35 hasar)
     const other = game.enemies.find((e) => e !== t && !e.dead && e.active && Math.hypot(e.pos.x - this.pos.x, e.pos.z - this.pos.z) < this.stats.range + 0.6 && Math.sign(e.pos.x - this.pos.x) === this.facing);
     if (other) other.takeDamage(dmg * 0.35, game, false);
     const p = t.pos.clone(); p.y = 1.2;
-    game.fx.burst(p, { count: crit ? 16 : 8, color: crit ? 0xffdd44 : 0xffffff, speed: crit ? 6 : 4, size: crit ? 0.5 : 0.35, life: 0.35 });
+    game.fx.burst(p, { count: crit ? 16 : 8, color: crit ? 0xffdd44 : t.def.skel ? 0xe8e0c8 : 0xff6a4a, speed: crit ? 6 : 4, size: crit ? 0.5 : 0.35, life: 0.35 });
     game.audio.play(crit ? 'crit' : 'hit');
     if (crit) game.fx.shake(0.35);
   }
 
   dispose() {
+    this.shield.dispose();
     this.scene.remove(this.group);
   }
 }

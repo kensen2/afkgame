@@ -146,9 +146,10 @@ export class Enemy {
     if (this.dead) return 0;
     const dmg = amount * F.armorMult(this.armor);
     this.hp -= dmg;
-    this.flash = 0.12;
+    this.flash = crit ? 0.2 : 0.16;
+    this.squash = 0.14;
     const p = this.pos.clone(); p.y = 2.3 * this.scale;
-    game.fx.floater(p, Math.round(dmg), crit ? 'crit' : reflected ? 'reflect' : 'dmg');
+    game.fx.floater(p, crit ? `CRIT ${Math.round(dmg)}` : Math.round(dmg), crit ? 'crit' : reflected ? 'reflect' : 'dmg');
     if (this.bar) this.bar.visible = true;
     if (this.hp <= 0) { this.die(game); return dmg; }
     // küçük sersemleme / vuruş tepkisi (boss hariç)
@@ -175,11 +176,19 @@ export class Enemy {
   update(dt, game) {
     this.mixer.update(dt);
     // parlama
-    const fl = this.flash > 0;
+    const fl = this.flash > 0, flWhite = this.flash > 0.1;
     this.flash -= dt;
     if (this.dead) { this.stun = 0; this.fear = 0; }
+    // vurulunca kısa ezilip esneme
+    if (this.squash > 0) {
+      this.squash -= dt;
+      const k = Math.max(0, this.squash / 0.14);
+      const s = Math.sin(k * Math.PI);
+      this.model.scale.set(this.scale * (1 + 0.14 * s), this.scale * (1 - 0.16 * s), this.scale * (1 + 0.14 * s));
+    } else if (this.squash !== undefined && this.squash !== null) { this.model.scale.setScalar(this.scale); this.squash = null; }
     for (const m of this.mats) {
-      if (fl) m.emissive.setRGB(0.9, 0.9, 0.9);
+      if (flWhite) m.emissive.setRGB(1.2, 1.2, 1.2);       // önce beyaz parlama
+      else if (fl) m.emissive.setRGB(0.75, 0.1, 0.08);     // sonra kısa kırmızı ton
       else if (this.stun > 0) m.emissive.setRGB(0.15, 0.15, 0.45);
       else if (this.fear > 0) m.emissive.setRGB(0.35, 0.1, 0.35);
       else m.emissive.setRGB(0, 0, 0);

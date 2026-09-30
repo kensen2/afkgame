@@ -384,10 +384,14 @@ export class Game {
   }
 
   // ---------- Ana döngü ----------
+  // Vuruş anında oyunu çok kısa dondur (hit-stop): darbeye ağırlık verir
+  hitStop(sec) { if (!document.hidden) this.hitStopT = Math.max(this.hitStopT || 0, sec); }
+
   frame() {
     let dt = Math.min(0.05, this.clock.getDelta());
     this._lastRenderDt = dt;
     if (this.paused || !this.hero) { this.render(); return; }
+    if (this.hitStopT > 0) { this.hitStopT -= dt; this.render(); this.ui.updateHud(this); return; }
     dt *= Economy.data.settings.speed || 1;
     // 2x/3x hızda simülasyonu küçük adımlarla koştur
     const steps = Math.ceil(dt / 0.034);

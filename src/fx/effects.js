@@ -10,6 +10,37 @@ function radialTex(inner = 'rgba(255,255,255,1)', outer = 'rgba(255,255,255,0)')
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
+// Kılıç izi: kuyruğu ince, ucu parlak bir yay şeridi. uv.x = yay boyunca (0 kuyruk → 1 uç), uv.y = şerit enine
+function arcGeo(r, w, a0, a1, seg = 28) {
+  const pos = [], uv = [], idx = [];
+  for (let i = 0; i <= seg; i++) {
+    const t = i / seg, a = a0 + (a1 - a0) * t;
+    const ww = w * (0.2 + 0.8 * Math.sin(Math.min(1, t * 1.15) * Math.PI * 0.5));
+    for (let j = 0; j < 2; j++) {
+      const rr = r + (j - 0.5) * ww;
+      pos.push(Math.cos(a) * rr, Math.sin(a) * rr, 0);
+      uv.push(t, j);
+    }
+    if (i < seg) { const b = i * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  return g;
+}
+const slashVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const slashFrag = `
+  uniform float uProg; uniform float uFade; uniform vec3 uColor; varying vec2 vUv;
+  void main(){
+    float t = vUv.x;
+    float head = uProg;
+    float body = smoothstep(head - 0.75, head, t) * (1.0 - smoothstep(head, head + 0.04, t));
+    float core = pow(1.0 - abs(vUv.y - 0.5) * 2.0, 0.6);
+    vec3 col = mix(uColor, vec3(1.0), core * 0.85);
+    gl_FragColor = vec4(col, body * core * uFade);
+  }`;
+
 export class Effects {
   constructor(scene, camera, overlayEl) {
     this.scene = scene; this.camera = camera; this.overlay = overlayEl;
@@ -18,6 +49,7 @@ export class Effects {
     this.pool = [];
     this.rings = [];
     this.floaters = [];
+    this.slashes = [];
     this.shakeAmt = 0;
     this.tmp = new THREE.Vector3();
   }
@@ -65,6 +97,31 @@ export class Effects {
     this.rings.push({ m, life, max: life, radius, width });
   }
 
+  // Kılıç izi. facing: 1 sağ / -1 sol. ground: yere paralel (Whirlwind gibi).
+  slash(center, { facing = 1, color = 0xffffff, radius = 1.5, width = 0.5, dur = 0.2, full = false, ground = false, a0 = 2.1, a1 = -0.75 } = {}) {
+    const geo = full ? arcGeo(radius, width, 0, Math.PI * 2 * 1.05, 64) : arcGeo(radius, width, a0, a1);
+    const mat = new THREE.ShaderMaterial({
+      vertexShader: slashVert, fragmentShader: slashFrag,
+      uniforms: { uProg: { value: 0 }, uFade: { value: 1 }, uColor: { value: new THREE.Color(color) } },
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    });
+    const m = new THREE.Mesh(geo, mat);
+    m.position.copy(center);
+    if (ground) { m.rotation.x = -Math.PI / 2; m.position.y = Math.max(0.35, center.y); }
+    else { m.quaternion.copy(this.camera.quaternion); m.scale.x = facing; }
+    m.renderOrder = 7;
+    this.scene.add(m);
+    this.slashes.push({ m, t: 0, dur });
+  }
+
+  // Darbe anındaki kısa parlak yıldız
+  impact(pos, { color = 0xffffff, size = 1.1, life = 0.09 } = {}) {
+    const s = this._sprite();
+    s.material.color.set(color); s.material.opacity = 1;
+    s.position.copy(pos); s.scale.setScalar(size);
+    this.particles.push({ s, v: new THREE.Vector3(), life, max: life, sz: size, gravity: 0 });
+  }
+
   shake(a) { this.shakeAmt = Math.min(1.2, this.shakeAmt + a); }
 
   // HTML ile uçan yazı (hasar, gold, "+LEVEL" vb.)
@@ -73,7 +130,8 @@ export class Effects {
     el.className = 'floater ' + cls;
     el.textContent = text;
     this.overlay.appendChild(el);
-    this.floaters.push({ el, pos: worldPos.clone(), life: 1.0, vx: (Math.random() - 0.5) * 0.6 });
+    const pop = cls.includes('crit') ? 0.9 : cls.includes('dmg') ? 0.45 : 0.2;
+    this.floaters.push({ el, pos: worldPos.clone(), life: 1.0, vx: (Math.random() - 0.5) * 0.6, pop });
   }
 
   update(dt) {
@@ -103,8 +161,19 @@ export class Effects {
       f.pos.y += dt * 1.6; f.pos.x += f.vx * dt;
       this.tmp.copy(f.pos).project(this.camera);
       const x = (this.tmp.x * 0.5 + 0.5) * w, y = (-this.tmp.y * 0.5 + 0.5) * h;
-      f.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${0.8 + Math.min(1, (1 - f.life) * 6) * 0.3})`;
+      // büyüyerek çıkar, hemen yerine oturur (kritikte daha güçlü)
+      const age = 1 - f.life;
+      const sc = age < 0.08 ? 0.6 + (age / 0.08) * (0.5 + f.pop) : 1.1 + f.pop - Math.min(1, (age - 0.08) / 0.18) * f.pop;
+      f.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${sc})`;
       f.el.style.opacity = Math.min(1, f.life * 2.5);
+    }
+    for (let i = this.slashes.length - 1; i >= 0; i--) {
+      const sl = this.slashes[i];
+      sl.t += dt;
+      const k = sl.t / sl.dur;
+      sl.m.material.uniforms.uProg.value = Math.min(1.05, k * 2.2);
+      sl.m.material.uniforms.uFade.value = k < 0.45 ? 1 : Math.max(0, 1 - (k - 0.45) / 0.55);
+      if (k >= 1) { this.scene.remove(sl.m); sl.m.geometry.dispose(); sl.m.material.dispose(); this.slashes.splice(i, 1); }
     }
     this.shakeAmt = Math.max(0, this.shakeAmt - dt * 2.5);
   }
@@ -121,5 +190,7 @@ export class Effects {
     this.rings = [];
     for (const f of this.floaters) f.el.remove();
     this.floaters = [];
+    for (const sl of this.slashes) { this.scene.remove(sl.m); sl.m.geometry.dispose(); sl.m.material.dispose(); }
+    this.slashes = [];
   }
 }

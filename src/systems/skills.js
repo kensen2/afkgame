@@ -22,6 +22,9 @@ const IMPL = {
       t.knockback(dir, 1.2);
       const p = t.pos.clone(); p.y = 1.3;
       g.fx.burst(p, { count: 18, color: 0x66aaff, speed: 5, size: 0.45 });
+      g.fx.slash(h.pos.clone().add(new THREE.Vector3(h.facing * 1.0, 1.3, 0.3)), { facing: h.facing, color: 0x66b8ff, radius: 1.7, width: 0.8, dur: 0.24, a0: 1.6, a1: -1.2 });
+      g.fx.impact(p, { color: 0x9fd0ff, size: 2.2, life: 0.12 });
+      g.hitStop(0.08);
       g.fx.shake(0.4); g.audio.play('shield');
       return true;
     },
@@ -58,6 +61,8 @@ const IMPL = {
             e.takeDamage(dmg, g, crit);
             e.knockback(new THREE.Vector3(dir.x, 0, (Math.random() - 0.5)), 2.2);
             g.fx.burst(e.pos.clone().setY(1.2), { count: 12, color: 0xffcc55, speed: 5 });
+            g.fx.impact(e.pos.clone().setY(1.3), { color: 0xffe08a, size: 1.5 });
+            g.hitStop(0.035);
           }
           g.fx.burst(hero.pos.clone().setY(0.3), { count: 2, color: 0xaaaaaa, speed: 1, up: 1, size: 0.5, life: 0.4 });
         },
@@ -79,8 +84,10 @@ const IMPL = {
         const d = new THREE.Vector3(e.pos.x - h.pos.x, 0, e.pos.z - h.pos.z).normalize();
         e.knockback(d, 0.8);
       }
+      g.fx.slash(h.pos.clone().setY(0.9), { ground: true, full: true, color: 0xffc860, radius: def.radius * 0.8, width: 0.9, dur: 0.32 });
+      g.fx.slash(h.pos.clone().setY(1.4), { ground: true, full: true, color: 0xffffff, radius: def.radius * 0.55, width: 0.5, dur: 0.26 });
+      if (list.length) g.hitStop(0.06);
       g.fx.ring(h.pos, { color: 0xff9a2a, radius: def.radius, life: 0.35 });
-      g.fx.ring(h.pos, { color: 0xffe08a, radius: def.radius * 0.7, life: 0.25 });
       for (let i = 0; i < 16; i++) {
         const a = (i / 16) * Math.PI * 2;
         g.fx.burst(new THREE.Vector3(h.pos.x + Math.cos(a) * 2, 1, h.pos.z + Math.sin(a) * 2), { count: 1, color: 0xffaa33, speed: 2, up: 1 });
