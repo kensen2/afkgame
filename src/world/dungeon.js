@@ -114,7 +114,7 @@ export class Dungeon {
       t.position.set(0, 2.1, WALL_Z + 0.5);
       g.add(t);
       const flame = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: this.flameTex, color: this.theme.torch, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true,
+        map: this.flameTex, color: this.theme.torch, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.5,   // göz almasın: %50
       }));
       flame.scale.set(0.9, 1.2, 1);
       flame.position.set(0, 2.1 + 0.95, WALL_Z + 0.95);
@@ -167,7 +167,7 @@ export class Dungeon {
       l.position.copy(n.t.pos);
       const d = Math.abs(n.t.pos.x - cx);
       const w = THREE.MathUtils.clamp(1 - (d - 12) / 8, 0, 1);
-      l.intensity = 22 * w * w * (3 - 2 * w);
+      l.intensity = 11 * w * w * (3 - 2 * w);   // meşale ışığı %50 kısıldı (22 → 11)
     });
   }
 }
