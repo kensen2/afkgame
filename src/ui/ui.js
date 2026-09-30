@@ -4,6 +4,8 @@ import { Economy } from '../systems/economy.js';
 import { Skills } from '../systems/skills.js';
 import { Assets } from '../core/assets.js';
 import { Audio } from '../core/audio.js';
+import { Social } from '../systems/social.js';
+import { SocialUI } from './social-ui.js';
 
 const $ = (id) => document.getElementById(id);
 // ?dev=1 → cüzdanda ek test butonları (+1 gün, cüzdana gönderimi simüle et)
@@ -77,6 +79,7 @@ export class UI {
     this.shopReturn = null;
     this.lastT = performance.now();
     this._bind();
+    this.social = new SocialUI(this);
     requestAnimationFrame(this._loop.bind(this));
   }
 
@@ -164,9 +167,9 @@ export class UI {
     click('btn-wallet-close', () => this.closeWallet());
     click('btn-gate-keys', () => { this.hideGate(); this.shopTab = 'keys'; this.syncTabs(); this.openShop('game'); });
     click('btn-speed', () => this.toggleSpeed());
-    document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
+    document.querySelectorAll('#screen-shop .tab').forEach((t) => t.addEventListener('click', () => {
       Audio.play('click');
-      document.querySelectorAll('.tab').forEach((x) => x.classList.remove('active'));
+      document.querySelectorAll('#screen-shop .tab').forEach((x) => x.classList.remove('active'));
       t.classList.add('active'); this.shopTab = t.dataset.tab; this.renderShop();
     }));
     window.addEventListener('keydown', (e) => {
@@ -177,7 +180,8 @@ export class UI {
       else if (k === 'h') this.toggleSpeed();
       else if (k === 'b') { if ($('screen-shop').classList.contains('hidden')) this.openShop('game'); else this.closeShop(); }
       else if (k === 'escape') {
-        if (!$('screen-settings').classList.contains('hidden')) this.closeSettings();
+        if (this.social?.isOpen()) this.social.close();
+        else if (!$('screen-settings').classList.contains('hidden')) this.closeSettings();
         else if (!$('screen-shop').classList.contains('hidden')) this.closeShop();
         else if (!$('screen-pause').classList.contains('hidden')) this.resume();
         else if (this.game.phase !== 'dead') this.pause();
@@ -234,9 +238,10 @@ export class UI {
     clearInterval(this._tipTimer);
     $('screen-title').classList.remove('hidden');
     const d = Economy.data;
-    $('title-stats').innerHTML = d.bestWave > 0
+    const who = Social.me.nick ? `<span>Lord <b>${Social.me.nick}</b>${Social.clan ? ` [${Social.clan.tag}]` : ''}</span>` : '';
+    $('title-stats').innerHTML = who + (d.bestWave > 0
       ? `<span>Best wave: <b>${d.bestWave}</b></span><span>Level: <b>${d.level}</b></span><span>Gold: <b>${fmt(d.gold)}</b></span>`
-      : '';
+      : '');
   }
 
   // ---------- Karakter seçimi ----------
@@ -615,7 +620,7 @@ export class UI {
   }
 
   syncTabs() {
-    document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x.dataset.tab === this.shopTab));
+    document.querySelectorAll('#screen-shop .tab').forEach((x) => x.classList.toggle('active', x.dataset.tab === this.shopTab));
   }
 
   // ---------- DGN (Ekonomi v5) ----------
@@ -627,6 +632,7 @@ export class UI {
     $('dgn-live').textContent = live.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
     if ((this._dgnTick = (this._dgnTick || 0) + 1) % 20 === 0) {
       $('dgn-rate').textContent = `+${Math.round(rate).toLocaleString('en-US')} / h`;
+      this.social.updateHud();
       const left = F.seasonEndsAt(now) - now;
       $('dgn-season').textContent = `Season ${F.seasonIndex(now) + 1} · ${fmtDays(left)} left`;
     }
@@ -728,7 +734,7 @@ export class UI {
       <div class="wgrid">
         <div class="wbox"><span>Balance</span><b>◈ ${n(d.balance)}</b><small>${usd(d.balance)}</small></div>
         <div class="wbox"><span>Uncollected</span><b>◈ ${n(d.uncollected)}</b><button class="btn small" id="w-claim">Claim</button></div>
-        <div class="wbox"><span>Production</span><b>+${n(Economy.ratePerHour())} / h</b><small>best wave ${d.seasonBest || 0} this season</small></div>
+        <div class="wbox"><span>Production</span><b>+${n(Economy.ratePerHour())} / h</b><small>best wave ${d.seasonBest || 0} this season${Economy.rateBonus ? ` · clan +${Math.round(Economy.rateBonus * 100)}%` : ''}</small></div>
       </div>
       <div class="wbox line">${eligible
         ? `Your share of today's pool is <b>${n(perDay)} ${sym}</b> a day (${usd(perDay)}) · <b>${n(d.poolAvail)}</b> of it ready now. The realm is ${Math.round(Economy.realmFill() * 100)}% full: more lords means a smaller share for each.`

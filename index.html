@@ -41,10 +41,12 @@
       <div class="dgn-rate" id="dgn-rate" title="Production goes into your in-game balance. You can take out up to what you deposited, plus today's pool share.">+0 / h</div>
       <div class="dgn-btns"><button id="btn-claim" class="btn small">Claim</button><button id="btn-wallet" class="btn small">Wallet</button></div>
       <div class="dgn-season" id="dgn-season">Season 1</div>
+      <div class="dgn-clan hidden" id="dgn-clan"></div>
     </div>
     <div id="hud-rush" class="rush-chip hidden">💰 Gold Rush ×2 · <span id="hud-rush-t">0h</span></div>
     <div class="hud-buttons">
       <button id="btn-shop" class="btn small" title="Shop (B)">🛒 Shop</button>
+      <button id="btn-hud-clan" class="btn small" title="Clan and rankings">🛡</button>
       <button id="btn-speed" class="btn small" title="Game speed (H)">1x</button>
       <button id="btn-hud-settings" class="btn small" title="Settings">⚙</button>
       <button id="btn-pause" class="btn small" title="Pause (Esc)">⏸</button>
@@ -75,12 +77,43 @@
   <div class="hint load-tip" id="load-text">Digging the dungeon...</div>
 </div>
 
+<!-- Nick (ilk giriş) -->
+<div id="screen-nick" class="screen hidden">
+  <div class="logo">AFK<span>DUNGEON</span></div>
+  <div class="panel nick-box">
+    <div class="shop-title">Choose your name</div>
+    <div class="hint">Other lords will see this name on the rankings and in clans.</div>
+    <input id="nick-input" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Nickname" aria-label="Nickname" />
+    <div class="nick-msg" id="nick-msg"></div>
+    <small class="hint">3–16 characters: letters, numbers and _</small>
+    <button class="btn big" id="btn-nick-ok">Continue</button>
+  </div>
+</div>
+
+<!-- Clan ve sıralamalar -->
+<div id="screen-clan" class="screen modal hidden">
+  <div class="panel wallet clan">
+    <div class="shop-head">
+      <div><div class="shop-title">Clans</div><div class="shop-hero" id="clan-sub"></div></div>
+      <button class="btn small close" id="btn-clan-close">✕</button>
+    </div>
+    <div class="tabs">
+      <button class="tab" data-ctab="clan">🛡 My Clan</button>
+      <button class="tab" data-ctab="find">🔍 Find</button>
+      <button class="tab" data-ctab="players">🏆 Lords</button>
+      <button class="tab" data-ctab="clans">🏆 Clans</button>
+    </div>
+    <div class="wallet-body" id="clan-body"></div>
+  </div>
+</div>
+
 <!-- Başlık -->
 <div id="screen-title" class="screen hidden">
   <div class="logo big">AFK<span>DUNGEON</span></div>
   <div class="subtitle">Descend into the dark. Hold the line against wave after wave.</div>
   <div class="title-stats" id="title-stats"></div>
   <button class="btn big" id="btn-play">PLAY</button>
+  <div class="title-row"><button class="btn" id="btn-title-clan">🛡 Clans</button><button class="btn" id="btn-title-rank">🏆 Rankings</button></div>
   <button class="btn" id="btn-title-settings">⚙ Settings</button>
   <a class="btn" id="btn-whitepaper" href="whitepaper.html" target="_blank" rel="noopener">📜 Whitepaper</a>
   <div class="title-spacer"></div>

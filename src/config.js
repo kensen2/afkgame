@@ -137,6 +137,22 @@ export const CONFIG = {
       market: { priceUsd: 0.0001, volume24h: 41200, liquidity: 30500, holders: 1840 },
     },
   },
+  // ---- Nick, sıralama, clan ----
+  // Sunucu (Supabase) bağlanana kadar dünya yerelde bot oyuncu ve clanlarla simüle edilir (src/net/local-backend.js).
+  social: {
+    nick: { min: 3, max: 16, re: /^[A-Za-z0-9_]+$/ },
+    clan: {
+      createCost: 25000,          // DGN, "Spent in the dungeon" sayacına yazılır
+      maxMembers: 250,
+      maxOfficers: 2,
+      name: { min: 3, max: 20, re: /^[A-Za-z0-9 _'-]+$/ },
+      tag: { min: 2, max: 4, re: /^[A-Z0-9]+$/ },
+      maxPendingRequests: 3,      // bir oyuncunun aynı anda bekleyen katılma isteği
+      // Clan sıralaması: üyelerin toplam saatlik üretimi (bonus hariç). İlk 5 clanın üyeleri
+      // üretim hızlarına bonus alır; havuz sabit 10M olduğu için bonus havuzdaki paydan gelir.
+      bonus: [0.10, 0.05, 0.03, 0.02, 0.01],
+    },
+  },
   // Token mağazası (eski Gems mağazası; fiyatlar aynı dolar değerinde)
   tokenShop: {
     timeSkip: { name: 'Time Skip',  icon: '⏩', price: 3000,  hours: 2,
@@ -352,6 +368,7 @@ export const F = {
     }
     return r;
   },
+  clanBonus: (rank) => (rank >= 1 && rank <= CONFIG.social.clan.bonus.length ? CONFIG.social.clan.bonus[rank - 1] : 0),
   forgeCost: (lvl) => Math.round(CONFIG.v5.forge.baseCost * Math.pow(CONFIG.v5.forge.growth, lvl)),
   seasonIndex: (now = Date.now()) => Math.floor((now - CONFIG.v5.seasonEpoch) / (CONFIG.v5.seasonDays * 86400000)),
   seasonEndsAt: (now = Date.now()) => CONFIG.v5.seasonEpoch + (F.seasonIndex(now) + 1) * CONFIG.v5.seasonDays * 86400000,

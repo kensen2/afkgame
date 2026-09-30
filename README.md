@@ -90,6 +90,11 @@ src/systems/economy.js     Gold, XP, seviye, geliştirmeler, token cüzdanı, Re
 src/systems/skills.js      Yetenekler ve otomatik kullanım kararları
 src/systems/waves.js       Dalga içeriği (hangi düşmandan kaç tane)
 src/ui/ui.js               Menüler, HUD, dükkan
+src/ui/social-ui.js        Nick ekranı, clan ekranı (lider/officer paneli), sıralamalar
+src/systems/social.js      Nick/clan/sıralama katmanı (backend'den bağımsız), clan bonusu
+src/systems/clan-rules.js  Clan yetki kuralları ve doğrulama
+src/net/local-backend.js   Sunucusuz demo backend: bot oyuncular ve clanlar (Supabase'e kadar)
+supabase/schema.sql        Supabase tablo ve fonksiyon taslağı (yetki kontrolü sunucuda)
 src/fx/effects.js          Parçacıklar, hasar yazıları, ekran sarsıntısı
 src/core/audio.js          Dosyasız, kodla üretilen ses efektleri
 assets/heroes/             Videolardan çıkarılmış saydam sprite sheet'ler + sprites.json
@@ -143,3 +148,18 @@ Ayrıntılar: **`whitepaper.html`**. Ayarlar: `src/config.js` → `CONFIG.v5`. S
 - **Faz 1 = test modu:** Gerçek token yok. Cüzdan ekranındaki Deposit butonları demo token verir, cüzdana gönderim kapalıdır. `?dev=1` ile "+1 gün" ve "cüzdana gönderimi simüle et" test butonları çıkar.
 
 Sonraki fazlar (sunucu kaydı, cüzdanla giriş, Solana yatırımı, NFT kahraman) `docs/YENI_SOHBET_PROMPT.md` içinde.
+
+## Nick, clan ve sıralama
+
+- İlk girişte nick seçilir (3–16 karakter, harf/rakam/_ , benzersiz).
+- Clan kurmak 25.000 DGN ("Spent in the dungeon" sayacına yazılır). En fazla 250 üye.
+- Lider: istek onay/red, en fazla 2 officer atama, üye atma, liderliği devretme, clanı dağıtma.
+- Officer: sadece katılma isteklerini onaylar/reddeder. Üye atamaz, clanı dağıtamaz.
+- Sıralama: oyuncular sezonluk üretime, clanlar üyelerin toplam üretimine göre (bonus hariç).
+- İlk 5 clanın üyeleri üretim bonusu alır: %10 / %5 / %3 / %2 / %1. Clana girince hemen başlar.
+  Havuzlar sabit 10M kaldığı için bonus yeni token basmaz, havuzdan daha büyük pay verir.
+- Şu an (Faz 1) dünya `src/net/local-backend.js` içinde bot oyuncularla simüle edilir. Bot clanlara
+  atılan istek birkaç saniyede onaylanır; kendi clanına botlar istek gönderir.
+  `?dev=1` ile clan ekranında "View as leader/officer/member" test düğmeleri çıkar.
+- Supabase'e geçiş: `supabase/schema.sql` çalıştırılır, aynı metotlara sahip bir `SupabaseBackend`
+  yazılıp `src/systems/social.js` içinde `LocalBackend` yerine kullanılır.

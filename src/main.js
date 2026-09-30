@@ -3,6 +3,7 @@ import { loadAll } from './core/assets.js';
 import { Economy } from './systems/economy.js';
 import { UI } from './ui/ui.js';
 import { Game } from './game.js';
+import { Social } from './systems/social.js';
 import { loadSounds, Audio } from './core/audio.js';
 
 async function boot() {
@@ -35,7 +36,11 @@ async function boot() {
   window.__game = game; window.__eco = Economy; // geliştirme/test için
   game.showMenuScene();
   ui.syncButtons();
-  ui.showTitle();
+  await Social.init();
+  window.__social = Social;
+  // ilk girişte nick seçtir, sonra başlık ekranı
+  if (Social.hasNick()) ui.showTitle();
+  else ui.social.showNick(() => ui.showTitle());
   if (Economy.economyReset) { Economy.save(); ui.toast('The economy was rebalanced. Progress has been reset.'); }
   else if (Economy.seasonReset) ui.toast('A new season has begun! Waves and upgrades were reset. Your keys are kept.');
   ui.checkOffline(); // uzun süre sonra gelindiyse "Welcome back" ekranı

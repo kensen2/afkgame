@@ -138,7 +138,18 @@ export const Economy = {
     return now >= (this.data.firstDepositAt || now) + CONFIG.v5.depositorPoolDelayHours * 3600000;
   },
   poolStartsAt() { return (this.data.firstDepositAt || 0) + CONFIG.v5.depositorPoolDelayHours * 3600000; },
-  ratePerHour() { return F.rateAt(this.data.seasonBest || 0); },
+  // Üretim: sezonun en iyi dalgası × (1 + clan bonusu). Bonus ilk 5 clana girince hemen başlar.
+  baseRatePerHour() { return F.rateAt(this.data.seasonBest || 0); },
+  ratePerHour() { return this.baseRatePerHour() * (1 + (this.rateBonus || 0)); },
+  rateBonus: 0,
+  // Clan bonusu değişince önce eski hızla biriken kısmı yaz, sonra yeni hıza geç
+  setRateBonus(b) {
+    b = Math.max(0, +b || 0);
+    if (b === this.rateBonus) return;
+    this.accrue();
+    this.rateBonus = b;
+    this.emit({ type: 'rateBonus', bonus: b });
+  },
   // Bugünkü havuz payı (DGN/gün), realm doluluğuna göre
   poolPerDay() {
     const D = CONFIG.v5.demo, dep = this.isDepositor();
