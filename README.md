@@ -97,7 +97,7 @@ assets/enemies|weapons|dungeon/  KayKit modelleri (gereksiz animasyonlar temizle
 lib/                       Three.js r170 (internet olmadan da çalışsın diye)
 sim/balance.mjs            Denge simülasyonu: `node sim/balance.mjs` (bedava + harcayan)
 sim/model.mjs              Simülasyon modeli (simulate fonksiyonu)
-sim/realm.mjs              Realm/havuz simülasyonu: `node sim/realm.mjs` (100–2.000 oyuncu)
+sim/v5.mjs                 Ekonomi v5 simülasyonu: `node sim/v5.mjs` (100–2.000 oyuncu, bot senaryosu)
 whitepaper.html            Ekonomi whitepaper'ı (İngilizce, oyuncular için)
 ```
 
@@ -123,45 +123,23 @@ Solana entegrasyonunda bu fonksiyonların içi cüzdan ve zincir çağrılarıyl
 
 Efektleri değiştirmek için `src/core/audio.js` içindeki `BANK` listesine bak: her olayın hangi dosyaları, ses seviyesini ve perde aralığını kullandığı orada yazıyor.
 
-## Ekonomi (v4, Stonewatch tarzı günlük havuz)
+## Ekonomi (v5): saatlik üretim, anahtarlar, iki havuz, 10 günlük sezon
 
-Ayrıntılar ve tablolar: **`whitepaper.html`** (oyunda başlık ekranındaki 📜 Whitepaper butonu).
+Ayrıntılar: **`whitepaper.html`**. Ayarlar: `src/config.js` → `CONFIG.v5`. Simülasyon: `node sim/v5.mjs`.
 
-**İlke:** Oyunda tek değerli para var: token (**$DGN**, isim yer tutucu). Gold oyun içinde kalır ve asla tokena çevrilmez.
-Oyun içinde token basılmaz; oyuncuya giden token sadece **günlük havuzdan** gelir.
-
-| | Gold | $DGN |
-|---|---|---|
-| Nereden | Düşmanlar, AFK, Time Skip | Yatırma (deposit) ve günlük havuz |
-| Nereye | Geliştirmeler, yetenekler, Vault Lv2 | Relic, Vault Lv3+, Store (boost'lar) |
-| Çekilir mi | Hayır | Evet (kurallar aşağıda) |
-
-- **Günlük havuz** = 2.000.000 + dünkü token harcamasının %30'u. Oyuncular arasında **sayılan DP**'ye göre bölünür. Pay saat saat birikir, kapalıyken de (en fazla 24 saat).
-- **Dungeon Power (DP)** = sezonun en iyi dalgası × 1 + seviye × 0,5 + Relic DP.
-- **Vault:** DP, realm ortalamasının en fazla şu katı kadar sayılır: 1,25× (bedava), 2× (15.000 gold), 3×, 4×, 6×, 8×, 10× (token).
-- **Relic:** Crypt Candle 1.000 → 10 DP, Bone Idol 10.000 → 100 DP, War Banner 50.000 → 520 DP, Dragon Skull 250.000 → 2.750 DP.
-- **Harcanan her token:** %30 yakılır, %30 ertesi günün havuzuna döner, %40 hazineye gider.
+- **Üretim:** Sezonun en iyi dalgasına göre saatlik DGN üretimi. Dalga 1'de 100/saat, 20'de 2.000/saat (bedava tavanı). 21 ve sonrasında her anahtar kademesi, paket fiyatını ~48 saatte geri üretecek şekilde artar (30. dalga 4.083/saat, 100. dalga ~200K/saat). Sağ üstte canlı sayaç, Claim ile bakiyeye geçer. Oyun kapalıyken en fazla 12 saat birikir.
+- **Bedava oyuncu:** 1–20 arası. 20. dalga boss'undan sonra 10 saniye "The Sealed Gate" ekranı çıkar, sonra 15'e döner (15–20 döngüsü).
+- **Anahtarlar (10'lu paket, dolar bazlı):** Bronze 21–30 $10 (tek anahtar $4), Silver 31–40 $15, Gold 41–50 $25, Platinum 51–60 $40, Diamond 61–70 $60, Ruby 71–80 $100, Obsidian 81–90 $200, Dragon 91–100 $500.
+  - Her yeni dalgaya ilk girişte 1 anahtar harcanır, dalga sezon boyunca açık kalır.
+  - Kullanılmamış anahtarlar sonraki sezona taşınır.
+  - Paketler sadece yatırılan DGN ile alınır. Tek Bronze anahtar üretilen DGN ile de alınabilir.
+- **Havuzlar:** Bedava ve yatıran havuzu, her biri günde 10M. Pay üretime orantılıdır ve kendi üretiminle sınırlıdır. Yatıranın havuz payı ilk yatırımdan 48 saat sonra başlar.
 - **Çekim:**
-  - Yatırılıp harcanmamış token (credit) her an çekilebilir, komisyonsuz.
-  - Havuzdan gelen token günde bir kez, o günün payı kadar çekilir, %5 komisyonla. İlk çekim katılımdan 12 saat sonra açılır.
-  - Harcama önce havuzdan geleni kullanır, yatırılan korunur.
-- **Sezon:** 30 gün. Relic, Vault ve Idle Pass sezonluk. Kahraman, geliştirme ve seviye kalır.
-- **Store:** Time Skip 3.000, Gold Rush 5.000, Idle Pass 30.000, Skill Tome 2.000, Revive 1.000.
-- **Boss ilk yenilişi:** sadece Skill Tome verir.
-
-**Faz 1 (şu an):** Sunucu yok. Havuz payı `config.realm.demo`'daki örnek realm'e göre hesaplanıyor. Yatırma ve çekme sadece bu tarayıcıda "demo" olarak çalışıyor.
-`?dev=1` ile açınca Realm sekmesinde iki test butonu çıkar: "+10,000 DGN (test deposit)" ve "+1 day (test)".
-
-**Simülasyon**
-- `node sim/balance.mjs`: bedava ve harcayan oyuncunun dalga süreleri (düşmanlara karşı).
-- `node sim/realm.mjs`: 100–2.000 oyuncuda tip başına günlük kazanç, geri dönüş süresi, borsa baskısı ve ekip maliyeti.
-- `node sim/realm.mjs 1000 --days`: gün gün döküm.
-
-| Oyuncu | Bedava $/gün | $10 yatıran | $60 | $300 | $10 geri dönüş | $60 | $300 |
-|---|---|---|---|---|---|---|---|
-| 100 | 1,09 | 6,45 | 9,87 | 19,74 | 2 gün | 5 gün | 15 gün |
-| 500 | 0,25 | 0,92 | 2,26 | 4,61 | 2 gün | 7 gün | 30+ |
-| 1.000 | 0,12 | 0,47 | 1,19 | 2,37 | 3 gün | 10 gün | 30+ |
-| 2.000 | 0,06 | 0,24 | 0,61 | 1,21 | 3 gün | 19 gün | 30+ |
+  - Önce yatırdığın kadar (günlük sınırsız), sonra sadece o günün havuz payı. Fazlası oyunda kalır.
+  - İki adım: oyun → kasa (%5 komisyon, yarısı yakılır) → cüzdan.
+  - Cüzdanda 12 saattir 20K+ DGN tutma şartı var.
+- **Forge:** Oyun içi DGN ile hasar ve can ×1,10 / seviye.
+- **Sezon:** 10 gün. Dalga, gold, seviye, geliştirmeler, Forge ve oyunda üretilen DGN sıfırlanır. Anahtarlar ve çekilmemiş anapara kalır.
+- **Faz 1 = test modu:** Gerçek token yok. Cüzdan ekranındaki Deposit butonları demo token verir, cüzdana gönderim kapalıdır. `?dev=1` ile "+1 gün" ve "cüzdana gönderimi simüle et" test butonları çıkar.
 
 Sonraki fazlar (sunucu kaydı, cüzdanla giriş, Solana yatırımı, NFT kahraman) `docs/YENI_SOHBET_PROMPT.md` içinde.

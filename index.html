@@ -34,7 +34,13 @@
   <div class="hud-right">
     <div class="wallet-row">
       <div class="gold panel"><span class="coin"></span><b id="hud-gold">0</b></div>
-      <div class="gems panel" title="DGN token (deposited + earned)"><span class="gem">◈</span><b id="hud-gems">0</b></div>
+      <div class="gems panel" title="Your in-game DGN balance"><span class="gem">◈</span><b id="hud-gems">0</b></div>
+    </div>
+    <div id="dgn-panel" class="panel dgn-panel">
+      <div class="dgn-live" title="Produced and not yet claimed"><span class="gem">◈</span><b id="dgn-live">0.000</b></div>
+      <div class="dgn-rate" id="dgn-rate" title="Production goes into your in-game balance. You can take out up to what you deposited, plus today's pool share.">+0 / h</div>
+      <div class="dgn-btns"><button id="btn-claim" class="btn small">Claim</button><button id="btn-wallet" class="btn small">Wallet</button></div>
+      <div class="dgn-season" id="dgn-season">Season 1</div>
     </div>
     <div id="hud-rush" class="rush-chip hidden">💰 Gold Rush ×2 · <span id="hud-rush-t">0h</span></div>
     <div class="hud-buttons">
@@ -108,7 +114,8 @@
     <div class="tabs">
       <button class="tab active" data-tab="upg">Upgrades</button>
       <button class="tab" data-tab="skl">Skills</button>
-      <button class="tab gems-tab" data-tab="realm">◈ Realm</button>
+      <button class="tab gems-tab" data-tab="keys">🗝 Keys</button>
+      <button class="tab gems-tab" data-tab="forge">⚒ Forge</button>
       <button class="tab gems-tab" data-tab="store">Store</button>
       <button class="tab" data-tab="stats">Stats</button>
     </div>
@@ -152,8 +159,34 @@
     <div class="off-away" id="off-away">You were away for 5h 12m</div>
     <div class="off-sub" id="off-sub">Your hero kept fighting at Wave 12</div>
     <div class="off-gold"><span class="coin"></span><b id="off-gold">+0</b></div>
+    <div class="off-dgn hidden" id="off-dgn"></div>
     <div class="off-note" id="off-note">Offline earnings are capped at 12 hours.</div>
     <button class="btn big" id="btn-offline-collect">Collect</button>
+  </div>
+</div>
+
+<!-- Mühürlü Kapı (Ekonomi v5) -->
+<div id="screen-gate" class="screen modal hidden">
+  <div class="panel gate">
+    <div class="gate-eyebrow" id="gate-eyebrow">Wave 21</div>
+    <div class="gate-title">THE SEALED GATE</div>
+    <div class="gate-icon" id="gate-icon">🥉</div>
+    <div class="gate-main" id="gate-main">Deposit to open waves 21–30</div>
+    <div class="gate-small">This is the way to earn more.</div>
+    <div class="gate-rate" id="gate-rate"></div>
+    <div class="gate-actions"><button class="btn big" id="btn-gate-keys">🗝 Get Keys</button></div>
+    <div class="gate-count" id="gate-count">Returning to Wave 15 in 10…</div>
+  </div>
+</div>
+
+<!-- Cüzdan / çekim (Ekonomi v5) -->
+<div id="screen-wallet" class="screen modal hidden">
+  <div class="panel wallet">
+    <div class="shop-head">
+      <div><div class="shop-title">DGN Wallet</div><div class="shop-hero" id="wallet-sub">Season 1</div></div>
+      <button class="btn small close" id="btn-wallet-close">✕</button>
+    </div>
+    <div class="wallet-body" id="wallet-body"></div>
   </div>
 </div>
 

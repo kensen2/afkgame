@@ -145,6 +145,15 @@ export class Game {
 
   // ---------- Dalga ----------
   startWave() {
+    // Ekonomi v5: 20'den sonrası anahtar ister. Anahtar yoksa Mühürlü Kapı, sonra döngü.
+    const next = this.wave + 1;
+    if (!Economy.enterWave(next)) {
+      this.phase = 'gate';
+      this.gateT = 0;
+      this.gateWave = next;
+      this.ui.showGate(next);
+      return;
+    }
     this.wave++;
     const w = this.wave;
     const fi = F.floorOf(w);
@@ -243,7 +252,7 @@ export class Game {
       const r = Economy.bossFirstKill(this.wave);
       if (r && r.tomes) {
         this.fx.floater(this.hero.pos.clone().setY(3.8), `+${r.tomes} 📘`, 'gems');
-        setTimeout(() => this.ui.toast(`First boss kill! +${r.tomes} Skill Tome${r.tomes > 1 ? 's' : ''} · Dungeon Power up`), 1200);
+        setTimeout(() => this.ui.toast(`First boss kill! +${r.tomes} Skill Tome${r.tomes > 1 ? 's' : ''}`), 1200);
       }
     }
     const lv = Economy.addXp(e.xp);
@@ -407,6 +416,17 @@ export class Game {
         hero.heal(hero.stats.maxHp * 0.15);
         this.ui.waveCleared(this);
         this.audio.setMusic('dungeon');
+      }
+    }
+    if (this.phase === 'gate') {
+      this.gateT += dt / (Economy.data.settings.speed || 1);
+      if (this.gateT >= CONFIG.v5.gateSeconds) {
+        this.ui.hideGate();
+        // kapı ekranındayken anahtar aldıysa devam et, yoksa döngüye dön
+        if (Economy.enterWave(this.gateWave)) this.wave = this.gateWave - 1;
+        else { this.wave = Economy.loopWave(this.gateWave) - 1; this.ui.banner(`Back to Wave ${this.wave + 1}`); }
+        this.phase = 'walking';
+        this.walkTarget = hero.pos.x + 4;
       }
     }
     if (this.phase === 'loot') {

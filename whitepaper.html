@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>AFK Dungeon Whitepaper</title>
-<meta name="description" content="How AFK Dungeon's $DGN economy works: the daily pool, Dungeon Power, the Vault, relics, withdrawals, seasons and risks." />
+<meta name="description" content="How AFK Dungeon's $DGN economy works: hourly production, keys, the two daily pools, withdrawals, burns, seasons and risks." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Nunito:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 <style>
@@ -82,15 +82,15 @@
     <div class="brand">AFK<span>DUNGEON</span></div>
     <ol>
       <li><a href="#game">The game</a></li>
-      <li><a href="#currencies">Two currencies</a></li>
-      <li><a href="#flow">How $DGN moves</a></li>
-      <li><a href="#pool">The daily pool</a></li>
-      <li><a href="#dp">Dungeon Power &amp; Vault</a></li>
-      <li><a href="#spend">What $DGN buys</a></li>
-      <li><a href="#withdraw">Taking it out</a></li>
+      <li><a href="#production">Hourly production</a></li>
+      <li><a href="#free">Free play: waves 1–20</a></li>
+      <li><a href="#keys">Keys and sealed gates</a></li>
+      <li><a href="#pools">The two daily pools</a></li>
+      <li><a href="#withdraw">Taking DGN out</a></li>
+      <li><a href="#spend">Forge and store</a></li>
       <li><a href="#season">Seasons</a></li>
       <li><a href="#numbers">The numbers</a></li>
-      <li><a href="#treasury">Treasury</a></li>
+      <li><a href="#burn">Burns and transparency</a></li>
       <li><a href="#roadmap">Roadmap</a></li>
       <li><a href="#risks">Risks</a></li>
     </ol>
@@ -99,179 +99,125 @@
 
   <main>
     <header class="hero">
-      <div class="eyebrow">Whitepaper · Economy v4 · draft</div>
-      <h1>One dungeon, one coin, <em>a fixed daily pool</em></h1>
-      <p class="lede">AFK Dungeon is a browser idle-battler: your hero fights wave after wave on its own, even while you are away. Every day the realm releases a fixed supply of <span class="tok">$DGN</span>, split between all players by how strong their dungeon is. This paper explains where the coin comes from, where it goes, and what the numbers look like for 100 to 2,000 players.</p>
+      <div class="eyebrow">Whitepaper · Economy v5 · draft</div>
+      <h1>Fight deeper, <em>produce more</em></h1>
+      <p class="lede">AFK Dungeon is a browser idle-battler. Your hero clears wave after wave on their own, and every wave you reach raises how much <span class="tok">$DGN</span> your dungeon produces each hour. Waves 1–20 are free. Keys open the sealed gates beyond. Seasons last 10 days.</p>
       <div class="facts">
-        <div><b>2,000,000</b>$DGN pool base / day</div>
-        <div><b>30%</b>of every spend burned</div>
-        <div><b>30 days</b>per season</div>
+        <div><b>10 days</b>per season</div>
+        <div><b>2 × 10M</b>DGN daily pools</div>
+        <div><b>2,000 / h</b>free production cap</div>
         <div><b>5%</b>withdrawal fee</div>
       </div>
     </header>
 
     <section id="game">
       <h2><span class="n">1</span>The game</h2>
-      <p>Two heroes, the <b>Blue-Gold Warrior</b> (tank) and the <b>Lion Blade</b> (damage), push through 100 waves of skeletons and fallen adventurers across four dungeon floors. Every 5th wave is elite, every 10th is a boss, and wave 100 is Malakor, Lord of the Dungeon.</p>
-      <p>Combat is automatic. You decide what to upgrade, which skills to raise and when to spend. Death is not a loss: you restart one wave back with everything you earned. While the game is closed your hero keeps farming at a reduced offline rate.</p>
+      <p>Two heroes, the <b>Blue-Gold Warrior</b> and the <b>Lion Blade</b>, push through 100 waves across ten dungeon floors, from the Bone Crypt to Malakor's Throne. Every 5th wave is elite, every 10th is a boss. Enemies drop gold, and gold buys upgrades and skills. Combat is automatic, and your dungeon keeps producing for up to 12 hours while the game is closed.</p>
     </section>
 
-    <section id="currencies">
-      <h2><span class="n">2</span>Two currencies</h2>
+    <section id="production">
+      <h2><span class="n">2</span>Hourly production</h2>
+      <p>Your production rate is set by the highest wave you have cleared this season. It is shown live in the top-right corner and builds up second by second. Press <b>Claim</b> to move it into your in-game balance.</p>
       <div class="tablewrap"><table>
-        <thead><tr><th></th><th style="text-align:left">Gold</th><th style="text-align:left">$DGN</th></tr></thead>
+        <thead><tr><th>Wave</th><th>1</th><th>5</th><th>10</th><th>15</th><th>20</th><th>30</th><th>40</th><th>50</th><th>60</th><th>100</th></tr></thead>
+        <tbody><tr><td>DGN / hour</td><td class="m">100</td><td class="m">646</td><td class="m">1,145</td><td class="m">1,588</td><td class="m">2,000</td><td class="m">4,083</td><td class="m">7,208</td><td class="m">12,417</td><td class="m">20,750</td><td class="m">199,917</td></tr></tbody>
+      </table></div>
+      <p>Production goes into your in-game balance. You can spend all of it in the game. How much of it can leave the game is set by two rules in section 6.</p>
+    </section>
+
+    <section id="free">
+      <h2><span class="n">3</span>Free play: waves 1–20</h2>
+      <p>Anyone can play without paying. Gold upgrades take a free player to wave 20, where production reaches its free cap of 2,000 DGN an hour. After the wave 20 boss the <b>Sealed Gate</b> appears for ten seconds, then the hero returns to wave 15 and keeps looping 15–20. Free players take their share from the free pool every day.</p>
+    </section>
+
+    <section id="keys">
+      <h2><span class="n">4</span>Keys and sealed gates</h2>
+      <p>Every wave after 20 needs one key. A key is used automatically the first time you enter a wave, and that wave stays open for the rest of the season. Keys come in packs of ten, one tier for every ten waves. Prices are set in USD and converted at the current DGN price. Unused keys carry over to the next season.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Key</th><th>Opens</th><th>10 keys</th><th>Production at the top</th></tr></thead>
         <tbody>
-          <tr><td>What it is</td><td style="text-align:left">In-game currency</td><td style="text-align:left">The game's token (Solana)</td></tr>
-          <tr><td>Comes from</td><td style="text-align:left">Enemies, offline farming, Time Skip</td><td style="text-align:left">Deposits and the daily pool only</td></tr>
-          <tr><td>Spent on</td><td style="text-align:left">Hero upgrades, skills, first two Vault levels</td><td style="text-align:left">Relics, higher Vault levels, boosts</td></tr>
-          <tr><td>Can leave the game</td><td style="text-align:left">Never</td><td style="text-align:left">Yes, under the rules in section 7</td></tr>
+          <tr><td>🥉 Bronze</td><td class="m">21–30</td><td class="m">$10 (single key $4)</td><td class="m">4,083 / h</td></tr>
+          <tr><td>🥈 Silver</td><td class="m">31–40</td><td class="m">$15</td><td class="m">7,208 / h</td></tr>
+          <tr><td>🥇 Gold</td><td class="m">41–50</td><td class="m">$25</td><td class="m">12,417 / h</td></tr>
+          <tr><td>💠 Platinum</td><td class="m">51–60</td><td class="m">$40</td><td class="m">20,750 / h</td></tr>
+          <tr><td>💎 Diamond</td><td class="m">61–70</td><td class="m">$60</td><td class="m">33,250 / h</td></tr>
+          <tr><td>❤️ Ruby</td><td class="m">71–80</td><td class="m">$100</td><td class="m">54,083 / h</td></tr>
+          <tr><td>🖤 Obsidian</td><td class="m">81–90</td><td class="m">$200</td><td class="m">95,750 / h</td></tr>
+          <tr><td>🐉 Dragon</td><td class="m">91–100</td><td class="m">$500</td><td class="m">199,917 / h</td></tr>
         </tbody>
       </table></div>
-      <p>Gold is never converted into $DGN, and no in-game action mints $DGN. The only source of new coin for players is the daily pool, whose size is set in advance. This is what keeps supply predictable when the player count grows.</p>
+      <p>Key packs are bought with DGN you deposited. A single Bronze key can also be bought with DGN you produced, at a higher price, so a free player can grind past wave 20 slowly. Each tier is tuned so that its production pays back its price in about two days at the top of the tier.</p>
     </section>
 
-    <section id="flow">
-      <h2><span class="n">3</span>How $DGN moves</h2>
-      <div class="flow">
-        <div><b>Deposit</b>Buy $DGN on the market and bring it into the game. No fee on the way in.</div>
-        <div><b>Spend</b>Relics, Vault levels and boosts. Each spend is split: burned, back to the pool, treasury.</div>
-        <div><b>Daily pool</b>A fixed amount plus a slice of yesterday's spending, split by counted Dungeon Power.</div>
-        <div><b>Withdraw</b>Unspent deposits any time. Pool earnings once a day, up to today's share, 5% fee.</div>
-      </div>
-      <h3>Every $DGN spent in the game is split three ways</h3>
-      <div class="split" role="img" aria-label="30% burned, 30% to tomorrow's pool, 40% to treasury">
-        <span style="width:30%;background:var(--ember)"></span><span style="width:30%;background:var(--token)"></span><span style="width:40%;background:var(--gold-d)"></span>
-      </div>
-      <div class="legend"><span><i style="background:var(--ember)"></i>30% burned on chain</span><span><i style="background:var(--token)"></i>30% into tomorrow's pool</span><span><i style="background:var(--gold-d)"></i>40% treasury</span></div>
-    </section>
-
-    <section id="pool">
-      <h2><span class="n">4</span>The daily pool</h2>
-      <p>Each realm day the pool is refilled and split between every active player. It is not first-come: the whole day's pool is divided by weight, so everyone who played that day gets a share.</p>
-      <div class="formula">pool(day)   = 2,000,000 + 30% × $DGN spent in game yesterday
-your share  = pool × your counted DP ÷ everyone's counted DP</div>
-      <p>The base comes from the season reserve. The second part grows with activity: when players spend more, tomorrow's pool is bigger. That softens the main weakness of a purely fixed pool, where every new player makes everyone else's share smaller.</p>
-      <p>Your share builds up hour by hour, including while the game is closed, for up to 24 hours. Come back once a day and nothing is lost.</p>
-    </section>
-
-    <section id="dp">
-      <h2><span class="n">5</span>Dungeon Power &amp; the Vault</h2>
-      <p>Your weight in the pool is your <b>Dungeon Power (DP)</b>. It has two parts:</p>
-      <div class="formula">DP = season best wave × 1  +  account level × 0.5  +  relic DP</div>
-      <p>Progress DP rewards playing. Relic DP is bought with $DGN and lasts the season. A free player who reaches wave 90 has roughly 200 DP. A single Bone Idol adds 100.</p>
-      <h3>The Vault caps what counts</h3>
-      <p>Your DP only counts up to a multiple of the realm's average DP. The Vault sets that multiple. A huge collection of relics behind a small Vault counts as a small one, so the biggest wallets cannot take the whole pool.</p>
-      <div class="tablewrap"><table>
-        <thead><tr><th>Vault level</th><th>Counts up to</th><th>Cost</th></tr></thead>
-        <tbody>
-          <tr><td>1</td><td class="m">1.25× average</td><td class="m">free</td></tr>
-          <tr><td>2</td><td class="m">2× average</td><td class="m">15,000 gold</td></tr>
-          <tr><td>3</td><td class="m">3× average</td><td class="m">20,000 $DGN</td></tr>
-          <tr><td>4</td><td class="m">4× average</td><td class="m">60,000 $DGN</td></tr>
-          <tr><td>5</td><td class="m">6× average</td><td class="m">150,000 $DGN</td></tr>
-          <tr><td>6</td><td class="m">8× average</td><td class="m">300,000 $DGN</td></tr>
-          <tr><td>7</td><td class="m">10× average</td><td class="m">600,000 $DGN</td></tr>
-        </tbody>
-      </table></div>
-    </section>
-
-    <section id="spend">
-      <h2><span class="n">6</span>What $DGN buys</h2>
-      <h3>Relics (Dungeon Power)</h3>
-      <div class="tablewrap"><table>
-        <thead><tr><th>Relic</th><th>Price</th><th>DP</th><th>≈ USD at launch estimate</th></tr></thead>
-        <tbody>
-          <tr><td>🕯️ Crypt Candle</td><td class="m">1,000</td><td class="m">10</td><td class="m">$0.10</td></tr>
-          <tr><td>💀 Bone Idol</td><td class="m">10,000</td><td class="m">100</td><td class="m">$1</td></tr>
-          <tr><td>🚩 War Banner</td><td class="m">50,000</td><td class="m">520</td><td class="m">$5</td></tr>
-          <tr><td>🐉 Dragon Skull</td><td class="m">250,000</td><td class="m">2,750</td><td class="m">$25</td></tr>
-        </tbody>
-      </table></div>
-      <h3>Boosts (speed, not power)</h3>
-      <div class="tablewrap"><table>
-        <thead><tr><th>Item</th><th>Price</th><th style="text-align:left">Effect</th></tr></thead>
-        <tbody>
-          <tr><td>⏩ Time Skip</td><td class="m">3,000</td><td style="text-align:left">Collect 2 hours of offline gold now</td></tr>
-          <tr><td>💰 Gold Rush</td><td class="m">5,000</td><td style="text-align:left">×2 gold for 24 hours</td></tr>
-          <tr><td>🌙 Idle Pass</td><td class="m">30,000</td><td style="text-align:left">Offline rate 10% → 25%, cap 12h → 24h, for the season</td></tr>
-          <tr><td>📘 Skill Tome</td><td class="m">2,000</td><td style="text-align:left">Needed for skill Lv 4+ (bosses also drop them)</td></tr>
-          <tr><td>💖 Revive</td><td class="m">1,000</td><td style="text-align:left">Continue from the wave you fell on</td></tr>
-        </tbody>
-      </table></div>
-      <p>Boosts make you climb faster, and a higher wave raises progress DP. They never multiply your pool share directly.</p>
+    <section id="pools">
+      <h2><span class="n">5</span>The two daily pools</h2>
+      <p>Every day the realm releases two fixed pools: <b>10,000,000 DGN for free players</b> and <b>10,000,000 DGN for players who deposited</b> this season. Each pool is split by production rate, so a stronger dungeon takes a bigger share. The pool is fixed: when more lords join, every share gets smaller. Your share is capped at your own production, and whatever is not handed out is burned.</p>
+      <div class="formula">your share (DGN / day) = pool × your production ÷ everyone's production
+                         never more than your own production</div>
+      <p>For players who deposited, pool earnings start <b>48 hours after the first deposit</b> of the season. During those two days their production pays back what they deposited.</p>
     </section>
 
     <section id="withdraw">
-      <h2><span class="n">7</span>Taking it out</h2>
+      <h2><span class="n">6</span>Taking DGN out</h2>
       <ul>
-        <li><b>Your own deposit comes first.</b> $DGN you deposited and have not spent can be withdrawn at any time, with no fee and no daily limit. It never touches the pool.</li>
-        <li><b>Pool earnings</b> can be withdrawn once per realm day, up to that day's share, with a 5% fee. Whatever you do not take stays in the game, where you can spend it or take it on a later day.</li>
-        <li><b>New accounts wait 12 hours</b> before their first pool withdrawal. The same rule applies to everyone.</li>
-        <li><b>Spending uses pool earnings first</b>, so your deposit stays withdrawable for as long as possible.</li>
-        <li>The vault contract has a <b>daily global cap</b> and keeps only a few days of float, so a compromised key can never reach the whole treasury.</li>
+        <li><b>What you deposited comes first.</b> Up to the amount you deposited this season can leave without the daily limit, as your production refills your balance.</li>
+        <li><b>Beyond that, today's pool share.</b> Even if more has built up in your balance, only today's share can leave. The rest stays in the game for keys, the Forge and events.</li>
+        <li><b>Two steps.</b> First move DGN from the game into the vault, where the 5% fee is taken (half of it is burned). Then send it from the vault to your wallet.</li>
+        <li><b>Holding rule.</b> Your wallet must have held at least 20,000 DGN for the last 12 hours. This stops lords from farming the pool and leaving the same hour.</li>
       </ul>
+    </section>
+
+    <section id="spend">
+      <h2><span class="n">7</span>Forge and store</h2>
+      <p>The <b>Forge</b> multiplies your hero's damage and health by ×1.10 per level and is paid from your in-game balance. Keys open waves; the Forge makes you strong enough to clear them. The store sells Time Skip, Gold Rush, Idle Pass, Skill Tomes and Revive, also paid in DGN.</p>
     </section>
 
     <section id="season">
       <h2><span class="n">8</span>Seasons</h2>
-      <p>A season lasts 30 days. Relic DP, Vault levels and the Idle Pass belong to the season. When it ends, Dungeon Power resets, so a player who joins on day one of the next season starts on equal terms. Heroes, upgrades and account level stay.</p>
-      <p>Unspent $DGN, both deposited and earned, is never reset.</p>
+      <p>A season lasts 10 days. When it ends, waves, gold, levels, upgrades, the Forge and the DGN produced inside the game are reset, so everyone starts the next season on equal terms. Unused keys carry over, and any part of your deposit you have not yet taken out stays yours.</p>
     </section>
 
     <section id="numbers">
       <h2><span class="n">9</span>The numbers</h2>
-      <p>Everything below comes from the simulation in the game's repository (<code>sim/model.mjs</code> and <code>sim/realm.mjs</code>). It plays both heroes against the real enemy stats, then runs a 30-day season. We assume 83% of players never deposit. 12% deposit $10, 4% deposit $60 and 1% deposit $300.</p>
-      <h3>How far players get (waves reached)</h3>
+      <p>From the simulation in the repository (<code>sim/v5.mjs</code>). It assumes 80% of players stay free and the rest reach Bronze (10%), Silver (5%), Gold (3%) or Platinum (2%). The table shows what a fully developed player can take out per day from the pools, at the launch estimate of 10,000 DGN = $1.</p>
       <div class="tablewrap"><table>
-        <thead><tr><th>Player</th><th>Day 1</th><th>Day 3</th><th>Day 7</th><th>Day 14</th><th>Day 30</th></tr></thead>
+        <thead><tr><th>Players</th><th>Free (wave 20)</th><th>Bronze (30)</th><th>Silver (40)</th><th>Gold (50)</th><th>Platinum (60)</th></tr></thead>
         <tbody>
-          <tr><td>Free, 2h play a day</td><td class="m">28</td><td class="m">40</td><td class="m">51</td><td class="m">64</td><td class="m">91</td></tr>
-          <tr><td>Depositor with boosts, 3h a day</td><td class="m">41</td><td class="m">55</td><td class="m">81</td><td class="m">100</td><td class="m">100</td></tr>
+          <tr><td class="m">250</td><td class="m">$4.80</td><td class="m">$9.80</td><td class="m">$17.30</td><td class="m">$29.80</td><td class="m">$49.80</td></tr>
+          <tr><td class="m">500</td><td class="m">$2.85</td><td class="m">$5.25</td><td class="m">$9.26</td><td class="m">$15.96</td><td class="m">$26.67</td></tr>
+          <tr><td class="m">1,000</td><td class="m">$1.42</td><td class="m">$2.62</td><td class="m">$4.63</td><td class="m">$7.98</td><td class="m">$13.33</td></tr>
+          <tr><td class="m">2,000</td><td class="m">$0.71</td><td class="m">$1.31</td><td class="m">$2.32</td><td class="m">$3.99</td><td class="m">$6.67</td></tr>
         </tbody>
       </table></div>
-      <h3>Daily pool share on day 30 (USD at 10,000 $DGN = $1)</h3>
-      <div class="tablewrap"><table>
-        <thead><tr><th>Players</th><th>Free</th><th>$10 depositor</th><th>$60 depositor</th><th>$300 depositor</th><th>$10 back in</th><th>$60 back in</th><th>$300 back in</th></tr></thead>
-        <tbody>
-          <tr><td class="m">100</td><td class="m">$1.09</td><td class="m">$6.45</td><td class="m">$9.87</td><td class="m">$19.74</td><td><span class="pill">2 days</span></td><td><span class="pill">5 days</span></td><td><span class="pill">15 days</span></td></tr>
-          <tr><td class="m">250</td><td class="m">$0.51</td><td class="m">$1.98</td><td class="m">$4.08</td><td class="m">$8.90</td><td><span class="pill">2 days</span></td><td><span class="pill">6 days</span></td><td><span class="pill wait">24 days</span></td></tr>
-          <tr><td class="m">500</td><td class="m">$0.25</td><td class="m">$0.92</td><td class="m">$2.26</td><td class="m">$4.61</td><td><span class="pill">2 days</span></td><td><span class="pill">7 days</span></td><td><span class="pill wait">30+ days</span></td></tr>
-          <tr><td class="m">1,000</td><td class="m">$0.12</td><td class="m">$0.47</td><td class="m">$1.19</td><td class="m">$2.37</td><td><span class="pill">3 days</span></td><td><span class="pill">10 days</span></td><td><span class="pill wait">30+ days</span></td></tr>
-          <tr><td class="m">1,500</td><td class="m">$0.08</td><td class="m">$0.32</td><td class="m">$0.80</td><td class="m">$1.60</td><td><span class="pill">3 days</span></td><td><span class="pill">14 days</span></td><td><span class="pill wait">30+ days</span></td></tr>
-          <tr><td class="m">2,000</td><td class="m">$0.06</td><td class="m">$0.24</td><td class="m">$0.61</td><td class="m">$1.21</td><td><span class="pill">3 days</span></td><td><span class="pill wait">19 days</span></td><td><span class="pill wait">30+ days</span></td></tr>
-        </tbody>
-      </table></div>
-      <p>"Back in" is the day a player who joined on day one has withdrawn, together with their still-withdrawable deposit, as much as they put in. These are simulation results at a fixed token price, not a promise of returns. If the price falls, every figure in USD falls with it.</p>
-      <div class="note"><b>What the table shows.</b> Free players earn a little. Depositors earn several times more, and the gap grows with the deposit. As the realm grows, every share gets smaller, because the pool is shared. Players who join early do better than players who join late.</div>
+      <p>These are simulation results at a fixed token price, not a promise. If the price falls, every USD figure falls with it, and more players means smaller shares.</p>
     </section>
 
-    <section id="treasury">
-      <h2><span class="n">10</span>Treasury &amp; sustainability</h2>
-      <p>The pool base (2,000,000 $DGN a day, about 60M per season) is paid from a season reserve set aside at launch. 40% of all in-game spending and the 5% withdrawal fee flow back to the treasury. In the simulation the reserve's net cost per season is about $4,400 to $5,400 at the launch price, depending on player count. Burns remove 10M to 40M $DGN per season.</p>
-      <p>The pool base will be reviewed each season and published before the season starts. If the realm is small, the base is lowered so players do not sell more than they bring in.</p>
+    <section id="burn">
+      <h2><span class="n">10</span>Burns and transparency</h2>
+      <p>The game shows two separate numbers. <b>Burned on-chain</b> counts only real burns you can verify on the Robinhood Chain explorer: half of every withdrawal fee and every pool share left undistributed. <b>Spent in the dungeon</b> counts DGN spent inside the game on keys, the Forge and the store; it is removed from the game but is not an on-chain burn.</p>
+      <p>The team earns from trading fees on the DGN market and does not trade the token itself. The vault, fee and burn addresses will be published here at launch.</p>
     </section>
 
     <section id="roadmap">
       <h2><span class="n">11</span>Roadmap</h2>
-      <div class="phase"><div class="tag">Phase 1<small>now</small></div><p><b>In the browser.</b> Economy v4 rules, Realm and Store screens, relics, Vault, daily share and withdrawal rules running against a demo realm. No real coin moves.</p></div>
-      <div class="phase"><div class="tag">Phase 2</div><p><b>Accounts and server.</b> Sign in with a Solana wallet. Saves, Dungeon Power and the daily pool move to the server. Gold income is rate-limited on the server so the pool cannot be farmed with edited saves.</p></div>
-      <div class="phase"><div class="tag">Phase 3</div><p><b>Deposits and withdrawals.</b> Test on devnet first. Deposits are verified on chain. Withdrawals are signed by the server and claimed from a vault contract with a daily cap. Security review before mainnet.</p></div>
-      <div class="phase"><div class="tag">Phase 4</div><p><b>Growth.</b> Clans and referrals, a leaderboard, the Lion Blade NFT hero (cosmetic), and the first full season.</p></div>
+      <div class="phase"><div class="tag">Phase 1<small>now</small></div><p><b>In the browser, test mode.</b> Production, keys, sealed gates, the Forge, the two-step withdrawal and seasons run against a demo realm with demo tokens.</p></div>
+      <div class="phase"><div class="tag">Phase 2</div><p><b>Server and wallets.</b> Sign in with an EVM wallet. Balances, production and the daily pools move to the server. Live DGN price, holding-rule checks and daily on-chain burns.</p></div>
+      <div class="phase"><div class="tag">Phase 3</div><p><b>Token launch on Robinhood Chain.</b> Real deposits, vault contract with a daily cap, withdrawals to wallets, in-game buy button. Security review first.</p></div>
+      <div class="phase"><div class="tag">Phase 4</div><p><b>Events and growth.</b> Mid-season events for built-up balances, clans, referrals, leaderboards and the Lion Blade NFT hero.</p></div>
     </section>
 
     <section id="risks">
       <h2><span class="n">12</span>Risks</h2>
       <ul>
-        <li><b>This is a game, not an investment.</b> Nothing here promises a return. You can lose what you deposit if the token price falls or the game closes.</li>
-        <li><b>The pool depends on new activity.</b> Payouts come from the season reserve and from other players' spending. If fewer people join or spend, shares shrink and the token price is likely to fall.</li>
-        <li><b>Late joiners earn less.</b> Shares are highest early in a season and early in the game's life.</li>
-        <li><b>Rules can change between seasons.</b> Pool size, splits and prices may be adjusted and will be announced before a season starts.</li>
-        <li><b>Regulation.</b> Crypto payments and token rewards are regulated differently in each country and may be restricted where you live. Check your local rules before depositing.</li>
-        <li><b>Smart-contract and key risk.</b> Contracts can have bugs. The daily cap and limited float reduce, but do not remove, that risk.</li>
+        <li><b>This is a game, not an investment.</b> Nothing here promises a return. The token price can fall and you can lose what you put in.</li>
+        <li><b>Shares shrink as the realm grows.</b> Pools are fixed; more players means less for each.</li>
+        <li><b>Rules can change between seasons.</b> Pool sizes, key prices and rates may be adjusted and will be announced before a season starts.</li>
+        <li><b>Regulation.</b> Crypto payments and token rewards are treated differently in each country. Check the rules where you live.</li>
+        <li><b>Contract and key risk.</b> Smart contracts can have bugs. A daily cap and a limited vault float reduce, but do not remove, that risk.</li>
       </ul>
     </section>
 
-    <footer>AFK Dungeon · Economy v4 draft · $DGN is a placeholder ticker. Figures use a launch estimate of 10,000 $DGN = $1 and will be updated at launch.</footer>
+    <footer>AFK Dungeon · Economy v5 draft · $DGN is a placeholder ticker. Figures use a launch estimate of 10,000 DGN = $1 and will be updated at launch.</footer>
   </main>
 </div>
 </body>

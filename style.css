@@ -286,3 +286,35 @@ input[type=range]:disabled { opacity: 0.35; cursor: not-allowed; }
 .realm-dev { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .hint a { color: #8fe3ff; }
 #btn-whitepaper { text-decoration: none; display: inline-block; text-align: center; }
+
+/* ---- Ekonomi v5: üretim paneli, Mühürlü Kapı, cüzdan ---- */
+.dgn-panel { margin-top: 6px; padding: 8px 12px; display: grid; gap: 4px; min-width: 190px; text-align: right; }
+.dgn-live { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 22px; color: #8fe3ff; font-variant-numeric: tabular-nums; }
+.dgn-live .gem { margin-right: 6px; font-size: 16px; }
+.dgn-rate { font-size: 13px; color: #9affd0; font-weight: 800; cursor: help; font-variant-numeric: tabular-nums; }
+.dgn-btns { display: flex; gap: 6px; justify-content: flex-end; }
+.dgn-btns .btn { padding: 4px 10px; font-size: 12px; }
+.dgn-season { font-size: 11px; color: var(--muted); }
+.off-dgn { color: #8fe3ff; font-size: 16px; margin: -4px 0 6px; }
+.gate { text-align: center; max-width: 460px; padding: 26px 28px; display: grid; gap: 8px; justify-items: center; border-color: rgba(143,227,255,0.35); }
+.gate-eyebrow { font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.gate-title { font-family: 'Cinzel', serif; font-weight: 800; font-size: 30px; color: var(--gold); letter-spacing: .06em; }
+.gate-icon { font-size: 56px; line-height: 1.1; }
+.gate-main { font-size: 18px; font-weight: 800; }
+.gate-small { font-size: 12px; color: var(--muted); font-style: italic; margin-top: -4px; }
+.gate-rate { font-size: 13px; color: #9affd0; }
+.gate-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wallet { width: min(760px, 94vw); max-height: 90vh; display: flex; flex-direction: column; }
+.wallet-body { overflow-y: auto; display: grid; gap: 10px; padding: 2px; margin-top: 12px; }
+.wgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.wbox { padding: 10px 12px; background: rgba(40,32,54,0.55); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; display: grid; gap: 4px; font-size: 14px; }
+.wbox span, .wbox small, .wlabel { color: var(--muted); font-size: 12px; }
+.wbox b { font-variant-numeric: tabular-nums; }
+.wgrid .wbox b { font-size: 18px; color: #8fe3ff; }
+.wbox.test { border-color: rgba(255,180,92,0.5); color: #ffcf8f; }
+.wbox.line b { color: #fff; }
+.wrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 4px 0; }
+.wrow input { flex: 1; min-width: 120px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 8px; padding: 6px 10px; font: inherit; }
+.market .mrow { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 4px 10px; align-items: baseline; }
+.key-btns { display: flex; flex-direction: column; gap: 6px; }
+@media (max-width: 700px) { .dgn-panel { min-width: 0; padding: 6px 8px; } .dgn-live { font-size: 16px; } .dgn-rate { font-size: 11px; } .dgn-season { display: none; } .dgn-btns .btn { padding: 3px 8px; font-size: 11px; } .market .mrow { grid-template-columns: auto 1fr; } }

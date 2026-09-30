@@ -1,9 +1,8 @@
 // =====================================================================
 //  EKONOMİ + KAYIT
 //  Gold, XP, hesap seviyesi, geliştirmeler ve karakter sahipliği burada.
-//  İleride kripto (Solana) entegrasyonu yapılacağında sadece bu modül
-//  değişecek: load()/save() zincirden okuyup yazabilir, spendGold() bir
-//  işlem (transaction) olabilir. Oyunun geri kalanı bu API'yi kullanır.
+//  Ekonomi v5: saatlik DGN üretimi, anahtarlar, iki havuz, çekim kuralları, 10 günlük sezon.
+//  Faz 1: her şey tarayıcıda (demo). Faz 2'de bakiye/havuz sunucuya, Faz 3'te kasa kontratına taşınır.
 // =====================================================================
 import { CONFIG, F } from '../config.js';
 
@@ -18,24 +17,28 @@ function freshHero() {
 function freshSave() {
   return {
     version: 1,
-    econVer: 4,          // ekonomi sürümü (değişince eski ilerleme sıfırlanır)
+    econVer: 5,          // ekonomi sürümü (değişince eski ilerleme sıfırlanır)
     gold: 0,
     tomes: 0,            // Skill Tome envanteri (yetenek Lv4+ için)
     bossesBeaten: [],    // ilk kez yenilen boss dalgaları (ilk yeniliş ödülü için)
     goldRushUntil: 0,    // Gold Rush bitiş zamanı (ms)
     idlePass: false,     // sezonluk Idle Pass
-    // ---- Token ($DGN) — Faz 1'de tarayıcıda, Faz 2'de sunucuda tutulacak ----
-    credit: 0,           // yatırılıp harcanmamış token: her an komisyonsuz çekilebilir
-    earned: 0,           // havuzdan gelen token: günde bir kez, o günün payı kadar çekilir
-    deposited: 0, spent: 0, withdrawn: 0, burned: 0,
-    relics: {},          // { candle: 2, idol: 1, ... }
-    vault: 0,            // Vault seviyesi (0 = 1.25×)
-    seasonBest: 0,       // bu sezonun en iyi dalgası (DP bunu kullanır)
-    joinedAt: 0,         // realm'e katılış (ilk çekim 12 saat sonra)
-    lastAccrue: 0,       // havuz payının en son eklendiği an
-    todayShare: 0,       // bugünkü havuz payı (çekim tavanı)
-    dayNo: 0,            // realm günü (UTC gün sayısı)
-    withdrewDay: -1,     // en son çekim yapılan realm günü
+    // ---- DGN (Ekonomi v5) ----
+    season: null,        // sezon numarası (F.seasonIndex)
+    balance: 0,          // oyun içi DGN bakiyesi (üretim + yatırılan)
+    uncollected: 0,      // üretilmiş ama henüz Claim edilmemiş
+    depositBal: 0,       // bakiyenin yatırılan tokenden gelen, henüz harcanmamış kısmı (paketler bununla alınır)
+    credit: 0,           // anapara hakkı: yatırdığın kadar, günlük sınıra takılmadan çekilebilir
+    poolAvail: 0,        // bugün havuzdan çekilebilir (günlük pay, gün dönünce sıfırlanır)
+    poolDay: -1,
+    vault: 0,            // kasada bekleyen (cüzdana gönderilecek)
+    deposited: 0, withdrawn: 0, spentDungeon: 0, feesBurned: 0,
+    seasonDeposited: 0, firstDepositAt: 0,
+    keys: {},            // { bronze: 10, silver: 3, ... } kullanılmamış anahtarlar (sezonlar arası taşınır)
+    opened: 20,          // bu sezon açılmış en yüksek dalga (20'ye kadar herkese açık)
+    forge: 0,            // Forge seviyesi (sezonluk)
+    seasonBest: 0,       // bu sezonun en iyi dalgası (üretim bunu kullanır)
+    lastAccrue: 0,
     activeRate: 0,       // son aktif oyundaki ortalama gold/sn (Gold Rush hariç); AFK ve Time Skip bunu kullanır
     level: 1,
     xp: 0,
@@ -74,9 +77,9 @@ export const Economy = {
           const fh = freshHero();
           this.data.heroes[h] = { ...fh, ...this.data.heroes[h], upgrades: { ...fh.upgrades, ...(this.data.heroes[h]?.upgrades || {}) } };
         }
-        // Ekonomi sürümü değişince (v3: Gems + yeni maliyet eğrisi) eski ilerleme
+        // Ekonomi sürümü değişince eski ilerleme
         // yeni dengeyle uyumsuz; bir kereliğine sıfırlanır (ayarlar korunur)
-        if ((d.econVer || 1) < 4) {
+        if ((d.econVer || 1) < 5) {
           const settings = this.data.settings;
           this.data = freshSave();
           this.data.settings = settings;
@@ -127,100 +130,164 @@ export const Economy = {
 
   canAfford(n) { return this.data.gold >= n; },
 
-  // ---- Token cüzdanı ----
-  // Faz 1: sadece tarayıcı (demo). Faz 3'te deposit/withdraw zincirde, bakiye sunucuda doğrulanır.
-  tokens() { return (this.data.credit || 0) + (this.data.earned || 0); },
-  canAffordTokens(n) { return this.tokens() >= n; },
-  deposit(n) {
-    n = Math.max(0, Math.floor(n));
-    this.data.credit += n; this.data.deposited += n;
-    this.joinRealm();
-    this.save(); this.emit({ type: 'token', amount: n });
+  // ======================= DGN (Ekonomi v5) =======================
+  // Faz 1: sunucu ve zincir yok. Yatırma "demo token", havuz payı config.v5.demo'daki örnek realm'e göre.
+  isDepositor() { return (this.data.seasonDeposited || 0) > 0; },
+  poolEligible(now = Date.now()) {
+    if (!this.isDepositor()) return true;
+    return now >= (this.data.firstDepositAt || now) + CONFIG.v5.depositorPoolDelayHours * 3600000;
+  },
+  poolStartsAt() { return (this.data.firstDepositAt || 0) + CONFIG.v5.depositorPoolDelayHours * 3600000; },
+  ratePerHour() { return F.rateAt(this.data.seasonBest || 0); },
+  // Bugünkü havuz payı (DGN/gün), realm doluluğuna göre
+  poolPerDay() {
+    const D = CONFIG.v5.demo, dep = this.isDepositor();
+    const pool = dep ? CONFIG.v5.pools.depositor : CONFIG.v5.pools.free;
+    return F.poolShare(pool, this.ratePerHour(), (dep ? D.depositor : D.free).rateSum);
+  },
+  realmFill() {
+    const D = CONFIG.v5.demo, dep = this.isDepositor();
+    const pool = dep ? CONFIG.v5.pools.depositor : CONFIG.v5.pools.free;
+    const sum = (dep ? D.depositor : D.free).rateSum + this.ratePerHour();
+    return Math.min(1, pool / (sum * 24));
+  },
+  // Geçen süre kadar üretim ve havuz payı ekle. Oyun kapalıyken en fazla 12 saat birikir.
+  accrue(now = Date.now()) {
+    const d = this.data;
+    this.seasonCheck(now);
+    const day = Math.floor(now / 86400000);
+    if (d.poolDay !== day) { d.poolDay = day; d.poolAvail = 0; }
+    if (!d.lastAccrue) { d.lastAccrue = now; return { produced: 0, pool: 0 }; }
+    const secs = Math.max(0, Math.min((now - d.lastAccrue) / 1000, CONFIG.v5.offlineHours * 3600));
+    d.lastAccrue = now;
+    if (secs <= 0) return { produced: 0, pool: 0 };
+    const produced = this.ratePerHour() * secs / 3600;
+    d.uncollected += produced;
+    let pool = 0;
+    if (this.poolEligible(now)) { pool = this.poolPerDay() * secs / 86400; d.poolAvail += pool; }
+    return { produced, pool };
+  },
+  claim() {
+    this.accrue();
+    const n = Math.floor(this.data.uncollected);
+    if (n <= 0) return 0;
+    this.data.uncollected -= n; this.data.balance += n;
+    this.save(); this.emit({ type: 'claim', amount: n });
     return n;
   },
-  // Harcama önce havuzdan geleni (earned), sonra yatırılanı (credit) kullanır: yatırdığın para korunur.
+  tokens() { return this.data.balance || 0; },
+  canAffordTokens(n) { return this.tokens() >= n; },
+  // Faz 1 test modu: "demo token" yatırma. Canlıda cüzdandan transfer + zincir doğrulaması.
+  deposit(n, now = Date.now()) {
+    n = Math.max(0, Math.floor(n));
+    if (!n) return 0;
+    const d = this.data;
+    d.balance += n; d.depositBal += n; d.credit += n; d.deposited += n; d.seasonDeposited += n;
+    if (!d.firstDepositAt) d.firstDepositAt = now;
+    this.save(); this.emit({ type: 'deposit', amount: n });
+    return n;
+  },
+  // Harcama: önce oyunda üretilen kısım, sonra yatırılan kısım
   spendTokens(n) {
-    if (!this.canAffordTokens(n)) return false;
-    const fromEarned = Math.min(this.data.earned, n);
-    this.data.earned -= fromEarned; this.data.credit -= n - fromEarned;
-    this.data.spent += n;
-    this.data.burned += n * CONFIG.realm.spendSplit.burn;
+    const d = this.data;
+    if (d.balance < n) return false;
+    const soft = Math.min(n, d.balance - d.depositBal);
+    d.depositBal -= n - soft; d.balance -= n; d.spentDungeon += n;
     this.save(); this.emit({ type: 'tokenSpend', amount: n });
     return true;
   },
-
-  // ---- Realm ----
-  joinRealm(now = Date.now()) {
-    if (!this.data.joinedAt) { this.data.joinedAt = now; this.data.lastAccrue = now; }
-  },
-  realmDay(now = Date.now()) { return Math.floor(now / 86400000); },
-  // Faz 1: sunucu yok; havuz ve realm büyüklüğü config.realm.demo'dan (sim/realm.mjs ile ayarlandı)
-  realmState() {
-    const R = CONFIG.realm;
-    return { pool: R.pool.base, players: R.demo.players, totalCountedDp: R.demo.totalCountedDp };
-  },
-  dp() { return F.dp(this.data); },
-  countedDp() {
-    const r = this.realmState();
-    return F.countedDp(this.data, (r.totalCountedDp + this.dp()) / (r.players + 1));
-  },
-  shareRate() { return F.dailyShare(this.data, this.realmState()); },   // token / gün
-  // Geçen süre kadar havuz payını ekle (en fazla 24 saat birikir). Oyun kapalıyken de işler.
-  accrue(now = Date.now()) {
+  // Çekilebilir: bakiye içinden, anapara hakkı + bugünkü havuz payı kadar
+  withdrawable() {
     const d = this.data;
-    if (!d.joinedAt) return 0;
-    const day = this.realmDay(now);
-    if (day !== d.dayNo) { d.dayNo = day; d.todayShare = 0; }
-    const secs = Math.min((now - (d.lastAccrue || now)) / 1000, CONFIG.realm.accrueMaxHours * 3600);
-    d.lastAccrue = now;
-    if (secs <= 0) return 0;
-    const add = this.shareRate() * secs / 86400;
-    d.earned += add; d.todayShare += add;
-    return add;
+    return Math.max(0, Math.floor(Math.min(d.balance, d.credit + d.poolAvail)));
   },
-  // Çekim kuralları: credit her an; earned günde bir kez, bugünkü pay kadar, %5 komisyonla, ilk 12 saat kapalı.
-  withdrawInfo(now = Date.now()) {
-    const d = this.data, W = CONFIG.realm.withdraw;
-    const opensAt = (d.joinedAt || now) + W.firstAfterHours * 3600000;
-    const locked = !d.joinedAt || now < opensAt;
-    const usedToday = d.withdrewDay === this.realmDay(now);
-    const earnedMax = locked || usedToday ? 0 : Math.min(d.earned, d.todayShare);
-    return { credit: Math.floor(d.credit), earnedMax: Math.floor(earnedMax), fee: W.fee, locked, opensAt, usedToday };
-  },
-  withdraw(amount, now = Date.now()) {
-    const info = this.withdrawInfo(now);
+  // 1. adım: oyundan kasaya (%5 komisyon burada kesilir)
+  moveToVault(amount) {
+    const d = this.data, W = CONFIG.v5.withdraw;
     amount = Math.floor(amount);
-    if (amount <= 0 || amount > info.credit + info.earnedMax) return false;
-    const fromCredit = Math.min(info.credit, amount);
-    const fromEarned = amount - fromCredit;
-    this.data.credit -= fromCredit;
-    let fee = 0;
-    if (fromEarned > 0) {
-      fee = Math.ceil(fromEarned * info.fee);
-      this.data.earned -= fromEarned;
-      this.data.withdrewDay = this.realmDay(now);
-    }
-    const net = amount - fee;
-    this.data.withdrawn += net;
-    this.save(); this.emit({ type: 'withdraw', amount: net });
-    return { net, fee, fromCredit, fromEarned };
+    if (amount < W.min || amount > this.withdrawable()) return false;
+    const fromCredit = Math.min(d.credit, amount);
+    d.credit -= fromCredit; d.poolAvail = Math.max(0, d.poolAvail - (amount - fromCredit));
+    d.balance -= amount; d.depositBal = Math.min(d.depositBal, d.balance);
+    const fee = Math.ceil(amount * W.fee);
+    d.feesBurned += fee * W.feeBurn;
+    d.vault += amount - fee;
+    this.save(); this.emit({ type: 'vault', amount });
+    return { net: amount - fee, fee };
   },
-  relicCount(id) { return (this.data.relics || {})[id] || 0; },
-  buyRelic(id) {
-    const r = CONFIG.realm.relics[id];
-    if (!r || !this.spendTokens(r.tokens)) return false;
-    this.data.relics[id] = this.relicCount(id) + 1;
-    this.joinRealm(); this.save(); this.emit({ type: 'relic', id });
+  // 2. adım: kasadan cüzdana. Şart: cüzdanda 12 saattir kesintisiz 20K+ DGN (sunucu kontrol eder).
+  // Faz 1'de cüzdan bağlantısı yok; test modunda (?dev=1) simüle edilir.
+  sendToWallet(demoPass = false) {
+    const d = this.data;
+    if (d.vault <= 0) return { ok: false, reason: 'empty' };
+    if (!demoPass) return { ok: false, reason: 'wallet' };
+    const n = Math.floor(d.vault);
+    d.vault = 0; d.withdrawn += n;
+    this.save(); this.emit({ type: 'withdraw', amount: n });
+    return { ok: true, amount: n };
+  },
+
+  // ---- Anahtarlar ve dalga kapıları ----
+  keyCount(id) { return (this.data.keys || {})[id] || 0; },
+  keyPackPrice(k) { return F.keyPackTokens(k); },
+  keySinglePrice(k) { return F.tokensForUsd(k.singleUsd); },
+  // 10'lu paket: sadece yatırılan tokenle
+  buyKeyPack(id) {
+    const k = CONFIG.v5.keys.find((x) => x.id === id), d = this.data;
+    const price = this.keyPackPrice(k);
+    if (d.depositBal < price) return false;
+    d.balance -= price; d.depositBal -= price; d.spentDungeon += price;
+    d.keys[id] = this.keyCount(id) + 10;
+    this.save(); this.emit({ type: 'keys', id });
     return true;
   },
-  vaultNext() { return CONFIG.realm.vault[(this.data.vault || 0) + 1] || null; },
-  buyVault() {
-    const nx = this.vaultNext();
-    if (!nx) return false;
-    if (nx.gold) { if (!this.spendGold(nx.gold)) return false; }
-    else if (!this.spendTokens(nx.tokens)) return false;
-    this.data.vault = (this.data.vault || 0) + 1;
-    this.joinRealm(); this.save(); this.emit({ type: 'vault' });
+  // Tek anahtar (sadece Bronze): her türlü bakiyeyle, pahalı
+  buyKeySingle(id) {
+    const k = CONFIG.v5.keys.find((x) => x.id === id);
+    if (!k?.singleUsd || !this.spendTokens(this.keySinglePrice(k))) return false;
+    this.data.keys[id] = this.keyCount(id) + 1;
+    this.save(); this.emit({ type: 'keys', id });
+    return true;
+  },
+  // Dalgaya girilebilir mi? Gerekirse bir anahtar harcar. Dönüş: true | false
+  enterWave(w) {
+    const d = this.data;
+    if (w <= Math.max(CONFIG.v5.freeMaxWave, d.opened || 0)) return true;
+    if (w !== (d.opened || CONFIG.v5.freeMaxWave) + 1) return false;
+    const k = F.keyTier(w);
+    if (!k || this.keyCount(k.id) <= 0) return false;
+    d.keys[k.id]--; d.opened = w;
+    this.save(); this.emit({ type: 'keyUsed', id: k.id, wave: w });
+    return true;
+  },
+  // Kapıda takılınca döngüye dönülecek dalga
+  loopWave(w) {
+    return w - 1 <= CONFIG.v5.freeMaxWave ? CONFIG.v5.freeLoopTo : Math.max(CONFIG.v5.freeLoopTo, w - CONFIG.v5.loopBack);
+  },
+
+  // ---- Forge ----
+  forgeCost() { return F.forgeCost(this.data.forge || 0); },
+  buyForge() {
+    if ((this.data.forge || 0) >= CONFIG.v5.forge.max || !this.spendTokens(this.forgeCost())) return false;
+    this.data.forge = (this.data.forge || 0) + 1;
+    this.save(); this.emit({ type: 'forge' });
+    return true;
+  },
+
+  // ---- Sezon ----
+  // 10 günde bir: dalga, gold, seviye, geliştirmeler, Forge ve oyunda biriken üretim sıfırlanır.
+  // Kalır: kullanılmamış anahtarlar, çekilmemiş anapara hakkı (bakiyede), kasadaki token, ayarlar.
+  seasonCheck(now = Date.now()) {
+    const idx = F.seasonIndex(now), d = this.data;
+    if (d.season === null || d.season === undefined) { d.season = idx; return false; }
+    if (d.season === idx) return false;
+    const keep = { settings: d.settings, keys: d.keys, credit: d.credit, vault: d.vault, deposited: d.deposited,
+      withdrawn: d.withdrawn, spentDungeon: d.spentDungeon, feesBurned: d.feesBurned, selectedHero: d.selectedHero };
+    const bal = Math.min(d.balance, d.credit), depBal = Math.min(d.depositBal, bal);
+    this.data = freshSave();
+    Object.assign(this.data, keep, { season: idx, balance: bal, depositBal: depBal, lastAccrue: now });
+    this.seasonReset = true;
+    this.save(); this.emit({ type: 'season' });
     return true;
   },
 
@@ -350,6 +417,7 @@ export const Economy = {
   },
 
   startWave() {
-    return Math.max(1, Math.min(CONFIG.wave.maxWave, this.data.resumeWave || 1));
+    const cap = Math.max(CONFIG.v5.freeMaxWave, this.data.opened || 0);
+    return Math.max(1, Math.min(CONFIG.wave.maxWave, cap, this.data.resumeWave || 1));
   },
 };

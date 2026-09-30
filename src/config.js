@@ -92,45 +92,50 @@ export const CONFIG = {
     tomes: { 4: 1, 5: 1, 6: 1, 7: 1, 8: 2, 9: 2, 10: 3 },
   },
 
-  // ---- Token ve Realm (Ekonomi v4, Stonewatch tarzı) ----
-  // Oyunda TEK değerli para var: oyunun token'ı ($DGN, isim yer tutucu). Gold oyun içinde kalır.
-  //  - Token dışarıdan yatırılır (deposit). Harcanmayan kısım (credit) her an komisyonsuz geri çekilebilir.
-  //  - Token harcanınca: %burn yakılır, %pool ertesi günün havuzuna döner, kalanı hazineye gider.
-  //  - Her gün sabit bir havuz (taban + dünkü harcamanın bir kısmı) oyuncular arasında
-  //    Dungeon Power'a (DP) göre bölünür. DP, Vault seviyesine göre ortalamanın belli katında tavanlanır.
-  //  - Havuzdan gelen token (earned) günde bir kez, o günün payı kadar, %5 komisyonla çekilir.
+  // ---- Token ve Ekonomi v5 ----
+  // Tek değerli para: oyunun token'ı ($DGN, isim yer tutucu), Robinhood Chain (EVM).
+  //  - Oyuncu saatlik ÜRETİR (dalgaya ve anahtarlara göre). Üretim oyun içi bakiyede birikir.
+  //  - Dışarı çekilebilen: yatırdığı tutar kadar serbest (anapara) + o günün havuz payı.
+  //  - Günlük iki havuz: bedava oyuncular ve yatıranlar (her biri 10M). Pay, üretim hızına orantılı.
+  //  - Yatıranın havuz payı ilk yatırımdan 48 saat sonra başlar (önce anaparasını geri üretir).
   token: {
     symbol: 'DGN',
-    usdPerToken: 0.0001,          // lansman tahmini: 10.000 token ≈ $1 (piyasa kuru kullanılacak)
-    packs: [5000, 10000, 50000, 100000, 500000],   // yatırma kısayolları (token)
+    usdPerToken: 0.0001,          // demo kuru: 10.000 DGN = $1 (canlıda DEX fiyatı okunacak)
+    testMode: true,               // Faz 1: gerçek token yok; yatırma "demo token" verir
   },
-  realm: {
-    seasonDays: 30,
-    pool: { base: 2000000, fromSpend: 0.30 },       // günlük havuz = taban + dünkü harcama × fromSpend
-    spendSplit: { burn: 0.30, pool: 0.30 },          // kalan %40 hazine (ekip, geliştirme, ödüller)
-    withdraw: { fee: 0.05, firstAfterHours: 12, perDay: 1 },
-    accrueMaxHours: 24,                              // en fazla 24 saatlik pay birikir: her gün gir
-    // DP = en iyi dalga × perWave + seviye × perLevel + Relic DP
-    dp: { perWave: 1, perLevel: 0.5 },
-    // Vault: DP'nin realm ortalamasının en fazla kaç katı sayılacağı. İlk iki seviye gold, sonrası token.
-    vault: [
-      { cap: 1.25 },
-      { cap: 2,   gold: 15000 },
-      { cap: 3,   tokens: 20000 },
-      { cap: 4,   tokens: 60000 },
-      { cap: 6,   tokens: 150000 },
-      { cap: 8,   tokens: 300000 },
-      { cap: 10,  tokens: 600000 },
+  v5: {
+    seasonDays: 10,
+    seasonEpoch: Date.UTC(2026, 8, 30),   // 1. sezonun başlangıcı (UTC)
+    freeMaxWave: 20,              // bedava oyuncunun çıkabileceği en yüksek dalga
+    freeLoopTo: 15,               // 20 bitince 15'e döner
+    loopBack: 5,                  // yatıran: açık dalgaların sonunda 5 dalga geri
+    gateSeconds: 10,              // Mühürlü Kapı ekranı süresi
+    offlineHours: 12,             // oyun kapalıyken üretim en fazla 12 saat birikir
+    // Saatlik üretim eğrisi (DGN/saat, sezonun en iyi dalgasına göre)
+    rate: { w1: 100, w20: 2000, exp: 0.8, returnHours: 48 },
+    // Anahtar kademeleri: paket = 10 anahtar, her yeni dalgada 1 tane otomatik harcanır.
+    keys: [
+      { id: 'bronze',   name: 'Bronze Key',   icon: '🥉', from: 21, to: 30,  usd: 10, singleUsd: 4 },
+      { id: 'silver',   name: 'Silver Key',   icon: '🥈', from: 31, to: 40,  usd: 15 },
+      { id: 'gold',     name: 'Gold Key',     icon: '🥇', from: 41, to: 50,  usd: 25 },
+      { id: 'platinum', name: 'Platinum Key', icon: '💠', from: 51, to: 60,  usd: 40 },
+      { id: 'diamond',  name: 'Diamond Key',  icon: '💎', from: 61, to: 70,  usd: 60 },
+      { id: 'ruby',     name: 'Ruby Key',     icon: '❤️', from: 71, to: 80,  usd: 100 },
+      { id: 'obsidian', name: 'Obsidian Key', icon: '🖤', from: 81, to: 90,  usd: 200 },
+      { id: 'dragon',   name: 'Dragon Key',   icon: '🐉', from: 91, to: 100, usd: 500 },
     ],
-    // Relic: tokenle alınan kalıcı DP (sezon boyunca). Büyük relic az bonus verir.
-    relics: {
-      candle: { name: 'Crypt Candle', icon: '🕯️', tokens: 1000,   dp: 10 },
-      idol:   { name: 'Bone Idol',    icon: '💀', tokens: 10000,  dp: 100 },
-      banner: { name: 'War Banner',   icon: '🚩', tokens: 50000,  dp: 520 },
-      skull:  { name: 'Dragon Skull', icon: '🐉', tokens: 250000, dp: 2750 },
+    pools: { free: 10000000, depositor: 10000000 },     // günlük DGN
+    depositorPoolDelayHours: 48,
+    withdraw: { fee: 0.05, feeBurn: 0.5, holdTokens: 20000, holdHours: 12, min: 1000 },
+    // Forge: oyun içi bakiyeyle alınan güç (sezonluk). Her seviye hasar ve can ×1.10
+    forge: { baseCost: 5000, growth: 1.32, per: 0.10, max: 40 },
+    // Faz 1 demo realm (sim/v5.mjs, 1.000 oyuncu): havuzu paylaşan diğer oyuncuların toplam üretimi (DGN/saat)
+    demo: {
+      free: { players: 800, rateSum: 1400000 },
+      depositor: { players: 200, rateSum: 1550000 },
+      burnedOnChain: 18400000, spentInDungeon: 96000000,
+      market: { priceUsd: 0.0001, volume24h: 41200, liquidity: 30500, holders: 1840 },
     },
-    // Faz 1 (sunucu yok): havuz payını tahmin etmek için örnek bir realm. Sayılar sim/realm.mjs'den.
-    demo: { players: 400, totalCountedDp: 200000 },
   },
   // Token mağazası (eski Gems mağazası; fiyatlar aynı dolar değerinde)
   tokenShop: {
@@ -330,18 +335,30 @@ export const F = {
   skillTomes: (lvl) => CONFIG.skillUpgrade.tomes[lvl + 1] || 0,
   bossReward: (w) => ({ tomes: CONFIG.bossRewards[w] || 0 }),
   usd: (tokens) => tokens * CONFIG.token.usdPerToken,
-  // ---- Realm ----
-  progressDp: (save) => (save.seasonBest ?? save.bestWave ?? 0) * CONFIG.realm.dp.perWave + (save.level || 1) * CONFIG.realm.dp.perLevel,
-  relicDp: (save) => Object.entries(save.relics || {}).reduce((s, [k, n]) => s + (CONFIG.realm.relics[k]?.dp || 0) * n, 0),
-  dp: (save) => F.progressDp(save) + F.relicDp(save),
-  vaultCap: (lvl) => CONFIG.realm.vault[Math.min(lvl, CONFIG.realm.vault.length - 1)].cap,
-  // realm ortalamasına göre sayılan DP
-  countedDp: (save, avgDp) => Math.min(F.dp(save), F.vaultCap(save.vault || 0) * avgDp),
-  // günlük havuz payı (token). realm = { pool, totalCountedDp, players } (bu oyuncu hariç)
-  dailyShare(save, realm) {
-    const avg = (realm.totalCountedDp + F.dp(save)) / (realm.players + 1);
-    const mine = F.countedDp(save, avg);
-    return realm.pool * mine / (realm.totalCountedDp + mine);
+  // ---- Ekonomi v5 ----
+  tokensForUsd: (usd) => Math.round(usd / CONFIG.token.usdPerToken),
+  keyTier: (w) => CONFIG.v5.keys.find((k) => w >= k.from && w <= k.to) || null,
+  keyPackTokens: (k) => Math.round(k.usd / CONFIG.token.usdPerToken),
+  // Dalgaya göre saatlik üretim (DGN/saat). 1–20 yumuşak eğri; 21+ her kademe paketini ~48 saatte geri üretir.
+  rateAt(w) {
+    const R = CONFIG.v5.rate;
+    if (w <= 0) return 0;
+    if (w <= CONFIG.v5.freeMaxWave) return R.w1 + (R.w20 - R.w1) * Math.pow((w - 1) / (CONFIG.v5.freeMaxWave - 1), R.exp);
+    let r = R.w20;
+    for (const k of CONFIG.v5.keys) {
+      if (w < k.from) break;
+      const perWave = F.keyPackTokens(k) / R.returnHours / (k.to - k.from + 1);
+      r += perWave * (Math.min(w, k.to) - k.from + 1);
+    }
+    return r;
+  },
+  forgeCost: (lvl) => Math.round(CONFIG.v5.forge.baseCost * Math.pow(CONFIG.v5.forge.growth, lvl)),
+  seasonIndex: (now = Date.now()) => Math.floor((now - CONFIG.v5.seasonEpoch) / (CONFIG.v5.seasonDays * 86400000)),
+  seasonEndsAt: (now = Date.now()) => CONFIG.v5.seasonEpoch + (F.seasonIndex(now) + 1) * CONFIG.v5.seasonDays * 86400000,
+  // Havuz payı (DGN/gün): pool × benim / (diğerleri + benim), en fazla kendi üretimim kadar
+  poolShare(pool, myRate, othersRateSum) {
+    if (myRate <= 0) return 0;
+    return Math.min(myRate * 24, pool * myRate / (othersRateSum + myRate));
   },
   armorMult: (armor) => 1 - armor / (armor + CONFIG.armorK),
 
@@ -351,9 +368,10 @@ export const F = {
     const up = save.heroes[heroId].upgrades;
     const U = CONFIG.upgrades;
     const lv = save.level - 1;
+    const forge = Math.pow(1 + CONFIG.v5.forge.per, save.forge || 0);
     return {
-      maxHp: h.hp * Math.pow(1 + U.hp.per, up.hp || 0) * (1 + lv * CONFIG.account.hpPerLevel),
-      atk: h.atk * Math.pow(1 + U.atk.per, up.atk || 0) * (1 + lv * CONFIG.account.atkPerLevel),
+      maxHp: h.hp * Math.pow(1 + U.hp.per, up.hp || 0) * (1 + lv * CONFIG.account.hpPerLevel) * forge,
+      atk: h.atk * Math.pow(1 + U.atk.per, up.atk || 0) * (1 + lv * CONFIG.account.atkPerLevel) * forge,
       armor: h.armor + (up.armor || 0) * U.armor.per,
       atkSpd: h.atkSpd * (1 + (up.atkSpd || 0) * U.atkSpd.per),
       crit: Math.min(0.9, h.crit + (up.crit || 0) * U.crit.per),

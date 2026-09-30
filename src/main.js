@@ -7,8 +7,7 @@ import { loadSounds, Audio } from './core/audio.js';
 
 async function boot() {
   Economy.load();
-  Economy.joinRealm(); // herkes (bedava oyuncu da) günlük havuzdan pay alır
-  Economy.accrue();    // kapalıyken biriken günlük havuz payı
+  Economy.lastOfflineDgn = Economy.accrue().produced;   // sezon kontrolü + kapalıyken biriken üretim (en fazla 12 saat)
   // Menü müziği siteye girer girmez başlasın (kayıtlı ses ayarlarıyla)
   const st = Economy.data.settings;
   Audio.setMusicEnabled(st.music);
@@ -38,6 +37,7 @@ async function boot() {
   ui.syncButtons();
   ui.showTitle();
   if (Economy.economyReset) { Economy.save(); ui.toast('The economy was rebalanced. Progress has been reset.'); }
+  else if (Economy.seasonReset) ui.toast('A new season has begun! Waves and upgrades were reset. Your keys are kept.');
   ui.checkOffline(); // uzun süre sonra gelindiyse "Welcome back" ekranı
 }
 

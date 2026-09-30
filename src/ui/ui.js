@@ -6,8 +6,12 @@ import { Assets } from '../core/assets.js';
 import { Audio } from '../core/audio.js';
 
 const $ = (id) => document.getElementById(id);
-// ?dev=1 → Realm sekmesinde test butonları (deposit, +1 gün) (canlıda görünmez)
+// ?dev=1 → cüzdanda ek test butonları (+1 gün, cüzdana gönderimi simüle et)
 const DEV = new URLSearchParams(location.search).has('dev');
+const fmtDays = (ms) => {
+  const h = Math.max(0, Math.floor(ms / 3600000));
+  return h >= 24 ? `${Math.floor(h / 24)}d ${h % 24}h` : `${h}h ${Math.max(0, Math.floor(ms / 60000) % 60)}m`;
+};
 const fmtDur = (ms) => {
   const m = Math.ceil(ms / 60000);
   return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
@@ -155,6 +159,10 @@ export class UI {
     click('btn-death-shop', () => { $('screen-death').classList.add('hidden'); this.openShop('death'); });
     click('btn-death-menu', () => { this.stopCountdown(); $('screen-death').classList.add('hidden'); this.toMenu(); });
     click('btn-auto', () => this.toggleAuto());
+    click('btn-claim', () => { const n = Economy.claim(); if (n > 0) { Audio.play('coin'); this.toast(`+${fmt(n)} DGN claimed`); } else Audio.play('denied'); this.updateGold(); });
+    click('btn-wallet', () => this.openWallet());
+    click('btn-wallet-close', () => this.closeWallet());
+    click('btn-gate-keys', () => { this.hideGate(); this.shopTab = 'keys'; this.syncTabs(); this.openShop('game'); });
     click('btn-speed', () => this.toggleSpeed());
     document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
       Audio.play('click');
@@ -189,7 +197,10 @@ export class UI {
     window.addEventListener('pagehide', () => Economy.save());
     // oyun açıkken son görülme zamanını düzenli güncelle
     setInterval(() => { if (!document.hidden) { Economy.accrue(); this.updateGold(); Economy.save(); } }, 15000);
-    Economy.on(() => this.updateGold());
+    Economy.on((d, evt) => {
+      this.updateGold();
+      if (evt?.type === 'keyUsed') { const k = F.keyTier(evt.wave); this.toast(`${k.icon} ${k.name} used · Wave ${evt.wave} opened`); }
+    });
   }
 
   // ---------- Yükleme ----------
@@ -205,6 +216,8 @@ export class UI {
         'Tip: Press H to change game speed.',
         'Tip: When you fall, you restart one wave back. Nothing you earned is lost.',
         'Tip: Wave 100 hides the Lord of the Dungeon.',
+        'Tip: Your production grows with every wave. Press Claim to collect it.',
+        'Tip: Waves 1–20 are free. Keys open the sealed gates beyond.',
       ];
       let i = Math.floor(Math.random() * tips.length);
       const el = $('load-text');
@@ -320,6 +333,8 @@ export class UI {
     $('hp-fill').style.width = `${hpk * 100}%`;
     $('hp-text').textContent = `${fmt(h.hp)} / ${fmt(h.stats.maxHp)}`;
     const d = Economy.data;
+    this.updateDgnLive();
+    if (game.phase === 'gate') $('gate-count').textContent = `Returning to Wave ${Economy.loopWave(game.gateWave)} in ${Math.max(0, Math.ceil(CONFIG.v5.gateSeconds - game.gateT))}…`;
     // Gold Rush sayacı (saniyede bir yeterli)
     if ((this._rushTick = (this._rushTick || 0) + 1) % 30 === 0) this.updateRush();
     const need = F.xpToNext(d.level);
@@ -458,6 +473,9 @@ export class UI {
     const hero = CONFIG.heroes[r.hero]?.name || 'Your hero';
     $('off-sub').textContent = `${hero} kept fighting at Wave ${r.wave}`;
     $('off-gold').textContent = `+${fmt(r.gold)}`;
+    const od = Economy.lastOfflineDgn || 0;
+    $('off-dgn').classList.toggle('hidden', od < 1);
+    if (od >= 1) $('off-dgn').innerHTML = `◈ <b>+${fmt(od)}</b> DGN produced · press Claim`;
     $('off-note').textContent = r.capped
       ? `Only the first ${r.maxHours} hours count. Come back sooner to earn more.`
       : `Offline earnings are capped at ${r.maxHours} hours.`;
@@ -572,8 +590,10 @@ export class UI {
       note.className = 'hint'; note.style.gridColumn = '1 / -1';
       note.textContent = 'You earn a skill point every time you level up. Lv 4+ also needs Skill Tomes: bosses drop them the first time you beat them, or buy them in the Store tab.';
       body.appendChild(note);
-    } else if (this.shopTab === 'realm') {
-      this.renderRealm(body);
+    } else if (this.shopTab === 'keys') {
+      this.renderKeys(body);
+    } else if (this.shopTab === 'forge') {
+      this.renderForge(body);
     } else if (this.shopTab === 'store') {
       this.renderStore(body);
     } else {
@@ -590,97 +610,158 @@ export class UI {
     }
   }
 
-  // ---------- Realm (Ekonomi v4) ----------
-  // Faz 1: sunucu ve zincir yok. Havuz payı config.realm.demo'daki örnek realm'e göre hesaplanır,
-  // yatırma/çekme sadece bu tarayıcıda "demo" olarak çalışır.
-  renderRealm(body) {
-    Economy.accrue();
-    const d = Economy.data, R = CONFIG.realm, sym = CONFIG.token.symbol;
-    const usd = (t) => '$' + (t * CONFIG.token.usdPerToken).toFixed(t * CONFIG.token.usdPerToken < 1 ? 3 : 2);
-    const rs = Economy.realmState();
-    const dp = Economy.dp(), counted = Economy.countedDp(), share = Economy.shareRate();
-    const cap = F.vaultCap(d.vault || 0), capped = counted < dp - 0.5;
-    const wi = Economy.withdrawInfo();
-    const add = (html, cls = 'item realm-card') => { const el = document.createElement('div'); el.className = cls; el.innerHTML = html; body.appendChild(el); return el; };
+  syncTabs() {
+    document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x.dataset.tab === this.shopTab));
+  }
 
-    // 1) Cüzdan
-    const w = add(`<div class="ic">◈</div>
-      <div><div class="nm">Your ${sym}<small>${fmt(Economy.tokens())} · ${usd(Economy.tokens())}</small></div>
-      <div class="ds">Deposited, unspent: <b>${fmt(d.credit)}</b> (withdraw any time, no fee)<br>From the daily pool: <b>${fmt(d.earned)}</b> (withdraw once a day, up to today's share, ${Math.round(R.withdraw.fee * 100)}% fee)</div>
-      <div class="val">Spent in game: ${fmt(d.spent)} · ${fmt(d.burned)} of it burned · Sent to wallet: ${fmt(d.withdrawn)}</div></div>
-      <div class="realm-btns"><button class="btn small" data-a="dep">Deposit</button><button class="btn small" data-a="wd">Withdraw</button></div>`, 'item realm-card wide');
-    w.querySelector('[data-a=dep]').addEventListener('click', () => this.realmDeposit());
-    w.querySelector('[data-a=wd]').addEventListener('click', () => this.realmWithdraw());
+  // ---------- DGN (Ekonomi v5) ----------
+  // Sağ üstteki canlı sayaç: kaydedilmiş birikim + son hesaplamadan bu yana geçen sürenin üretimi
+  updateDgnLive() {
+    const d = Economy.data, now = Date.now();
+    const rate = Economy.ratePerHour();
+    const live = (d.uncollected || 0) + rate * Math.max(0, now - (d.lastAccrue || now)) / 3600000;
+    $('dgn-live').textContent = live.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    if ((this._dgnTick = (this._dgnTick || 0) + 1) % 20 === 0) {
+      $('dgn-rate').textContent = `+${Math.round(rate).toLocaleString('en-US')} / h`;
+      const left = F.seasonEndsAt(now) - now;
+      $('dgn-season').textContent = `Season ${F.seasonIndex(now) + 1} · ${fmtDays(left)} left`;
+    }
+  }
 
-    // 2) Günlük havuz
-    const pct = (share / rs.pool) * 100;
-    add(`<div class="ic">⚖️</div>
-      <div><div class="nm">Daily pool<small>${fmt(rs.pool)} ${sym}/day</small></div>
-      <div class="ds">Split every day between all lords by counted Dungeon Power. It is not first-come: a bigger share for you means a smaller one for everyone else.</div>
-      <div class="val">Your share: <b>${fmt(share)} ${sym}/day</b> (${usd(share)}, ${pct.toFixed(2)}% of the pool) · earned today: ${fmt(d.todayShare)}</div>
-      <div class="req">Demo realm: ${rs.players} lords. The live pool starts with the server (Phase 2).</div></div><div></div>`, 'item realm-card wide');
+  showGate(w) {
+    const k = F.keyTier(w);
+    $('gate-eyebrow').textContent = `Wave ${w}`;
+    $('gate-icon').textContent = k ? k.icon : '🔒';
+    $('gate-main').textContent = k ? `Deposit to open waves ${k.from}–${k.to}` : 'Sealed';
+    const now = Math.round(Economy.ratePerHour()), then = Math.round(F.rateAt(k ? k.to : w));
+    $('gate-rate').innerHTML = `Your production: <b>${now.toLocaleString('en-US')}/h</b> → up to <b>${then.toLocaleString('en-US')}/h</b> at wave ${k ? k.to : w}`;
+    $('screen-gate').classList.remove('hidden');
+    Audio.play('boss');
+  }
+  hideGate() { $('screen-gate').classList.add('hidden'); }
 
-    // 3) DP
-    add(`<div class="ic">🔥</div>
-      <div><div class="nm">Dungeon Power<small>${fmt(dp)} DP</small></div>
-      <div class="ds">Season best wave ${d.seasonBest || 0} × ${R.dp.perWave} + level ${d.level} × ${R.dp.perLevel} + relics ${fmt(F.relicDp(d))}</div>
-      <div class="val">Counted: <b>${fmt(counted)}</b> ${capped ? `<span class="warnc">capped by Vault at ${cap}× the realm average</span>` : `(Vault allows up to ${cap}× the realm average)`}</div></div><div></div>`);
-
-    // 4) Vault
-    const nx = Economy.vaultNext();
-    const vEl = add(`<div class="ic">🏛️</div>
-      <div><div class="nm">Vault<small>Lv ${(d.vault || 0) + 1}/${R.vault.length}</small></div>
-      <div class="ds">Your Dungeon Power only counts up to ${cap}× the realm's average. A huge army behind a small Vault counts as a small one.</div>
-      <div class="val">${nx ? `Next: ${nx.cap}× the average` : 'Max level'}</div></div>
-      <button class="btn small ${nx && !nx.gold ? 'gem-buy' : ''}" ${nx && (nx.gold ? Economy.canAfford(nx.gold) : Economy.canAffordTokens(nx.tokens)) ? '' : 'disabled'}>${!nx ? 'MAX' : nx.gold ? `<span class="coin"></span>${fmt(nx.gold)}` : `◈${fmt(nx.tokens)}`}</button>`);
-    vEl.querySelector('button').addEventListener('click', () => { if (Economy.buyVault()) { Audio.play('buy'); this.toast('Vault raised'); this.renderShop(); } else Audio.play('denied'); });
-
-    // 5) Relics
-    for (const [id, r] of Object.entries(R.relics)) {
-      const el = add(`<div class="ic">${r.icon}</div>
-        <div><div class="nm">${r.name}<small>×${Economy.relicCount(id)}</small></div>
-        <div class="ds">+${fmt(r.dp)} Dungeon Power for the season. ${Math.round(R.spendSplit.burn * 100)}% of the price is burned, ${Math.round(R.spendSplit.pool * 100)}% goes back into tomorrow's pool.</div></div>
-        <button class="btn small gem-buy" ${Economy.canAffordTokens(r.tokens) ? '' : 'disabled'}>◈${fmt(r.tokens)}</button>`);
-      el.querySelector('button').addEventListener('click', () => { if (Economy.buyRelic(id)) { Audio.play('buy'); this.toast(`${r.name}: +${r.dp} DP`); this.renderShop(); } else Audio.play('denied'); });
+  renderKeys(body) {
+    const d = Economy.data, sym = CONFIG.token.symbol;
+    const usd = (t) => '$' + (t * CONFIG.token.usdPerToken).toFixed(2);
+    const head = document.createElement('div');
+    head.className = 'hint'; head.style.gridColumn = '1 / -1';
+    head.innerHTML = `Waves 1–${CONFIG.v5.freeMaxWave} are free. Every wave after that needs one key: it is used the first time you enter the wave and stays open for the season. Unused keys carry over to the next season. <b>Opened up to wave ${Math.max(CONFIG.v5.freeMaxWave, d.opened || 0)}.</b>`;
+    body.appendChild(head);
+    for (const k of CONFIG.v5.keys) {
+      const pack = Economy.keyPackPrice(k), have = Economy.keyCount(k.id);
+      const canPack = d.depositBal >= pack;
+      const el = document.createElement('div');
+      el.className = 'item';
+      const single = k.singleUsd ? `<button class="btn small gem-buy" data-s="1" ${Economy.canAffordTokens(Economy.keySinglePrice(k)) ? '' : 'disabled'}>1 · ◈${fmt(Economy.keySinglePrice(k))}</button>` : '';
+      el.innerHTML = `<div class="ic">${k.icon}</div>
+        <div><div class="nm">${k.name}<small>×${have}</small></div>
+        <div class="ds">Opens waves ${k.from}–${k.to}. Production at wave ${k.to}: ${Math.round(F.rateAt(k.to)).toLocaleString('en-US')}/h</div>
+        <div class="val">10 keys: ◈${fmt(pack)} (${usd(pack)})${canPack ? '' : ' · needs deposited DGN'}</div></div>
+        <div class="key-btns"><button class="btn small gem-buy" data-p="1" ${canPack ? '' : 'disabled'}>10 · ◈${fmt(pack)}</button>${single}</div>`;
+      el.querySelector('[data-p]').addEventListener('click', () => {
+        if (Economy.buyKeyPack(k.id)) { Audio.play('buy'); this.toast(`${k.icon} 10 ${k.name}s added. Your production pays back what you deposited; pool earnings start 48h after your first deposit.`); this.renderShop(); }
+        else { Audio.play('denied'); this.toast('Key packs are bought with deposited DGN. Open your Wallet to deposit.'); }
+      });
+      el.querySelector('[data-s]')?.addEventListener('click', () => {
+        if (Economy.buyKeySingle(k.id)) { Audio.play('buy'); this.toast(`${k.icon} 1 ${k.name} added`); this.renderShop(); } else Audio.play('denied');
+      });
+      body.appendChild(el);
     }
     const note = document.createElement('div');
     note.className = 'hint'; note.style.gridColumn = '1 / -1';
-    note.innerHTML = `Season ${R.seasonDays} days. Your first withdrawal opens ${R.withdraw.firstAfterHours}h after you join. Up to 24h of your share builds up while you are away, so come back daily. <a href="whitepaper.html" target="_blank" rel="noopener">Read the whitepaper</a>`;
+    note.textContent = `Packs are bought with DGN you deposited. A single Bronze key can also be bought with DGN you produced. Prices are set in USD and converted at the current ${sym} price.`;
     body.appendChild(note);
-    if (DEV) {
-      const b = document.createElement('div'); b.style.gridColumn = '1 / -1'; b.className = 'realm-dev';
-      b.innerHTML = '<button class="btn small" data-d="a">+10,000 DGN (test deposit)</button><button class="btn small" data-d="b">+1 day (test)</button>';
-      b.querySelector('[data-d=a]').addEventListener('click', () => { Economy.deposit(10000); this.renderShop(); this.updateGold(); });
-      b.querySelector('[data-d=b]').addEventListener('click', () => {
-        const d2 = Economy.data; d2.lastAccrue -= 86400000; d2.joinedAt -= 86400000; if (d2.withdrewDay >= 0) d2.withdrewDay--; d2.dayNo = -1;
-        const got = Economy.accrue(); this.toast(`+1 day: +${fmt(got)} DGN from the pool`); this.renderShop(); this.updateGold();
-      });
-      body.appendChild(b);
-    }
   }
 
-  realmDeposit() {
-    const sym = CONFIG.token.symbol;
-    this.toast(DEV ? `Test deposit: use the +10,000 ${sym} button below` : `Deposits open with Solana (Phase 3). Coming soon.`);
-    Audio.play(DEV ? 'click' : 'denied');
+  renderForge(body) {
+    const d = Economy.data, F5 = CONFIG.v5.forge, lvl = d.forge || 0;
+    const cost = Economy.forgeCost(), maxed = lvl >= F5.max;
+    const el = document.createElement('div');
+    el.className = 'item realm-card wide';
+    el.innerHTML = `<div class="ic">⚒️</div>
+      <div><div class="nm">The Forge<small>Lv ${lvl}/${F5.max}</small></div>
+      <div class="ds">Temper your hero with DGN. Every level multiplies damage and health by ×${(1 + F5.per).toFixed(2)} for both heroes. Resets each season.</div>
+      <div class="val">Current: damage and health ×${Math.pow(1 + F5.per, lvl).toFixed(2)}</div></div>
+      <button class="btn small gem-buy" ${maxed || !Economy.canAffordTokens(cost) ? 'disabled' : ''}>${maxed ? 'MAX' : `◈${fmt(cost)}`}</button>`;
+    el.querySelector('button').addEventListener('click', () => {
+      if (Economy.buyForge()) { Audio.play('buy'); this.toast(`Forge Lv ${d.forge}`); this.renderShop(); } else Audio.play('denied');
+    });
+    body.appendChild(el);
+    const note = document.createElement('div');
+    note.className = 'hint'; note.style.gridColumn = '1 / -1';
+    note.textContent = 'Keys open the waves, the Forge makes you strong enough to clear them. Paid from your in-game DGN balance.';
+    body.appendChild(note);
   }
 
-  realmWithdraw() {
-    const wi = Economy.withdrawInfo();
-    const sym = CONFIG.token.symbol;
-    const max = wi.credit + wi.earnedMax;
-    if (max <= 0) {
+  // ---------- Cüzdan ----------
+  openWallet() {
+    Economy.accrue();
+    $('screen-wallet').classList.remove('hidden');
+    Audio.play('page');
+    this.renderWallet();
+  }
+  closeWallet() { $('screen-wallet').classList.add('hidden'); this.updateGold(); }
+
+  renderWallet() {
+    const d = Economy.data, V = CONFIG.v5, sym = CONFIG.token.symbol, now = Date.now();
+    const usd = (t) => '$' + (t * CONFIG.token.usdPerToken).toFixed(2);
+    const n = (t) => Math.floor(t).toLocaleString('en-US');
+    $('wallet-sub').textContent = `Season ${F.seasonIndex(now) + 1} · ${fmtDays(F.seasonEndsAt(now) - now)} left`;
+    const perDay = Economy.poolPerDay(), eligible = Economy.poolEligible(now);
+    const wd = Economy.withdrawable();
+    const M = V.demo.market;
+    const body = $('wallet-body');
+    body.innerHTML = `
+      ${CONFIG.token.testMode ? `<div class="wbox test"><b>TEST MODE.</b> ${sym} is not live yet. Deposits give free demo tokens and nothing is sent to a real wallet.</div>` : ''}
+      <div class="wgrid">
+        <div class="wbox"><span>Balance</span><b>◈ ${n(d.balance)}</b><small>${usd(d.balance)}</small></div>
+        <div class="wbox"><span>Uncollected</span><b>◈ ${n(d.uncollected)}</b><button class="btn small" id="w-claim">Claim</button></div>
+        <div class="wbox"><span>Production</span><b>+${n(Economy.ratePerHour())} / h</b><small>best wave ${d.seasonBest || 0} this season</small></div>
+      </div>
+      <div class="wbox line">${eligible
+        ? `Your share of today's pool is <b>${n(perDay)} ${sym}</b> a day (${usd(perDay)}) · <b>${n(d.poolAvail)}</b> of it ready now. The realm is ${Math.round(Economy.realmFill() * 100)}% full: more lords means a smaller share for each.`
+        : `Pool earnings start in <b>${fmtDur(Economy.poolStartsAt() - now)}</b>, 48 hours after your first deposit. Until then your production pays back what you deposited.`}</div>
+      <div class="wbox line">${d.credit > 0
+        ? `<b>${n(d.credit)} ${sym}</b> of what you can take out is ${sym} you brought in yourself. It is not limited by the daily share.`
+        : `You have not deposited this season. Everything you take out comes from the daily pool.`}</div>
+      <div class="wbox line">You can move up to <b>${n(wd)} ${sym}</b> right now.
+        <div class="wrow"><input id="w-amt" type="number" min="0" value="${wd}"><button class="btn small" id="w-vault" ${wd >= V.withdraw.min ? '' : 'disabled'}>Move to the vault</button></div>
+        <small>${Math.round(V.withdraw.fee * 100)}% fee is taken here, half of it is burned. Minimum ${n(V.withdraw.min)}.</small></div>
+      <div class="wbox line"><span class="wlabel">Waiting in the vault</span> <b>◈ ${n(d.vault)}</b>
+        <div class="wrow"><button class="btn small" id="w-send" ${d.vault > 0 ? '' : 'disabled'}>Send to my wallet</button></div>
+        <small>Your wallet must have held at least ${n(V.withdraw.holdTokens)} ${sym} for the last ${V.withdraw.holdHours} hours. This stops lords from farming the pool and leaving the same hour.</small></div>
+      <div class="wbox line"><span class="wlabel">Deposit</span>
+        <div class="wrow">${[50000, 100000, 500000, 1000000].map((a) => `<button class="btn small" data-dep="${a}">+${fmt(a)}</button>`).join('')}</div>
+        <small>${CONFIG.token.testMode ? 'Demo tokens for testing.' : `Send ${sym} from your wallet.`} Deposited ${sym} buys key packs. Deposited so far: ${n(d.deposited)}.</small></div>
+      <div class="wgrid">
+        <div class="wbox"><span>🔥 Burned on-chain</span><b>◈ ${n(V.demo.burnedOnChain + d.feesBurned)}</b><small>realm total</small></div>
+        <div class="wbox"><span>Spent in the dungeon</span><b>◈ ${n(V.demo.spentInDungeon + d.spentDungeon)}</b><small>realm total</small></div>
+        <div class="wbox"><span>Sent to wallets</span><b>◈ ${n(d.withdrawn)}</b><small>you</small></div>
+      </div>
+      <div class="wbox market"><span class="wlabel">${sym} market</span>
+        <div class="mrow"><span>Price</span><b>$${M.priceUsd.toFixed(6)}</b><span>Volume 24h</span><b>$${n(M.volume24h)}</b><span>Liquidity</span><b>$${n(M.liquidity)}</b><span>Holders</span><b>${n(M.holders)}</b></div>
+        <button class="btn small" disabled>Buy ${sym} · launching on Robinhood Chain</button></div>
+      ${DEV ? '<div class="wrow"><button class="btn small" id="w-day">+1 day (test)</button><button class="btn small" id="w-sim">Simulate wallet send (test)</button></div>' : ''}`;
+    const q = (id) => body.querySelector('#' + id);
+    q('w-claim').addEventListener('click', () => { const c = Economy.claim(); if (c) Audio.play('coin'); this.renderWallet(); });
+    q('w-vault').addEventListener('click', () => {
+      const r = Economy.moveToVault(+q('w-amt').value || 0);
+      if (!r) { Audio.play('denied'); this.toast(`You can move between ${fmt(V.withdraw.min)} and ${fmt(Economy.withdrawable())} ${sym}`); return; }
+      Audio.play('coin'); this.toast(`${fmt(r.net)} ${sym} moved to the vault (fee ${fmt(r.fee)})`); this.renderWallet();
+    });
+    q('w-send').addEventListener('click', () => {
+      const r = Economy.sendToWallet(false);
       Audio.play('denied');
-      if (wi.locked && Economy.data.earned > 0) this.toast(`First withdrawal opens in ${fmtDur(wi.opensAt - Date.now())}`);
-      else if (wi.usedToday) this.toast('You already withdrew from the pool today. It reopens tomorrow.');
-      else this.toast('Nothing to withdraw yet');
-      return;
-    }
-    const r = Economy.withdraw(max);
-    if (!r) { Audio.play('denied'); return; }
-    Audio.play('coin');
-    this.toast(`Withdrew ${fmt(r.net)} ${sym}${r.fee ? ` (fee ${fmt(r.fee)})` : ''} · demo, no real transfer yet`);
-    this.renderShop(); this.updateGold();
+      this.toast(r.reason === 'wallet' ? `Wallet connection opens when ${sym} launches on Robinhood Chain.` : 'The vault is empty');
+    });
+    body.querySelectorAll('[data-dep]').forEach((b) => b.addEventListener('click', () => {
+      Economy.deposit(+b.dataset.dep); Audio.play('buy'); this.toast(`+${fmt(+b.dataset.dep)} demo ${sym} deposited`); this.renderWallet();
+    }));
+    q('w-day')?.addEventListener('click', () => {
+      const d2 = Economy.data; d2.lastAccrue -= 86400000; if (d2.firstDepositAt) d2.firstDepositAt -= 86400000;
+      const r = Economy.accrue(); this.toast(`+1 day: produced ${fmt(r.produced)}, pool ${fmt(r.pool)}`); this.renderWallet();
+    });
+    q('w-sim')?.addEventListener('click', () => { const r = Economy.sendToWallet(true); if (r.ok) this.toast(`${fmt(r.amount)} ${sym} sent (simulated)`); this.renderWallet(); });
   }
 
   renderStore(body) {
@@ -712,7 +793,7 @@ export class UI {
     }
     const note = document.createElement('div');
     note.className = 'hint'; note.style.gridColumn = '1 / -1';
-    note.textContent = `Prices are in ${CONFIG.token.symbol}. ${Math.round(CONFIG.realm.spendSplit.burn * 100)}% of every purchase is burned and ${Math.round(CONFIG.realm.spendSplit.pool * 100)}% flows back into the daily pool. Skill Tomes also drop from every boss the first time you beat it.`;
+    note.textContent = `Prices are in ${CONFIG.token.symbol}, paid from your in-game balance. Skill Tomes also drop from every boss the first time you beat it.`;
     body.appendChild(note);
   }
 

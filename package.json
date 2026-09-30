@@ -7,7 +7,7 @@
     "dev": "vite --open",
     "start": "node serve.mjs",
     "sim": "node sim/balance.mjs warrior && node sim/balance.mjs lion",
-    "realm": "node sim/realm.mjs"
+    "economy": "node sim/v5.mjs"
   },
   "devDependencies": {
     "vite": "^6.0.0"
