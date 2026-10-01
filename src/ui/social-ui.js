@@ -30,9 +30,8 @@ export class SocialUI {
   _bind() {
     const click = (id, fn) => $(id).addEventListener('click', () => { Audio.play('click'); fn(); });
     click('btn-clan-close', () => this.close());
-    click('btn-title-clan', () => this.open('clan'));
-    click('btn-title-rank', () => this.open('players'));
     click('btn-hud-clan', () => this.open('clan'));
+    click('btn-hud-rank', () => this.open('players'));
     document.querySelectorAll('#screen-clan [data-ctab]').forEach((b) => b.addEventListener('click', () => {
       Audio.play('page'); this.tab = b.dataset.ctab; this.render();
     }));

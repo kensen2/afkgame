@@ -328,7 +328,6 @@ input[type=range]:disabled { opacity: 0.35; cursor: not-allowed; }
 .clan input.tag-in { flex: 0 0 90px; min-width: 0; text-transform: uppercase; }
 .nick-msg { min-height: 20px; font-size: 14px; color: var(--muted); }
 .nick-msg.bad { color: #ff8a8a; } .nick-msg.good { color: var(--green); }
-.title-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .dgn-clan { font-size: 11px; color: #cfc6e0; text-align: right; }
 .dgn-clan b { color: var(--green); }
 .panel.clan { padding: 18px; }
@@ -355,3 +354,8 @@ input[type=range]:disabled { opacity: 0.35; cursor: not-allowed; }
   .crow .st:nth-of-type(3) { display: none; }
   .crow .act { grid-column: 1 / -1; }
 }
+.hud-chip { padding: 8px 14px; font-family: 'Cinzel', serif; font-size: 16px; font-weight: 800; color: var(--gold); display: flex; align-items: center; gap: 6px; cursor: pointer; transition: filter .15s, transform .08s; }
+.hud-chip:hover { filter: brightness(1.25); }
+.hud-chip:active { transform: translateY(1px); }
+.hud-chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+@media (max-width: 700px) { .wallet-row { flex-wrap: wrap; max-width: 200px; margin-left: auto; } .hud-chip { order: 2; padding: 5px 10px; font-size: 14px; } .hud-chip b { display: none; } }
