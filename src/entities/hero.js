@@ -314,5 +314,7 @@ export class Hero {
   dispose() {
     this.shield.dispose();
     this.scene.remove(this.group);
+    this.mesh.geometry.dispose(); this.mat.dispose(); this.xrayMat.dispose();
+    for (const t of Object.values(this.textures)) t.dispose();
   }
 }

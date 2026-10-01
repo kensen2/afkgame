@@ -69,9 +69,10 @@ export const Social = {
     const chk = await this.backend.checkCreate({ name, tag });
     if (!chk.ok) return chk;
     if (!Economy.canAffordTokens(cost)) return { ok: false, error: 'no_funds' };
+    const before = { balance: Economy.data.balance, depositBal: Economy.data.depositBal, spentDungeon: Economy.data.spentDungeon };
     Economy.spendTokens(cost);
     const r = await this.backend.createClan({ name: chk.name, tag: chk.tag });
-    if (!r.ok) { Economy.data.balance += cost; Economy.data.spentDungeon -= cost; Economy.save(); Economy.emit(); return r; }
+    if (!r.ok) { Object.assign(Economy.data, before); Economy.save(); Economy.emit(); return r; }
     await this.refresh({ type: 'created' });
     return r;
   },

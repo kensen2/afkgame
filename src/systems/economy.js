@@ -87,6 +87,7 @@ export const Economy = {
         }
       }
     } catch (e) { console.warn('Could not read save', e); }
+    this.rateBonus = Math.max(0, Math.min(0.10, +this.data.clanBonus || 0));
     this._awaySince = this.data.lastSeen || 0;
     return this.data;
   },
@@ -116,7 +117,17 @@ export const Economy = {
   },
 
   // İlerlemeyi sıfırla; ses/hız gibi ayarlar korunur
-  reset() { const settings = this.data.settings; this.data = freshSave(); this.data.settings = settings; this.save(); this.emit(); },
+  // DGN tarafına dokunulmaz: bakiye, anapara hakkı, kasa, anahtarlar, sezon ve sayaçlar kalır.
+  // (Üretimi belirleyen seasonBest ve açılmış dalga da kalır; yoksa sıfırlama oyuncunun kazancını düşürürdü.)
+  reset() {
+    const d = this.data, keep = {};
+    for (const k of ['settings', 'season', 'balance', 'uncollected', 'depositBal', 'credit', 'poolAvail', 'poolDay', 'vault',
+      'deposited', 'withdrawn', 'spentDungeon', 'feesBurned', 'seasonDeposited', 'firstDepositAt', 'keys', 'opened',
+      'seasonBest', 'lastAccrue', 'idlePass', 'clanBonus']) keep[k] = d[k];
+    this.data = freshSave();
+    Object.assign(this.data, keep);
+    this.save(); this.emit();
+  },
 
   on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   emit(evt = {}) { for (const fn of listeners) fn(this.data, evt); },
@@ -148,6 +159,7 @@ export const Economy = {
     if (b === this.rateBonus) return;
     this.accrue();
     this.rateBonus = b;
+    this.data.clanBonus = b; this.save();    // açılışta, clan bilgisi gelmeden önceki birikim de doğru hızla hesaplansın
     this.emit({ type: 'rateBonus', bonus: b });
   },
   // Bugünkü havuz payı (DGN/gün), realm doluluğuna göre
@@ -219,7 +231,8 @@ export const Economy = {
     if (amount < W.min || amount > this.withdrawable()) return false;
     const fromCredit = Math.min(d.credit, amount);
     d.credit -= fromCredit; d.poolAvail = Math.max(0, d.poolAvail - (amount - fromCredit));
-    d.balance -= amount; d.depositBal = Math.min(d.depositBal, d.balance);
+    // çekilen anapara, paket almakta kullanılan "yatırılmış" kısımdan da düşer
+    d.balance -= amount; d.depositBal = Math.min(Math.max(0, d.depositBal - fromCredit), d.balance);
     const fee = Math.ceil(amount * W.fee);
     d.feesBurned += fee * W.feeBurn;
     d.vault += amount - fee;
@@ -300,7 +313,7 @@ export const Economy = {
     const idx = F.seasonIndex(now), d = this.data;
     if (d.season === null || d.season === undefined) { d.season = idx; return false; }
     if (d.season === idx) return false;
-    const keep = { settings: d.settings, keys: d.keys, credit: d.credit, vault: d.vault, deposited: d.deposited,
+    const keep = { settings: d.settings, clanBonus: d.clanBonus, keys: d.keys, credit: d.credit, vault: d.vault, deposited: d.deposited,
       withdrawn: d.withdrawn, spentDungeon: d.spentDungeon, feesBurned: d.feesBurned, selectedHero: d.selectedHero };
     const bal = Math.min(d.balance, d.credit), depBal = Math.min(d.depositBal, bal);
     this.data = freshSave();
@@ -426,7 +439,11 @@ export const Economy = {
 
   recordWave(w) {
     if (w > this.data.bestWave) this.data.bestWave = w;
-    if (w > (this.data.seasonBest || 0)) this.data.seasonBest = w;   // DP'yi büyütür
+    // üretim sadece bu sezon açılmış dalgalara kadar sayılır (sezon devrinde eski dalga yeni sezona taşınmasın)
+    const sw = Math.min(w, Math.max(CONFIG.v5.freeMaxWave, this.data.opened || 0));
+    if (sw > (this.data.seasonBest || 0)) this.data.seasonBest = sw;
+    // çıkıp girince kaldığın dalgadan devam et
+    if (w >= 1 && w < CONFIG.wave.maxWave) this.data.resumeWave = w + 1;
 
   },
 

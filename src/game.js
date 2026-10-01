@@ -24,6 +24,9 @@ function startTicker(fn, ms) {
   }
 }
 
+// düşman mermileri ortak geometri kullanır (her atışta yeni geometri sızıntı yapıyordu)
+const ORB_BIG = new THREE.SphereGeometry(0.32, 12, 8), ORB_SMALL = new THREE.SphereGeometry(0.24, 12, 8);
+
 export class Game {
   constructor(canvas, overlay, ui) {
     this.ui = ui;
@@ -127,8 +130,7 @@ export class Game {
   clearWorld() {
     for (const e of this.enemies) e.dispose();
     this.enemies = [];
-    for (const p of this.projectiles) this.scene.remove(p.mesh);
-    this.projectiles = [];
+    this.clearProjectiles();
     for (const c of this.coins) this.scene.remove(c.mesh);
     this.coins = [];
     this.fx.clear();
@@ -164,6 +166,8 @@ export class Game {
       // yeni kat
       this.phase = 'transition';
       this.ui.floorTransition(fi + 1, CONFIG.floors[fi % CONFIG.floors.length].name, () => {
+        // geçiş sırasında oyundan çıkıldıysa ya da kahraman öldüyse yeni dalgayı başlatma
+        if (!this.hero || this.hero.dead || this.phase !== 'transition') return;
         this.setFloor(fi);
         this.hero.pos.set(this.hero.pos.x, 0, 0);
         this.dungeon.rebuild(this.hero.pos.x);
@@ -321,7 +325,8 @@ export class Game {
       mesh.scale.setScalar(1.4);
       this.audio.play('bolt');
     } else {
-      mesh = new THREE.Mesh(new THREE.SphereGeometry(kind === 'fire' ? 0.32 : 0.24, 12, 8), new THREE.MeshBasicMaterial({ color }));
+      mesh = new THREE.Mesh(kind === 'fire' ? ORB_BIG : ORB_SMALL, new THREE.MeshBasicMaterial({ color }));
+      mesh.userData.ownMat = true;
       this.audio.play('cast');
     }
     const start = e.pos.clone(); start.y = 1.4 * e.scale;
@@ -352,10 +357,10 @@ export class Game {
         this.hero.takeDamage(p.dmg, this, null);
         this.fx.burst(p.mesh.position, { count: 12, color: p.color, speed: 4, size: 0.4 });
         this.audio.play('hurt');
-        this.scene.remove(p.mesh); this.projectiles.splice(i, 1);
+        this._dropProjectile(p); this.projectiles.splice(i, 1);
         continue;
       }
-      if (p.life <= 0) { this.scene.remove(p.mesh); this.projectiles.splice(i, 1); }
+      if (p.life <= 0) { this._dropProjectile(p); this.projectiles.splice(i, 1); }
     }
   }
 
@@ -372,7 +377,11 @@ export class Game {
     setTimeout(() => this.ui.showVictory(this), 1500);
   }
 
+  _dropProjectile(p) { this.scene.remove(p.mesh); if (p.mesh.userData.ownMat) p.mesh.material.dispose(); }
+  clearProjectiles() { for (const p of this.projectiles) this._dropProjectile(p); this.projectiles = []; }
+
   onHeroDeath() {
+    this.ults.clear();          // havadaki kaya/meteor/ruh ölü kahraman adına hasar verip ödül kazandırmasın
     this.audio.setMusic(null);
     this.phase = 'dead';
     this.audio.play('defeat');
@@ -420,6 +429,7 @@ export class Game {
         Economy.save();
         this.phase = 'loot';
         this.lootT = 0;
+        this.clearProjectiles();   // dalga bitti: havada kalan mermi kahramanı vurmasın
         hero.heal(hero.stats.maxHp * 0.15);
         this.ui.waveCleared(this);
         this.audio.setMusic('dungeon');

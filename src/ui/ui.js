@@ -126,20 +126,20 @@ export class UI {
       const b = $('btn-set-reset'), note = $('reset-note');
       if (!b.dataset.armed) {
         b.dataset.armed = '1'; b.textContent = 'Confirm';
-        note.textContent = 'Click Confirm to erase all gold, levels and upgrades.';
+        note.textContent = 'Click Confirm to erase gold, levels and upgrades. DGN and keys stay.';
         clearTimeout(this._resetT);
-        this._resetT = setTimeout(() => { delete b.dataset.armed; b.textContent = 'Reset'; note.textContent = 'Start over from wave 1 with 0 gold. Settings are kept.'; }, 4000);
+        this._resetT = setTimeout(() => { delete b.dataset.armed; b.textContent = 'Reset'; note.textContent = 'Start over from wave 1 with 0 gold. Settings, DGN and keys are kept.'; }, 4000);
         return;
       }
       clearTimeout(this._resetT);
       delete b.dataset.armed; b.textContent = 'Reset';
-      $('reset-note').textContent = 'Start over from wave 1 with 0 gold. Settings are kept.';
+      $('reset-note').textContent = 'Start over from wave 1 with 0 gold. Settings, DGN and keys are kept.';
       Economy.reset();
       $('screen-settings').classList.add('hidden');
       $('screen-pause').classList.add('hidden');
       if (this.game.hero) this.toMenu();
       else if (!$('screen-title').classList.contains('hidden')) this.showTitle();
-      this.toast('Progress reset. Fresh start!');
+      this.toast('Progress reset. Your DGN, keys and vault are untouched.');
     });
     click('btn-reset', () => {
       const b = $('btn-reset');
@@ -175,6 +175,8 @@ export class UI {
     window.addEventListener('keydown', (e) => {
       if (!this.game?.hero) return;
       const k = e.key.toLowerCase();
+      // bir kutuya yazı yazılırken oyun kısayolları çalışmasın (Escape hariç)
+      if (k !== 'escape' && e.target instanceof HTMLElement && e.target.matches('input, textarea')) return;
       if (['1', '2', '3'].includes(k) && !this.game.paused) Skills.tryCast(this.game, +k - 1, true);
       else if ((k === '4' || k === '5') && !this.game.paused) Skills.tryUlt(this.game, +k - 4, true);
       else if (k === 'a') this.toggleAuto();
@@ -182,6 +184,7 @@ export class UI {
       else if (k === 'b') { if ($('screen-shop').classList.contains('hidden')) this.openShop('game'); else this.closeShop(); }
       else if (k === 'escape') {
         if (this.social?.isOpen()) this.social.close();
+        else if (!$('screen-wallet').classList.contains('hidden')) this.closeWallet();
         else if (!$('screen-settings').classList.contains('hidden')) this.closeSettings();
         else if (!$('screen-shop').classList.contains('hidden')) this.closeShop();
         else if (!$('screen-pause').classList.contains('hidden')) this.resume();
@@ -204,6 +207,11 @@ export class UI {
     setInterval(() => { if (!document.hidden) { Economy.accrue(); this.updateGold(); Economy.save(); } }, 15000);
     Economy.on((d, evt) => {
       this.updateGold();
+      if (evt?.type === 'season') {
+        // sezon oyun açıkken döndü: koşuyu bitir, yeni sezona temiz başla
+        if (this.game?.hero) this.toMenu();
+        this.toast('A new season has begun! Waves and upgrades were reset. Your keys are kept.');
+      }
       if (evt?.type === 'keyUsed') { const k = F.keyTier(evt.wave); this.toast(`${k.icon} ${k.name} used · Wave ${evt.wave} opened`); }
     });
   }
@@ -240,7 +248,8 @@ export class UI {
     clearInterval(this._tipTimer);
     $('screen-title').classList.remove('hidden');
     const d = Economy.data;
-    const who = Social.me.nick ? `<span>Lord <b>${Social.me.nick}</b>${Social.clan ? ` [${Social.clan.tag}]` : ''}</span>` : '';
+    const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const who = Social.me.nick ? `<span>Lord <b>${esc(Social.me.nick)}</b>${Social.clan ? ` [${esc(Social.clan.tag)}]` : ''}</span>` : '';
     $('title-stats').innerHTML = who + (d.bestWave > 0
       ? `<span>Best wave: <b>${d.bestWave}</b></span><span>Level: <b>${d.level}</b></span><span>Gold: <b>${fmt(d.gold)}</b></span>`
       : '');
@@ -289,6 +298,8 @@ export class UI {
   }
 
   toMenu() {
+    this.hideGate();
+    for (const id of ['screen-shop', 'screen-wallet', 'screen-pause', 'screen-death']) $(id).classList.add('hidden');
     Audio.setMusic('menu');
     this.game.showMenuScene();
     $('hud').classList.add('hidden');
@@ -297,6 +308,7 @@ export class UI {
 
   // ---------- HUD ----------
   onRunStart(game) {
+    this.hideGate();
     $('hud').classList.remove('hidden');
     this.updateRush();
     const h = game.hero;
@@ -556,6 +568,8 @@ export class UI {
     $('screen-shop').classList.add('hidden');
     const from = this.shopReturn;
     if (this.game.hero) { this.game.hero.refreshStats(); this.buildSkills(this.game.hero); }
+    // kapı ekranından anahtar almaya gidip almadan dönüldüyse kapı geri gelsin
+    if (this.game.hero && this.game.phase === 'gate' && !Economy.keyCount(F.keyTier(this.game.gateWave)?.id)) this.showGate(this.game.gateWave, true);
     if (from === 'pause') $('screen-pause').classList.remove('hidden');
     else if (from === 'death') $('screen-death').classList.remove('hidden');
     else if (from === 'select') this.showSelect();
@@ -613,6 +627,16 @@ export class UI {
         });
         body.appendChild(el);
       });
+      // Ultimate'ler: seviye atlamaz, bilgi olarak listelenir
+      (hdef.ultimates || []).forEach((u, j) => {
+        const el = document.createElement('div');
+        el.className = 'item ult-item';
+        el.innerHTML = `<div class="ic">${u.icon}</div>
+          <div><div class="nm">${u.name}<small>ULTIMATE · key ${4 + j}</small></div><div class="ds">${u.desc}</div>
+          <div class="val">Power: ${Math.round(u.power * 100)}% · Cooldown: ${u.cd}s</div></div>
+          <span class="ult-note">Grows with your damage</span>`;
+        body.appendChild(el);
+      });
       const note = document.createElement('div');
       note.className = 'hint'; note.style.gridColumn = '1 / -1';
       note.textContent = 'You earn a skill point every time you level up. Lv 4+ also needs Skill Tomes: bosses drop them the first time you beat them, or buy them in the Store tab.';
@@ -656,7 +680,7 @@ export class UI {
     }
   }
 
-  showGate(w) {
+  showGate(w, quiet = false) {
     const k = F.keyTier(w);
     $('gate-eyebrow').textContent = `Wave ${w}`;
     $('gate-icon').textContent = k ? k.icon : '🔒';
@@ -664,7 +688,7 @@ export class UI {
     const now = Math.round(Economy.ratePerHour()), then = Math.round(F.rateAt(k ? k.to : w));
     $('gate-rate').innerHTML = `Your production: <b>${now.toLocaleString('en-US')}/h</b> → up to <b>${then.toLocaleString('en-US')}/h</b> at wave ${k ? k.to : w}`;
     $('screen-gate').classList.remove('hidden');
-    Audio.play('boss');
+    if (!quiet) Audio.play('boss');
   }
   hideGate() { $('screen-gate').classList.add('hidden'); }
 

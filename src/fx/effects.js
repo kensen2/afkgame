@@ -179,7 +179,8 @@ export class Effects {
       if (f.life <= 0) { f.el.remove(); this.floaters.splice(i, 1); continue; }
       f.pos.y += dt * 1.6; f.pos.x += f.vx * dt;
       this.tmp.copy(f.pos).project(this.camera);
-      const x = (this.tmp.x * 0.5 + 0.5) * w, y = (-this.tmp.y * 0.5 + 0.5) * h;
+      // ekran kenarında kesilmesin
+      const x = Math.min(w - 70, Math.max(70, (this.tmp.x * 0.5 + 0.5) * w)), y = Math.max(24, (-this.tmp.y * 0.5 + 0.5) * h);
       // büyüyerek çıkar, hemen yerine oturur (kritikte daha güçlü)
       const age = 1 - f.life;
       const sc = age < 0.08 ? 0.6 + (age / 0.08) * (0.5 + f.pop) : 1.1 + f.pop - Math.min(1, (age - 0.08) / 0.18) * f.pop;
@@ -223,7 +224,7 @@ export class Effects {
   clear() {
     for (const p of this.particles) { this.scene.remove(p.s); this.pool.push(p.s); }
     this.particles = [];
-    for (const r of this.rings) this.scene.remove(r.m);
+    for (const r of this.rings) { this.scene.remove(r.m); r.m.geometry.dispose(); r.m.material.dispose(); }
     this.rings = [];
     for (const f of this.floaters) f.el.remove();
     this.floaters = [];

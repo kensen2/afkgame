@@ -64,6 +64,7 @@ export class Enemy {
     const sh = new THREE.Mesh(new THREE.CircleGeometry(0.7 * this.scale, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false }));
     sh.rotation.x = -Math.PI / 2; sh.position.y = 0.05;
     this.group.add(sh);
+    this.shadow = sh;
     // elit / boss aurası
     if (rank !== 'normal') {
       const col = rank === 'boss' ? 0xff2a2a : 0xffa020;
@@ -297,6 +298,9 @@ export class Enemy {
     this.scene.remove(this.group);
     this.mixer.stopAllAction();
     for (const m of this.mats) m.dispose();
+    // iskelet dokuları ve bu düşmana özel geometri/materyaller (model geometrisi ortak, ona dokunma)
+    this.group.traverse((o) => { if (o.isSkinnedMesh && o.skeleton) o.skeleton.dispose(); });
+    for (const m of [this.shadow, this.aura]) if (m) { m.geometry.dispose(); m.material.dispose(); }
   }
 }
 
