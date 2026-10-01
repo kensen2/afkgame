@@ -29,6 +29,8 @@ export class Dungeon {
     this.root = new THREE.Group(); scene.add(this.root);
     this.segments = new Map();   // index -> group
     this.torches = [];           // {pos, flame, seg}
+    this.breakables = [];        // {obj, seg} kırılabilir dekorlar (Boulder Toss)
+    this.flying = [];            // kırılıp savrulan dekorlar
     this.theme = CONFIG.floors[0];
     this.flameTex = makeFlameTexture();
     this.lights = [];
@@ -55,6 +57,8 @@ export class Dungeon {
   // Kat değişince tüm koridoru yeni temayla baştan kur
   rebuild(heroX) {
     for (const [i] of this.segments) this.removeSeg(i);
+    for (const f of this.flying) this.scene.remove(f.obj);
+    this.flying = [];
     this.update(heroX, 0);
   }
 
@@ -63,6 +67,7 @@ export class Dungeon {
     if (!g) return;
     this.root.remove(g);
     this.torches = this.torches.filter((t) => t.seg !== i);
+    this.breakables = this.breakables.filter((b) => b.seg !== i);
     this.segments.delete(i);
   }
 
@@ -136,19 +141,62 @@ export class Dungeon {
       d.rotation.y = (r() - 0.5) * 0.8;
       d.scale.setScalar(s);
       g.add(d);
+      this.breakables.push({ obj: d, seg: i });
     }
     // ön planda alçak sütun / moloz (derinlik hissi için)
     if (r() < 0.18) {
       const c = cloneDungeon('column');
       c.position.set((r() - 0.5) * 3, 0, 4.7);
       g.add(c);
+      this.breakables.push({ obj: c, seg: i });
     }
     this.root.add(g);
     this.segments.set(i, g);
   }
 
+  // (x, z) etrafında r içindeki dekorları kırıp savurur. Kırılanların dünya konumlarını döner (toz/parça efekti için).
+  breakNear(x, z, r) {
+    const out = [];
+    const wp = new THREE.Vector3();
+    for (let k = this.breakables.length - 1; k >= 0; k--) {
+      const b = this.breakables[k];
+      b.obj.getWorldPosition(wp);
+      const d = Math.hypot(wp.x - x, (wp.z - z) * 0.8);
+      if (d > r) continue;
+      this.breakables.splice(k, 1);
+      this.scene.attach(b.obj);                       // dünya konumunu koruyarak segmentten ayır
+      const dir = new THREE.Vector3(wp.x - x, 0, wp.z - z);
+      if (dir.lengthSq() < 0.01) dir.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+      dir.normalize();
+      const force = 7 * (1 - d / (r + 0.5)) + 3;
+      this.flying.push({
+        obj: b.obj, t: 0, life: 1.3, s0: b.obj.scale.x,
+        v: new THREE.Vector3(dir.x * force, 5 + Math.random() * 4, dir.z * force * 0.6),
+        spin: new THREE.Vector3((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 12),
+      });
+      out.push(wp.clone());
+    }
+    return out;
+  }
+
+  _updateFlying(dt) {
+    for (let k = this.flying.length - 1; k >= 0; k--) {
+      const f = this.flying[k];
+      f.t += dt;
+      f.v.y -= 22 * dt;
+      f.obj.position.addScaledVector(f.v, dt);
+      if (f.obj.position.y < 0) { f.obj.position.y = 0; f.v.y *= -0.35; f.v.x *= 0.6; f.v.z *= 0.6; f.spin.multiplyScalar(0.6); }
+      f.obj.rotation.x += f.spin.x * dt; f.obj.rotation.y += f.spin.y * dt; f.obj.rotation.z += f.spin.z * dt;
+      // son kısımda küçülerek kaybolur (malzemeler ortak olduğu için saydamlık yerine ölçek)
+      const k2 = Math.max(0, (f.t - f.life * 0.55) / (f.life * 0.45));
+      f.obj.scale.setScalar(f.s0 * Math.max(0.001, 1 - k2));
+      if (f.t >= f.life) { this.scene.remove(f.obj); this.flying.splice(k, 1); }
+    }
+  }
+
   update(heroX, dt) {
     this.time += dt;
+    if (this.flying.length) this._updateFlying(dt);
     const i0 = Math.floor((heroX - BEHIND) / SEG), i1 = Math.floor((heroX + AHEAD) / SEG);
     for (let i = i0; i <= i1; i++) if (!this.segments.has(i)) this.buildSeg(i);
     for (const [i] of this.segments) if (i < i0 - 1 || i > i1 + 2) this.removeSeg(i);

@@ -7,6 +7,7 @@ import { Enemy } from './entities/enemy.js';
 import { Effects } from './fx/effects.js';
 import { Economy } from './systems/economy.js';
 import { Skills } from './systems/skills.js';
+import { Ultimates } from './systems/ultimates.js';
 import { buildWave } from './systems/waves.js';
 import { cloneDungeon, cloneWeapon } from './core/assets.js';
 import { Audio } from './core/audio.js';
@@ -46,6 +47,7 @@ export class Game {
 
     this.dungeon = new Dungeon(this.scene);
     this.fx = new Effects(this.scene, this.camera, overlay);
+    this.ults = new Ultimates(this);
     this.enemies = [];
     this.projectiles = [];
     this.coins = [];
@@ -130,6 +132,7 @@ export class Game {
     for (const c of this.coins) this.scene.remove(c.mesh);
     this.coins = [];
     this.fx.clear();
+    this.ults.clear();
     if (this.hero) { this.hero.dispose(); this.hero = null; }
   }
 
@@ -451,6 +454,7 @@ export class Game {
     this.updateCoins(dt);
     this.dungeon.update(hero.pos.x, dt);
     this.fx.update(dt);
+    this.ults.update(dt);
   }
 
   render() {

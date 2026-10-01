@@ -130,7 +130,7 @@ export const Skills = {
   // i: 0,1,2 — manual: oyuncu bastı mı
   tryCast(game, i, manual = false) {
     const h = game.hero;
-    if (!h || h.dead || game.phase !== 'combat' || h.dash) return false;
+    if (!h || h.dead || game.phase !== 'combat' || h.dash || h.casting > 0) return false;
     if (h.skillCds[i] > 0) { if (manual) game.audio.play('denied'); return false; }
     const def = h.def.skills[i];
     const impl = IMPL[def.id];
@@ -142,7 +142,23 @@ export const Skills = {
     game.ui.skillCast(i);
     return true;
   },
+  // Ultimate (4. yetenek): uzun bekleme süresi, AUTO açıksa uygun anı kendisi seçer
+  tryUlt(game, manual = false) {
+    const h = game.hero;
+    if (!h || h.dead || game.phase !== 'combat' || h.dash || h.casting > 0) return false;
+    const def = h.def.ultimate;
+    if (!def) return false;
+    if (h.ultCd > 0) { if (manual) game.audio.play('denied'); return false; }
+    if (!manual && !game.ults.ready(h, def)) return false;
+    if (manual && !game.enemies.some((e) => !e.dead && e.active)) return false;
+    if (!game.ults.cast(h, def)) return false;
+    h.ultCd = def.cd;
+    game.ui.skillCast('ult');
+    return true;
+  },
   autoCast(game) {
+    if (game.hero?.casting > 0) return;
+    if (this.tryUlt(game, false)) return;
     for (let i = 0; i < 3; i++) if (this.tryCast(game, i, false)) return;
   },
 };

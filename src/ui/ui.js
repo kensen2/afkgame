@@ -176,6 +176,7 @@ export class UI {
       if (!this.game?.hero) return;
       const k = e.key.toLowerCase();
       if (['1', '2', '3'].includes(k) && !this.game.paused) Skills.tryCast(this.game, +k - 1, true);
+      else if (k === '4' && !this.game.paused) Skills.tryUlt(this.game, true);
       else if (k === 'a') this.toggleAuto();
       else if (k === 'h') this.toggleSpeed();
       else if (k === 'b') { if ($('screen-shop').classList.contains('hidden')) this.openShop('game'); else this.closeShop(); }
@@ -217,6 +218,7 @@ export class UI {
         'Tip: Every 5th wave is elite, every 10th wave brings a boss.',
         'Tip: Level is shared by both heroes, but upgrades are per hero.',
         'Tip: Press 1, 2, 3 to cast skills yourself, or leave AUTO on.',
+        'Tip: Press 4 for your Ultimate. It hits hard but takes a while to recharge.',
         'Tip: Press H to change game speed.',
         'Tip: When you fall, you restart one wave back. Nothing you earned is lost.',
         'Tip: Wave 100 hides the Lord of the Dungeon.',
@@ -265,7 +267,7 @@ export class UI {
         ${[['Health', st.maxHp, maxes.maxHp, fmt(st.maxHp)], ['Damage', st.atk, maxes.atk, st.atk.toFixed(1)], ['Armor', st.armor, maxes.armor, Math.round(st.armor)],
           ['Attack Speed', st.atkSpd, maxes.atkSpd, st.atkSpd.toFixed(2)], ['Crit', st.crit, maxes.crit, Math.round(st.crit * 100) + '%']]
           .map(([n, v, m, t]) => `<div class="stat-row"><span>${n}</span><div class="sb"><div style="width:${Math.min(100, v / m * 100)}%"></div></div><b>${t}</b></div>`).join('')}
-        <div class="skills-mini">${h.skills.map((s, i) => `<span title="${s.desc}">${s.icon}<br>${s.name}<br><small>Lv ${Economy.skillLevel(id, i)}</small></span>`).join('')}</div>`;
+        <div class="skills-mini">${h.skills.map((s, i) => `<span title="${s.desc}">${s.icon}<br>${s.name}<br><small>Lv ${Economy.skillLevel(id, i)}</small></span>`).join('')}${h.ultimate ? `<span class="ult-mini" title="${h.ultimate.desc}">${h.ultimate.icon}<br>${h.ultimate.name}<br><small>ULTIMATE</small></span>` : ''}</div>`;
       card.addEventListener('click', () => {
         Audio.play('click');
         this.selected = id;
@@ -323,10 +325,22 @@ export class UI {
       wrap.appendChild(el);
       return el;
     });
+    // Ultimate: ayrı, daha büyük, parlayan buton (tuş 4)
+    const u = h.def.ultimate;
+    this.ultEl = null;
+    if (u) {
+      const el = document.createElement('div');
+      el.className = 'skill ult';
+      el.title = `ULTIMATE · ${u.name} — ${u.desc} Cooldown ${u.cd}s.`;
+      el.innerHTML = `<span>${u.icon}</span><div class="cd"></div><div class="cdt"></div><div class="key">4</div><div class="ulttag">ULT</div><div class="sname">${u.name}</div>`;
+      el.addEventListener('pointerdown', (e) => { e.preventDefault(); Skills.tryUlt(this.game, true); });
+      wrap.appendChild(el);
+      this.ultEl = el;
+    }
   }
 
   skillCast(i) {
-    const el = this.skillEls?.[i];
+    const el = i === 'ult' ? this.ultEl : this.skillEls?.[i];
     if (!el) return;
     el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
   }
@@ -355,6 +369,12 @@ export class UI {
         el.querySelector('.cdt').textContent = cd > 0 ? Math.ceil(cd) : '';
         el.classList.toggle('ready', cd <= 0 && game.phase === 'combat');
       });
+    }
+    if (this.ultEl && h.def.ultimate) {
+      const cd = h.ultCd, max = h.def.ultimate.cd;
+      this.ultEl.querySelector('.cd').style.setProperty('--p', `${cd > 0 ? (cd / max) * 100 : 0}%`);
+      this.ultEl.querySelector('.cdt').textContent = cd > 0 ? Math.ceil(cd) : '';
+      this.ultEl.classList.toggle('ready', cd <= 0 && game.phase === 'combat');
     }
     // boss barı
     const boss = game.enemies.find((e) => e.rank === 'boss' && !e.dead);

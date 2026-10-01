@@ -359,3 +359,15 @@ input[type=range]:disabled { opacity: 0.35; cursor: not-allowed; }
 .hud-chip:active { transform: translateY(1px); }
 .hud-chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 @media (max-width: 700px) { .wallet-row { flex-wrap: wrap; max-width: 200px; margin-left: auto; } .hud-chip { order: 2; padding: 5px 10px; font-size: 14px; } .hud-chip b { display: none; } }
+
+/* ---------- Ultimate ---------- */
+.skill.ult { width: 86px; height: 86px; margin-left: 6px; border-radius: 50%; border: 2px solid #ff9a3a; align-self: flex-end;
+  background: radial-gradient(circle at 50% 40%, #4a2a16, #1a0f14 70%); font-size: 40px; }
+.skill.ult .cd { border-radius: 50%; }
+.skill.ult .key { top: 8px; left: 50%; transform: translateX(-50%); }
+.skill.ult .ulttag { position: absolute; top: 22px; left: 0; right: 0; text-align: center; font-size: 9px; font-weight: 800; letter-spacing: .15em; color: #ffcf7a; opacity: .85; }
+.skill.ult .sname { bottom: 6px; background: none; text-shadow: 0 1px 3px #000; }
+.skill.ult.ready { border-color: #ffd27a; animation: ultGlow 1.4s ease-in-out infinite; }
+@keyframes ultGlow { 0%, 100% { box-shadow: 0 0 14px rgba(255,150,50,0.55), 0 6px 18px rgba(0,0,0,0.6); } 50% { box-shadow: 0 0 30px rgba(255,190,80,0.95), 0 6px 18px rgba(0,0,0,0.6); } }
+.card .skills-mini .ult-mini { color: #ffcf7a; box-shadow: inset 0 0 0 1px rgba(255,154,58,0.6); }
+@media (max-width: 700px) { .skill.ult { width: 70px; height: 70px; font-size: 30px; } .skill.ult .ulttag { top: 18px; } }

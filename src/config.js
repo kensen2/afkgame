@@ -185,6 +185,9 @@ export const CONFIG = {
         { id: 'charge', name: 'Charge',         icon: '💥', cd: 10, power: 2.0, dist: 7,
           desc: 'Dashes forward, dealing 200% damage and knocking back everything in the way.' },
       ],
+      // Ultimate: 4. özel yetenek, uzun bekleme süresi, seviye atlamaz (gücü kahramanın saldırısıyla büyür)
+      ultimate: { id: 'boulder', name: 'Boulder Toss', icon: '🪨', cd: 32, power: 4.0, radius: 3.4, stun: 1.4,
+        desc: 'Tears a boulder from the ground and hurls it: 400% damage around the impact, stuns for 1.4s and smashes everything nearby.' },
     },
     lion: {
       name: 'Lion Blade',
@@ -200,6 +203,8 @@ export const CONFIG = {
         { id: 'rage',  name: 'Rage',        icon: '🔥', cd: 16, power: 0.6, dur: 5,
           desc: '+60% attack speed and +20% crit chance for 5s.' },
       ],
+      ultimate: { id: 'inferno', name: 'Inferno', icon: '☄️', cd: 32, power: 2.6, radius: 3.6, burn: 0.55, dur: 5,
+        desc: 'A pillar of fire erupts (260% damage) and leaves the ground burning for 5s: 55% damage every second to enemies inside.' },
     },
   },
 

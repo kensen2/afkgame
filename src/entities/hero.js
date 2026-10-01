@@ -81,6 +81,8 @@ export class Hero {
     if (this.xray) this.xray.visible = true;
     this.mat.opacity = 1;
     this.skillCds = [0, 0, 0];
+    this.ultCd = (this.def.ultimate?.cd || 0) * 0.35;   // ilk dalgalarda hemen değil, kısa bir süre sonra hazır
+    this.casting = 0;                                    // ultimate hazırlanırken kahraman yerinde durur
     this.play('idle');
   }
 
@@ -191,6 +193,7 @@ export class Hero {
 
     for (const k of Object.keys(this.buffs)) this.buffs[k] = Math.max(0, this.buffs[k] - dt);
     for (let i = 0; i < 3; i++) this.skillCds[i] = Math.max(0, this.skillCds[i] - dt);
+    this.ultCd = Math.max(0, this.ultCd - dt);
     this.attackCd = Math.max(0, this.attackCd - dt);
     if (this.stats.regen > 0) this.heal(this.stats.maxHp * this.stats.regen * dt);
 
@@ -204,6 +207,16 @@ export class Hero {
       this.play(this.moveAnim, false, 2.2);
       this._stepAnim(dt);
       if (d.remaining <= 0.001) this.dash = null;
+      this._clamp();
+      return;
+    }
+
+    // Ultimate hazırlığı: yerinde durur, saldırmaz
+    if (this.casting > 0) {
+      this.casting -= dt;
+      this.attacking = false;
+      if (this.anim !== 'attack') this.play('idle');
+      this._stepAnim(dt);
       this._clamp();
       return;
     }

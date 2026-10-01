@@ -145,6 +145,11 @@ const SYNTH = {
     thump(90, 0.8, 0.6);
   },
   defeat: () => { playBuffer('minimize_004', 0.6, 0.8); [392, 330, 262, 196].forEach((f, i) => tone({ type: 'triangle', f0: f, dur: 0.45, vol: 0.14, delay: 0.1 + i * 0.2 })); },
+  // Ultimate sesleri
+  inferno: () => { noise({ dur: 0.9, vol: 0.35, freq: 300, f1: 2400, type: 'lowpass', q: 0.7 }); thump(80, 0.9, 0.7); tone({ type: 'sawtooth', f0: 90, f1: 45, dur: 0.8, vol: 0.08 }); },
+  ultCharge: () => { tone({ type: 'sine', f0: 180, f1: 520, dur: 0.6, vol: 0.06 }); noise({ dur: 0.6, vol: 0.08, freq: 600, f1: 3000, q: 2 }); },
+  boulderLift: () => { noise({ dur: 0.8, vol: 0.25, freq: 120, f1: 260, type: 'lowpass', q: 1 }); thump(60, 0.5, 0.6); },
+  boulderHit: () => { thump(70, 1.0, 0.8); noise({ dur: 0.7, vol: 0.4, freq: 900, f1: 120, type: 'lowpass', q: 0.8 }); noise({ dur: 0.25, vol: 0.2, freq: 2500, q: 1.5, delay: 0.02 }); },
   swing: () => {}, // kılıç savurma sesi yok; sadece vuruş anında tok ses çalar
   // dosya yüklenemezse yedekler (yine gürültüsüz)
   hit: () => thump(150, 0.6, 0.16),
