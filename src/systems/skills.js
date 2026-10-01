@@ -132,23 +132,26 @@ export const Skills = {
     game.ui.skillCast(i);
     return true;
   },
-  // Ultimate (4. yetenek): uzun bekleme süresi, AUTO açıksa uygun anı kendisi seçer
-  tryUlt(game, manual = false) {
+  // Ultimate (4. ve 5. yetenek): uzun bekleme süresi, AUTO açıksa uygun anı kendisi seçer
+  tryUlt(game, j, manual = false) {
     const h = game.hero;
     if (!h || h.dead || game.phase !== 'combat' || h.dash || h.casting > 0) return false;
-    const def = h.def.ultimate;
+    const def = h.def.ultimates?.[j];
     if (!def) return false;
-    if (h.ultCd > 0) { if (manual) game.audio.play('denied'); return false; }
+    if (h.ultCds[j] > 0) { if (manual) game.audio.play('denied'); return false; }
     if (!manual && !game.ults.ready(h, def)) return false;
     if (manual && !game.enemies.some((e) => !e.dead && e.active)) return false;
     if (!game.ults.cast(h, def)) return false;
-    h.ultCd = def.cd;
-    game.ui.skillCast('ult');
+    h.ultCds[j] = def.cd;
+    // iki ultimate art arda patlamasın: diğerine en az 6 sn
+    h.ultCds.forEach((c, k) => { if (k !== j) h.ultCds[k] = Math.max(c, 6); });
+    game.ui.skillCast('ult' + j);
     return true;
   },
   autoCast(game) {
     if (game.hero?.casting > 0) return;
-    if (this.tryUlt(game, false)) return;
+    const n = game.hero?.def.ultimates?.length || 0;
+    for (let j = 0; j < n; j++) if (this.tryUlt(game, j, false)) return;
     for (let i = 0; i < 3; i++) if (this.tryCast(game, i, false)) return;
   },
 };

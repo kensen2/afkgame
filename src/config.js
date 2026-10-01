@@ -186,8 +186,8 @@ export const CONFIG = {
           desc: 'Dashes forward, dealing 200% damage and knocking back everything in the way.' },
       ],
       // Ultimate: 4. özel yetenek, uzun bekleme süresi, seviye atlamaz (gücü kahramanın saldırısıyla büyür)
-      ultimate: { id: 'boulder', name: 'Boulder Toss', icon: '🪨', cd: 32, power: 4.0, radius: 3.4, stun: 1.4,
-        desc: 'Tears a boulder from the ground and hurls it: 400% damage around the impact, stuns for 1.4s and smashes everything nearby.' },
+      ultimates: [{ id: 'boulder', name: 'Boulder Toss', icon: '🪨', cd: 32, power: 4.0, radius: 3.4, stun: 1.4,
+        desc: 'Tears a boulder from the ground and hurls it: 400% damage around the impact, stuns for 1.4s and smashes everything nearby.' }],
     },
     lion: {
       name: 'Lion Blade',
@@ -202,6 +202,13 @@ export const CONFIG = {
           desc: 'A pillar of fire erupts (160% damage) and leaves the ground burning for 4s: 35% damage every second to enemies inside.' },
         { id: 'rage',  name: 'Rage',        icon: '🔥', cd: 16, power: 0.6, dur: 5,
           desc: '+60% attack speed and +20% crit chance for 5s.' },
+      ],
+      // Deneme: iki ultimate (4 ve 5 tuşları). Beğenilmeyen silinecek.
+      ultimates: [
+        { id: 'meteor', name: 'Meteor Rain', icon: '🌠', cd: 34, power: 1.5, count: 7, radius: 1.6, spread: 3.6, burn: 0.3, dur: 3,
+          desc: '7 meteors fall on the enemy pack: 150% damage each and a small patch of burning ground (30% damage every second for 3s).' },
+        { id: 'spirit', name: 'Lion Spirit', icon: '🦁', cd: 34, power: 3.0, dist: 14, width: 1.8, stun: 0.8,
+          desc: 'A giant golden spirit of the Lion charges forward: 300% damage to everything in its path, knocks enemies away and stuns them for 0.8s.' },
       ],
     },
   },

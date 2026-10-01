@@ -8,6 +8,7 @@
 //  Zamanlama oyun adımına bağlıdır (hit-stop ve duraklatmada bekler).
 // =====================================================================
 import * as THREE from 'three';
+import { Assets } from '../core/assets.js';
 
 // ---------- dokular ----------
 function canvasTex(w, h, draw) {
@@ -31,6 +32,13 @@ const flameTex = () => canvasTex(64, 128, (g, w, h) => {
 const smokeTex = () => canvasTex(64, 64, (g) => {
   const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
   gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+});
+
+// yuvarlak parıltı (meteor çekirdeği)
+const glowTex = () => canvasTex(64, 64, (g) => {
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,250,220,1)'); gr.addColorStop(0.25, 'rgba(255,190,90,0.9)'); gr.addColorStop(0.6, 'rgba(255,90,20,0.35)'); gr.addColorStop(1, 'rgba(255,40,0,0)');
   g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
 });
 
@@ -137,6 +145,10 @@ export class Ultimates {
     this.gathers = [];    // kayaya toplanan taşlar
     this.decals = [];     // kraterler
     this.craterTex = craterTex();
+    this.glowTex = glowTex();
+    this.meteors = [];    // düşen meteorlar
+    this.spirits = [];    // Aslan Ruhu
+    this.meteorMat = new THREE.MeshStandardMaterial({ color: 0x3a1c0c, roughness: 0.8, flatShading: true, emissive: 0xff5a14, emissiveIntensity: 1.3 });
     this.rockMat = new THREE.MeshStandardMaterial({ color: 0xa8957f, roughness: 0.9, flatShading: true, emissive: 0x3a2a1a, emissiveIntensity: 0 });
     this.chunkMat = new THREE.MeshStandardMaterial({ color: 0x9c8a78, roughness: 1, flatShading: true });
     this.chunkGeos = [rockGeo(0.2, 0, 1), rockGeo(0.28, 0, 2), rockGeo(0.16, 0, 3)];
@@ -190,6 +202,7 @@ export class Ultimates {
     if (!c) return false;
     // Inferno kahramanın yakınına iner: grup 5 birimden yakın değilse bekle
     if (def.id === 'inferno') return Math.hypot(c.center.x - h.pos.x, c.center.z - h.pos.z) < 5 && (c.count >= 3 || g.bossAlive());
+    if (def.id === 'spirit') return Math.abs(c.center.z - h.pos.z) < 2.5 && Math.abs(c.center.x - h.pos.x) < def.dist * 0.8 && (c.count >= 3 || g.bossAlive());
     return c.count >= 3 || g.bossAlive();
   }
 
@@ -198,6 +211,8 @@ export class Ultimates {
     if (!c) return false;
     if (def.id === 'inferno') return this._inferno(h, def, c.center);
     if (def.id === 'boulder') return this._boulder(h, def, c.center);
+    if (def.id === 'meteor') return this._meteorRain(h, def, c.center);
+    if (def.id === 'spirit') return this._spirit(h, def, c.center);
     return false;
   }
 
@@ -277,7 +292,7 @@ export class Ultimates {
       u.uFade.value = 1 - fadeK;
       // alevler: yanma cephesinin dışında kalan halkada
       const life = 1 - fadeK;
-      z.spawn += dt * 55 * life;
+      z.spawn += dt * 55 * life * Math.min(1, (z.R / 3.6) ** 2 * 1.4);   // küçük alanlarda daha az alev
       const front = u.uBurn.value;
       while (z.spawn >= 1) {
         z.spawn -= 1;
@@ -502,6 +517,187 @@ export class Ultimates {
     }
   }
 
+  // ================= METEOR RAIN =================
+  _meteorRain(h, def, center) {
+    const g = this.game, fx = g.fx;
+    h.setFacing(Math.sign(center.x - h.pos.x) || h.facing);
+    h.casting = 0.45;
+    h.play('attack', true, 1.3);
+    fx.slash(h.pos.clone().setY(0.6), { ground: true, full: true, color: 0xff8a3a, radius: 1.2, width: 0.6, dur: 0.45 });
+    for (let i = 0; i < 4; i++) this.after(i * 0.08, () => fx.aura(h.pos.clone().setY(0.2), 0xffa04a, 4, 0.9));
+    g.audio.play('ultCharge');
+    // iniş noktaları: ilki grubun ortasına, diğerleri birbirine çok yakın olmayacak şekilde etrafa
+    const pts = [center.clone()];
+    for (let i = 1; i < def.count; i++) {
+      let p = null;
+      for (let tries = 0; tries < 12; tries++) {
+        const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * def.spread;
+        const q = new THREE.Vector3(center.x + Math.cos(a) * r, 0, THREE.MathUtils.clamp(center.z + Math.sin(a) * r * 0.7, -3, 3.2));
+        if (pts.every((o) => o.distanceTo(q) > 1.3)) { p = q; break; }
+        p = q;
+      }
+      pts.push(p);
+    }
+    pts.forEach((p, i) => this.after(0.3 + i * 0.17, () => this._spawnMeteor(h, def, p)));
+    return true;
+  }
+
+  _spawnMeteor(h, def, p) {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(def.radius * 0.86, def.radius, 40), new THREE.MeshBasicMaterial({
+      color: 0xff6a2a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(p.x, 0.09, p.z);
+    const mesh = new THREE.Mesh(rockGeo(0.42, 1, Math.random() * 50), this.meteorMat);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: 0xffa040, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
+    glow.scale.setScalar(2.4);
+    mesh.add(glow);
+    const from = new THREE.Vector3(p.x - 4 - Math.random() * 2, 13 + Math.random() * 2, p.z - 3);
+    mesh.position.copy(from);
+    this.scene.add(ring, mesh);
+    this.meteors.push({ mesh, glow, ring, from, to: p.clone().setY(0.3), t: 0, dur: 0.55 + Math.random() * 0.1, h, def });
+  }
+
+  _updateMeteors(dt) {
+    const g = this.game, fx = g.fx;
+    for (let i = this.meteors.length - 1; i >= 0; i--) {
+      const m = this.meteors[i];
+      m.t += dt;
+      const k = Math.min(1, m.t / m.dur);
+      m.mesh.position.lerpVectors(m.from, m.to, k * k * 0.4 + k * 0.6);
+      m.mesh.rotation.x += dt * 8; m.mesh.rotation.z += dt * 6;
+      m.ring.material.opacity = 0.25 + 0.6 * k;
+      m.ring.scale.setScalar(1.35 - 0.35 * k);
+      // ateş kuyruğu
+      if (Math.random() < dt * 70) this.flame(m.mesh.position.clone(), { w: 0.7, h: 1.0 + Math.random() * 0.6, vy: 1.2, life: 0.3, color: Math.random() < 0.5 ? 0xffb347 : 0xff6a2a });
+      if (Math.random() < dt * 18) this.smoke(m.mesh.position.clone(), { size: 0.8, grow: 1.6, life: 0.6, opacity: 0.35, color: 0x3a2a24, v: new THREE.Vector3(0, 0.4, 0) });
+      if (k < 1) continue;
+      // çarpma
+      const p = m.to.clone().setY(0);
+      for (const e of enemiesWithin(g, p.x, p.z, m.def.radius + 0.3)) {
+        const { dmg, crit } = m.h.rollDamage(m.def.power);
+        e.takeDamage(dmg, g, crit);
+        const kb = new THREE.Vector3(e.pos.x - p.x, 0, e.pos.z - p.z); if (kb.lengthSq() < 0.01) kb.set(1, 0, 0);
+        e.knockback(kb.normalize(), 0.9);
+      }
+      fx.impact(p.clone().setY(0.8), { color: 0xffe0a0, size: 3.4, life: 0.14 });
+      fx.burst(p.clone().setY(0.4), { count: 18, color: 0xff8a3a, speed: 6, up: 4, size: 0.45, life: 0.55 });
+      fx.ring(p, { color: 0xff8a2a, radius: m.def.radius * 1.4, life: 0.35 });
+      for (let j = 0; j < 4; j++) this.chunk(p.clone().setY(0.4), new THREE.Vector3((Math.random() - 0.5) * 6, 4 + Math.random() * 3, (Math.random() - 0.5) * 4), 0.5);
+      for (let j = 0; j < 3; j++) this.smoke(p.clone().setY(0.6), { size: 1.1, grow: 2, life: 0.9, opacity: 0.4, color: 0x4a3a32 });
+      fx.shake(0.45); g.hitStop(0.03); g.audio.play('meteor');
+      this._addZone(p, { radius: m.def.radius, dur: m.def.dur, burn: m.def.burn }, m.h);
+      g.dungeon.breakNear(p.x, p.z, m.def.radius + 0.8);
+      this.scene.remove(m.mesh, m.ring);
+      m.glow.material.dispose(); m.mesh.geometry.dispose(); m.ring.geometry.dispose(); m.ring.material.dispose();
+      this.meteors.splice(i, 1);
+    }
+  }
+
+  // ================= LION SPIRIT =================
+  // Kahramanın kendi görüntüsünden dev, altın renkli, yarı saydam bir ruh belirir ve koridor boyunca atılır.
+  _spirit(h, def, center) {
+    const g = this.game, fx = g.fx;
+    const dir = Math.sign(center.x - h.pos.x) || h.facing;
+    h.setFacing(dir);
+    h.casting = 0.85;
+    const meta = Assets.heroes[h.id].meta, anim = meta.run ? 'run' : 'walk';
+    const tex = Assets.heroes[h.id].textures[anim].clone(); tex.needsUpdate = true;
+    tex.repeat.set(1 / meta[anim].n, 1);
+    const [fw, fh] = meta._size;
+    const H = (h.def.height || 2.4) * 1.85, W = H * fw / fh;
+    const geo = new THREE.PlaneGeometry(W, H); geo.translate(0, H / 2, 0);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, color: 0xffe0a0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const group = new THREE.Group(), pivot = new THREE.Group(), mesh = new THREE.Mesh(geo, mat);
+    mesh.scale.x = dir;
+    pivot.add(mesh); group.add(pivot);
+    group.position.set(h.pos.x - dir * 1.3, 0, h.pos.z + 0.3);
+    mesh.renderOrder = 8;
+    this.scene.add(group);
+    this.spirits.push({ group, pivot, mesh, mat, tex, geo, meta: meta[anim], frame: 0, frameT: 0, phase: 'rise', t: 0, dir, h, def,
+      hit: new Set(), x0: group.position.x, trailT: 0, ghosts: [] });
+    fx.ring(h.pos, { color: 0xffd27a, radius: 3, life: 0.6 });
+    fx.slash(h.pos.clone().setY(0.5), { ground: true, full: true, color: 0xffc860, radius: 1.4, width: 0.7, dur: 0.6 });
+    g.audio.play('roar');
+    return true;
+  }
+
+  _updateSpirits(dt) {
+    const g = this.game, fx = g.fx;
+    for (let i = this.spirits.length - 1; i >= 0; i--) {
+      const sp = this.spirits[i];
+      sp.t += dt;
+      sp.pivot.quaternion.copy(g.camera.quaternion);
+      // kare animasyonu
+      const speed = sp.phase === 'charge' ? 2.6 : 1;
+      sp.frameT += dt * 1000 * speed;
+      while (sp.frameT >= sp.meta.durs[sp.frame]) { sp.frameT -= sp.meta.durs[sp.frame]; sp.frame = (sp.frame + 1) % sp.meta.n; }
+      sp.tex.offset.x = sp.frame / sp.meta.n;
+      if (sp.phase === 'rise') {
+        const k = Math.min(1, sp.t / 0.8);
+        sp.mat.opacity = k;
+        sp.group.scale.setScalar(0.55 + 0.45 * (1 - Math.pow(1 - k, 3)));
+        sp.group.position.y = Math.sin(sp.t * 4) * 0.08;
+        if (Math.random() < dt * 30) fx.aura(sp.group.position.clone().setY(0.2), 0xffd27a, 1, 1.6);
+        if (k >= 1) { sp.phase = 'charge'; sp.t = 0; g.audio.play('roar'); fx.shake(0.4); }
+      } else if (sp.phase === 'charge') {
+        const DUR = 0.75;
+        const k = Math.min(1, sp.t / DUR), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+        sp.group.position.x = sp.x0 + sp.dir * sp.def.dist * e;
+        const x = sp.group.position.x, z = sp.group.position.z - 0.3;
+        // yolundakileri savur
+        for (const en of g.enemies) {
+          if (en.dead || !en.active || sp.hit.has(en)) continue;
+          if (Math.abs(en.pos.x - x) > 1.6 || Math.abs(en.pos.z - z) > sp.def.width + en.radius) continue;
+          sp.hit.add(en);
+          const { dmg, crit } = sp.h.rollDamage(sp.def.power);
+          en.takeDamage(dmg, g, crit);
+          en.applyStun(sp.def.stun);
+          en.knockback(new THREE.Vector3(sp.dir, 0, (Math.random() - 0.5) * 0.8).normalize(), 4);
+          const ip = en.pos.clone().setY(1.3);
+          fx.impact(ip, { color: 0xffe08a, size: 2.4, life: 0.12 });
+          fx.burst(ip, { count: 14, color: 0xffc860, speed: 6, up: 3, size: 0.45, life: 0.45 });
+          g.hitStop(0.04);
+        }
+        g.dungeon.breakNear(x, z, 2.6);
+        // iz: soluk kopyalar ve altın parçacıklar
+        sp.trailT -= dt;
+        if (sp.trailT <= 0) { sp.trailT = 0.045; this._spiritGhost(sp); }
+        if (Math.random() < dt * 60) fx.burst(new THREE.Vector3(x - sp.dir * 1.2, 0.3 + Math.random() * 3, z + (Math.random() - 0.5) * 2), { count: 1, color: 0xffd27a, speed: 1, up: 1, size: 0.4, life: 0.5 });
+        if (Math.random() < dt * 20) this.smoke(new THREE.Vector3(x - sp.dir, 0.4, z), { size: 1.1, grow: 1.8, life: 0.6, opacity: 0.3 });
+        fx.shake(dt * 2.5);
+        if (k >= 1) { sp.phase = 'fade'; sp.t = 0; fx.burst(sp.group.position.clone().setY(2), { count: 30, color: 0xffd27a, speed: 6, up: 3, size: 0.5, life: 0.6 }); }
+      } else {
+        const k = Math.min(1, sp.t / 0.35);
+        sp.mat.opacity = 1 - k;
+        sp.group.scale.setScalar(1 + k * 0.25);
+        if (k >= 1) { this._disposeSpirit(sp); this.spirits.splice(i, 1); continue; }
+      }
+      // soluk kopyalar söner
+      for (let j = sp.ghosts.length - 1; j >= 0; j--) {
+        const gh = sp.ghosts[j];
+        gh.t += dt;
+        gh.m.material.opacity = 0.4 * (1 - gh.t / 0.3);
+        gh.m.quaternion.copy(g.camera.quaternion);
+        if (gh.t >= 0.3) { this.scene.remove(gh.m); gh.m.material.map.dispose(); gh.m.material.dispose(); sp.ghosts.splice(j, 1); }
+      }
+    }
+  }
+
+  _spiritGhost(sp) {
+    const tex = sp.tex.clone(); tex.needsUpdate = true;
+    const m = new THREE.Mesh(sp.geo, new THREE.MeshBasicMaterial({ map: tex, color: 0xff9a3a, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    m.position.copy(sp.group.position);
+    m.scale.set(sp.dir * sp.group.scale.x, sp.group.scale.y, 1);
+    m.renderOrder = 7;
+    this.scene.add(m);
+    sp.ghosts.push({ m, t: 0 });
+  }
+
+  _disposeSpirit(sp) {
+    for (const gh of sp.ghosts) { this.scene.remove(gh.m); gh.m.material.map.dispose(); gh.m.material.dispose(); }
+    this.scene.remove(sp.group);
+    sp.geo.dispose(); sp.mat.dispose(); sp.tex.dispose();
+  }
+
   // ---------------- döngü ----------------
   update(dt) {
     for (let i = this.timers.length - 1; i >= 0; i--) {
@@ -510,6 +706,8 @@ export class Ultimates {
       if (t.t <= 0) { this.timers.splice(i, 1); t.fn(); }
     }
     this._updateBoulders(dt);
+    this._updateMeteors(dt);
+    this._updateSpirits(dt);
     this._updateZones(dt);
     for (let i = this.parts.length - 1; i >= 0; i--) {
       const p = this.parts[i];
@@ -557,5 +755,9 @@ export class Ultimates {
     this.gathers = [];
     for (const d of this.decals) { this.scene.remove(d.m); d.m.geometry.dispose(); d.m.material.dispose(); }
     this.decals = [];
+    for (const m of this.meteors) { this.scene.remove(m.mesh, m.ring); m.glow.material.dispose(); m.mesh.geometry.dispose(); m.ring.geometry.dispose(); m.ring.material.dispose(); }
+    this.meteors = [];
+    for (const sp of this.spirits) this._disposeSpirit(sp);
+    this.spirits = [];
   }
 }
