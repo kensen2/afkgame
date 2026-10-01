@@ -96,22 +96,12 @@ const IMPL = {
       return true;
     },
   },
-  roar: {
-    ready(h, g) { return enemiesWithin(g, h.pos, 3.5).length >= 2 || h.hp / h.stats.maxHp < 0.45; },
+  // Inferno: alev sütunu + yanan zemin (görsel ve hasar mantığı ultimates.js içinde)
+  inferno: {
+    ready(h, g) { return g.ults.ready(h, { id: 'inferno', radius: 3.2 }); },
     cast(h, g, def, lvl) {
-      const list = enemiesWithin(g, h.pos, def.radius);
-      const mult = F.skillPower(def, lvl);
-      for (const e of list) {
-        const { dmg } = h.rollDamage(mult);
-        e.takeDamage(dmg, g, false);
-        const d = new THREE.Vector3(e.pos.x - h.pos.x, 0, e.pos.z - h.pos.z).normalize();
-        e.knockback(d, 3);
-        e.applyFear(def.fear);
-      }
-      g.fx.ring(h.pos, { color: 0xffd060, radius: def.radius, life: 0.6 });
-      g.fx.ring(h.pos, { color: 0xff7a20, radius: def.radius * 1.2, life: 0.8 });
-      g.fx.shake(0.7); g.audio.play('roar');
-      return true;
+      const k = F.skillPower(def, lvl) / def.power;          // seviye atladıkça hem patlama hem yanma güçlenir
+      return g.ults.cast(h, { ...def, power: def.power * k, burn: def.burn * k });
     },
   },
   rage: {

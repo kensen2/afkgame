@@ -198,13 +198,11 @@ export const CONFIG = {
       skills: [
         { id: 'spin',  name: 'Whirlwind',   icon: '🌀', cd: 7,  power: 1.8, radius: 3.0,
           desc: 'Deals 180% damage to every enemy around him.' },
-        { id: 'roar',  name: 'Roar',        icon: '🦁', cd: 12, power: 0.6, radius: 4.5, fear: 2.2,
-          desc: 'Knocks back nearby enemies, deals 60% damage and makes them flee for 2.2s.' },
+        { id: 'inferno', name: 'Inferno', icon: '☄️', cd: 15, power: 1.6, radius: 3.2, burn: 0.35, dur: 4,
+          desc: 'A pillar of fire erupts (160% damage) and leaves the ground burning for 4s: 35% damage every second to enemies inside.' },
         { id: 'rage',  name: 'Rage',        icon: '🔥', cd: 16, power: 0.6, dur: 5,
           desc: '+60% attack speed and +20% crit chance for 5s.' },
       ],
-      ultimate: { id: 'inferno', name: 'Inferno', icon: '☄️', cd: 32, power: 2.6, radius: 3.6, burn: 0.55, dur: 5,
-        desc: 'A pillar of fire erupts (260% damage) and leaves the ground burning for 5s: 55% damage every second to enemies inside.' },
     },
   },
 

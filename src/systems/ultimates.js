@@ -34,6 +34,26 @@ const smokeTex = () => canvasTex(64, 64, (g) => {
   g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
 });
 
+// çatlaklı krater izi
+const craterTex = () => canvasTex(256, 256, (g, w) => {
+  const c = w / 2;
+  const gr = g.createRadialGradient(c, c, 0, c, c, c);
+  gr.addColorStop(0, 'rgba(12,9,7,0.85)'); gr.addColorStop(0.35, 'rgba(25,19,14,0.7)'); gr.addColorStop(0.7, 'rgba(40,30,22,0.3)'); gr.addColorStop(1, 'rgba(40,30,22,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, w, w);
+  g.strokeStyle = 'rgba(8,6,5,0.85)'; g.lineCap = 'round';
+  for (let i = 0; i < 11; i++) {
+    let a = (i / 11) * Math.PI * 2 + Math.random() * 0.4, r = 18, x = c + Math.cos(a) * r, y = c + Math.sin(a) * r;
+    g.lineWidth = 4;
+    g.beginPath(); g.moveTo(x, y);
+    while (r < c * (0.75 + Math.random() * 0.2)) {
+      r += 10 + Math.random() * 12; a += (Math.random() - 0.5) * 0.5;
+      x = c + Math.cos(a) * r; y = c + Math.sin(a) * r;
+      g.lineTo(x, y); g.lineWidth = Math.max(1, g.lineWidth * 0.82);
+    }
+    g.stroke();
+  }
+});
+
 // ---------- yanık zemin shader'ı ----------
 const groundVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 const groundFrag = `
@@ -114,7 +134,10 @@ export class Ultimates {
     this.chunks = [];     // kaya parçaları
     this.boulders = [];   // kaldırılan/uçan kayalar
     this.timers = [];
-    this.rockMat = new THREE.MeshStandardMaterial({ color: 0xb2a08c, roughness: 0.9, flatShading: true, emissive: 0x2aff7a, emissiveIntensity: 0 });
+    this.gathers = [];    // kayaya toplanan taşlar
+    this.decals = [];     // kraterler
+    this.craterTex = craterTex();
+    this.rockMat = new THREE.MeshStandardMaterial({ color: 0xa8957f, roughness: 0.9, flatShading: true, emissive: 0x3a2a1a, emissiveIntensity: 0 });
     this.chunkMat = new THREE.MeshStandardMaterial({ color: 0x9c8a78, roughness: 1, flatShading: true });
     this.chunkGeos = [rockGeo(0.2, 0, 1), rockGeo(0.28, 0, 2), rockGeo(0.16, 0, 3)];
   }
@@ -281,37 +304,37 @@ export class Ultimates {
   }
 
   // ================= BOULDER TOSS =================
+  // Akış: kaya yerden küçük çıkar → kahramanın başının üstünde ~1 sn büyür (etraftan taşlar kayaya toplanır)
+  //       → kısa bir geri çekilme → yüksek bir yayla yavaşça fırlatılır → çarpma, krater, kırılan dekorlar.
   _boulder(h, def, target) {
     const g = this.game, fx = g.fx;
     h.setFacing(Math.sign(target.x - h.pos.x) || h.facing);
-    const LIFT = 0.85;
-    h.casting = LIFT + 0.15;
+    const RISE = 0.35, GROW = 1.0, WIND = 0.2;
+    h.casting = RISE + GROW + WIND + 0.1;
     const mesh = new THREE.Mesh(rockGeo(1.05, 1, Math.random() * 100), this.rockMat.clone());
-    const start = h.pos.clone().add(new THREE.Vector3(h.facing * 0.5, -1.0, 0.35));
-    const top = h.pos.clone().add(new THREE.Vector3(0, (h.def.height || 2.4) + 1.35, 0.25));
+    const start = h.pos.clone().add(new THREE.Vector3(h.facing * 0.6, -0.3, 0.35));
+    const top = h.pos.clone().add(new THREE.Vector3(0, (h.def.height || 2.4) + 0.95, 0.25));
     mesh.position.copy(start);
-    mesh.castShadow = true;
+    mesh.scale.setScalar(0.3);
     this.scene.add(mesh);
-    // nişan: yeşil yay + iniş halkası
     const aim = this._aimArc(top, target, def.radius);
-    const b = { mesh, h, def, target: target.clone(), start, top, t: 0, phase: 'lift', LIFT, aim, spin: new THREE.Vector3(0.8, 1.6, 0.4) };
+    const b = { mesh, h, def, target: target.clone(), start, top, t: 0, phase: 'lift', RISE, GROW, WIND, aim,
+      spin: new THREE.Vector3(0.6, 1.2, 0.3), gatherT: 0, swirlT: 0, scale: 0.3 };
     this.boulders.push(b);
-    // yeşil aura ve yerden kopma
-    fx.slash(h.pos.clone().setY(0.4), { ground: true, full: true, color: 0x5dff8a, radius: 1.15, width: 0.6, dur: 0.5 });
-    fx.ring(h.pos, { color: 0x5dff8a, radius: 2.2, life: 0.6 });
-    for (let i = 0; i < 8; i++) this.after(i * 0.1, () => fx.aura(h.pos.clone().setY(0.1), 0x6dff9a, 3, 0.8));
-    this.after(0.35, () => fx.slash(h.pos.clone().setY(0.5), { ground: true, full: true, color: 0x9dffb5, radius: 0.9, width: 0.45, dur: 0.45 }));
+    // yerden kopma
     const ground = start.clone().setY(0.2);
-    fx.burst(ground, { count: 18, color: 0x9a8a78, speed: 3, up: 3, size: 0.45, life: 0.6 });
-    for (let i = 0; i < 6; i++) this.chunk(ground.clone(), new THREE.Vector3((Math.random() - 0.5) * 3, 3 + Math.random() * 3, (Math.random() - 0.5) * 2), 0.7);
-    for (let i = 0; i < 3; i++) this.smoke(ground.clone().setY(0.5), { size: 1.2, grow: 1.6, life: 0.9, opacity: 0.45 });
+    fx.burst(ground, { count: 16, color: 0x9a8a78, speed: 3, up: 3, size: 0.45, life: 0.6 });
+    for (let i = 0; i < 5; i++) this.chunk(ground.clone(), new THREE.Vector3((Math.random() - 0.5) * 3, 3 + Math.random() * 3, (Math.random() - 0.5) * 2), 0.6);
+    for (let i = 0; i < 3; i++) this.smoke(ground.clone().setY(0.5), { size: 1.1, grow: 1.6, life: 0.9, opacity: 0.4 });
+    fx.ring(h.pos, { color: 0x5dff8a, radius: 2.4, life: 0.7 });
     g.audio.play('boulderLift');
-    g.fx.shake(0.3);
+    this.after(RISE + 0.45, () => g.audio.play('ultCharge'));
+    fx.shake(0.25);
     return true;
   }
 
   _aimArc(from, to, radius) {
-    const mid = from.clone().lerp(to, 0.5); mid.y = Math.max(from.y, 1) + 2.6;
+    const mid = from.clone().lerp(to, 0.5); mid.y = Math.max(from.y, 1) + 3.8;
     const curve = new THREE.QuadraticBezierCurve3(from.clone(), mid, to.clone().setY(0.15));
     const mat = new THREE.MeshBasicMaterial({ color: 0x6dff9a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
     const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 32, 0.045, 5, false), mat);
@@ -328,47 +351,113 @@ export class Ultimates {
   }
 
   _updateBoulders(dt) {
-    const g = this.game;
+    const g = this.game, fx = g.fx;
     for (let i = this.boulders.length - 1; i >= 0; i--) {
       const b = this.boulders[i];
       b.t += dt;
-      const m = b.mesh;
+      const m = b.mesh, h = b.h;
       m.rotation.x += b.spin.x * dt; m.rotation.y += b.spin.y * dt; m.rotation.z += b.spin.z * dt;
       if (b.phase === 'lift') {
-        const k = Math.min(1, b.t / b.LIFT);
-        const e = 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2);   // hafif fazla yükselip oturur
-        // kaya kahramanın üstünü takip eder (kahraman hareketsiz ama sarsıntı vs.)
-        b.top.set(b.h.pos.x, (b.h.def.height || 2.4) + 1.35 + Math.sin(b.t * 6) * 0.06, b.h.pos.z + 0.25);
-        m.position.lerpVectors(b.start, b.top, Math.min(1.08, e));
-        m.material.emissiveIntensity = 0.03 + 0.06 * Math.sin(b.t * 10) ** 2;   // hafif yeşil nabız, taş rengi baskın kalsın
-        // nişan görünür olur
-        const op = Math.max(0, Math.min(1, (b.t - 0.2) / 0.3));
-        b.aim.tube.material.opacity = 0.75 * op;
-        b.aim.ring.material.opacity = (0.75 + 0.25 * Math.sin(b.t * 14)) * op;
-        b.aim.inner.material.opacity = 0.12 * op;
-        if (Math.random() < dt * 8) this.chunk(m.position.clone().add(new THREE.Vector3(0, -0.6, 0)), new THREE.Vector3((Math.random() - 0.5), -1, (Math.random() - 0.5)), 0.45);
-        if (Math.random() < dt * 20) g.fx.aura(m.position.clone().add(new THREE.Vector3(0, -0.9, 0)), 0x7dffa5, 1, 0.7);
-        if (k >= 1) {
+        const head = (h.def.height || 2.4) + 0.95;
+        b.top.set(h.pos.x, head + Math.sin(b.t * 5) * 0.08, h.pos.z + 0.25);
+        if (b.t < b.RISE) {
+          // 1) yerden fırlayıp başın üstüne çıkar
+          const k = b.t / b.RISE, e = 1 - Math.pow(1 - k, 3);
+          m.position.lerpVectors(b.start, b.top, e);
+        } else if (b.t < b.RISE + b.GROW) {
+          // 2) başın üstünde büyür; etraftan taşlar kayaya toplanır
+          const k = (b.t - b.RISE) / b.GROW, e = k * k * (3 - 2 * k);
+          b.scale = 0.3 + 0.7 * e;
+          m.position.copy(b.top);
+          m.position.x += Math.sin(b.t * 23) * 0.03 * e;               // ağırlaştıkça titrer
+          b.gatherT -= dt;
+          if (b.gatherT <= 0) { b.gatherT = 0.05; this._gather(b); }
+          b.swirlT -= dt;
+          if (b.swirlT <= 0) {
+            b.swirlT = 0.33;
+            fx.slash(h.pos.clone().setY(0.35), { ground: true, full: true, color: 0x5dff8a, radius: 1.0 + e * 0.5, width: 0.55, dur: 0.45 });
+            fx.shake(0.12 + e * 0.12);
+          }
+          if (Math.random() < dt * 24) fx.aura(h.pos.clone().setY(0.1), 0x6dff9a, 1, 0.9);
+          if (Math.random() < dt * 18) fx.aura(m.position.clone().add(new THREE.Vector3(0, -0.8 * b.scale, 0)), 0x9dffb5, 1, 0.6 * b.scale);
+        } else {
+          // 3) fırlatmadan önce hafif geri çekilme
+          const k = Math.min(1, (b.t - b.RISE - b.GROW) / b.WIND);
+          m.position.copy(b.top);
+          m.position.x -= h.facing * 0.55 * Math.sin(k * Math.PI * 0.5);
+          m.position.y += 0.3 * Math.sin(k * Math.PI * 0.5);
+        }
+        m.scale.setScalar(b.scale);
+        m.material.emissiveIntensity = 0.25;   // karanlık zindanda taş okunur kalsın
+        const op = Math.max(0, Math.min(1, (b.t - 0.4) / 0.4));
+        b.aim.tube.material.opacity = 0.7 * op;
+        b.aim.ring.material.opacity = (0.75 + 0.25 * Math.sin(b.t * 12)) * op;
+        b.aim.inner.material.opacity = (0.08 + 0.08 * (b.t / (b.RISE + b.GROW))) * op;
+        if (b.t >= b.RISE + b.GROW + b.WIND) {
           b.phase = 'fly'; b.t = 0;
           b.from = m.position.clone();
-          const to = b.target.clone().setY(0.75);
-          const mid = b.from.clone().lerp(to, 0.5); mid.y = Math.max(b.from.y, 1) + 2.6;
+          const to = b.target.clone().setY(0.8);
+          const mid = b.from.clone().lerp(to, 0.5); mid.y = Math.max(b.from.y, 1) + 3.8;
           b.curve = new THREE.QuadraticBezierCurve3(b.from, mid, to);
-          b.dur = 0.38 + Math.min(0.25, b.from.distanceTo(to) * 0.03);
-          b.spin.multiplyScalar(5);
-          b.h.play('attack', true, 2.2);
-          g.audio.play('swing'); g.fx.shake(0.2);
+          b.dur = Math.min(1.05, 0.7 + b.from.distanceTo(to) * 0.035);
+          b.spin.multiplyScalar(4);
+          h.play('attack', true, 1.6);
+          g.audio.play('swing'); fx.shake(0.3);
+          fx.burst(m.position.clone(), { count: 12, color: 0x9dffb5, speed: 3, up: 1, size: 0.4, life: 0.4 });
         }
       } else if (b.phase === 'fly') {
         const k = Math.min(1, b.t / b.dur);
-        b.curve.getPoint(k * k * 0.35 + k * 0.65, m.position);        // sona doğru hızlanır
-        m.material.emissiveIntensity = Math.max(0, m.material.emissiveIntensity - dt * 1.5);
-        const op = 1 - k;
-        b.aim.tube.material.opacity = 0.75 * op;
-        if (Math.random() < dt * 30) this.smoke(m.position.clone(), { size: 0.7, grow: 1, life: 0.45, opacity: 0.3, v: new THREE.Vector3(0, 0.3, 0) });
+        b.curve.getPoint(Math.pow(k, 1.5), m.position);                 // yavaş başlar, düşerken hızlanır
+        m.material.emissiveIntensity = Math.max(0, m.material.emissiveIntensity - dt);
+        b.aim.tube.material.opacity = 0.7 * (1 - k);
+        b.aim.ring.material.opacity = 0.6 + 0.4 * k;                     // iniş halkası çarpmaya doğru parlar
+        b.aim.inner.material.opacity = 0.08 + 0.2 * k * k;
+        if (Math.random() < dt * 34) this.smoke(m.position.clone(), { size: 0.8, grow: 1.1, life: 0.5, opacity: 0.3, v: new THREE.Vector3(0, 0.3, 0) });
         if (k >= 1) { this._land(b); this.boulders.splice(i, 1); }
       }
     }
+    // kayaya toplanan taşlar
+    for (let i = this.gathers.length - 1; i >= 0; i--) {
+      const q = this.gathers[i];
+      q.t += dt;
+      const k = Math.min(1, q.t / q.dur);
+      const to = q.b.mesh.position;
+      const e = k * k;
+      q.m.position.set(q.from.x + (to.x - q.from.x) * e, q.from.y + (to.y - q.from.y) * e + Math.sin(k * Math.PI) * 1.2, q.from.z + (to.z - q.from.z) * e);
+      q.m.rotation.x += dt * 9; q.m.rotation.y += dt * 7;
+      q.m.scale.setScalar(q.s * (1 - k * 0.6));
+      if (k >= 1 || q.b.phase !== 'lift') { this.scene.remove(q.m); this.gathers.splice(i, 1); }
+    }
+    // kraterler
+    for (let i = this.decals.length - 1; i >= 0; i--) {
+      const d = this.decals[i];
+      d.t += dt;
+      d.m.material.opacity = 0.9 * Math.min(1, d.t * 8) * Math.min(1, (d.life - d.t) / 1.2);
+      if (d.t >= d.life) { this.scene.remove(d.m); d.m.geometry.dispose(); d.m.material.dispose(); this.decals.splice(i, 1); }
+    }
+  }
+
+  // Yerden bir taş kopup kayaya uçar
+  _gather(b) {
+    const h = b.h, a = Math.random() * Math.PI * 2, r = 2 + Math.random() * 1.6;
+    const from = new THREE.Vector3(h.pos.x + Math.cos(a) * r, 0.15, h.pos.z + Math.sin(a) * r * 0.7);
+    const m = new THREE.Mesh(this.chunkGeos[Math.floor(Math.random() * this.chunkGeos.length)], this.chunkMat);
+    const s = 0.6 + Math.random() * 0.7;
+    m.position.copy(from); m.scale.setScalar(s);
+    this.scene.add(m);
+    this.gathers.push({ m, from, b, t: 0, dur: 0.35 + Math.random() * 0.2, s });
+    if (Math.random() < 0.5) this.game.fx.burst(from.clone().setY(0.2), { count: 3, color: 0x9a8a78, speed: 1.5, up: 1.5, size: 0.35, life: 0.4 });
+  }
+
+  _crater(c, R) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(R * 1.9, R * 1.9), new THREE.MeshBasicMaterial({
+      map: this.craterTex, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2,
+    }));
+    m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * Math.PI * 2;
+    m.position.set(c.x, 0.05, c.z);
+    m.renderOrder = 1;
+    this.scene.add(m);
+    this.decals.push({ m, t: 0, life: 4.5 });
   }
 
   _land(b) {
@@ -402,7 +491,9 @@ export class Ultimates {
     fx.burst(p, { count: 30, color: 0xb8a48c, speed: 8, up: 5, size: 0.5, life: 0.7 });
     fx.ring(c, { color: 0xd8cbb5, radius: def.radius * 1.35, life: 0.5, width: 0.5 });
     fx.ring(c, { color: 0x6dff9a, radius: def.radius, life: 0.35 });
-    fx.shake(1.1); g.hitStop(0.12); g.audio.play('boulderHit');
+    fx.shake(1.2); g.hitStop(0.14); g.audio.play('boulderHit');
+    this._crater(c, def.radius);
+    this.after(0.12, () => fx.ring(c, { color: 0xb8a48c, radius: def.radius * 1.8, life: 0.6, width: 0.4 }));
     // yakındaki dekorlar kırılır
     const broken = g.dungeon.breakNear(c.x, c.z, def.radius + 1.6);
     for (const w of broken) {
@@ -462,5 +553,9 @@ export class Ultimates {
     this.chunks = [];
     for (const b of this.boulders) { this._removeAim(b.aim); this.scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose(); }
     this.boulders = [];
+    for (const q of this.gathers) this.scene.remove(q.m);
+    this.gathers = [];
+    for (const d of this.decals) { this.scene.remove(d.m); d.m.geometry.dispose(); d.m.material.dispose(); }
+    this.decals = [];
   }
 }
