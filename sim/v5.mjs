@@ -34,11 +34,12 @@ export function realm(N, { bots = 0 } = {}) {
   });
   const free = groups[0];
   const freeSum = free.n * free.rate + bots * F.rateAt(FREE_AVG_WAVE);
+  const freePool = F.freePoolSize(free.n + bots);   // kademeli bedava havuz (sayılan: 20. dalgaya ulaşmış aktif bedava oyuncu + botlar)
   const depSum = groups.slice(1).reduce((s, g) => s + g.n * g.rate, 0);
   const out = groups.map((g) => {
     const isFree = g.k === 'free';
     const others = (isFree ? freeSum : depSum) - g.rate;
-    const pool = isFree ? V.pools.free : V.pools.depositor;
+    const pool = isFree ? freePool : V.pools.depositor;
     const share = F.poolShare(pool, g.rateTop, others);        // tam gelişmiş (kademenin tepesi) oyuncu
     const prod = g.rateTop * 24;
     return {
@@ -48,12 +49,12 @@ export function realm(N, { bots = 0 } = {}) {
       season10dUsd: isFree ? share * 10 * USD : g.spent + share * (10 - V.depositorPoolDelayHours / 24) * USD,
     };
   });
-  const paidFree = Math.min(V.pools.free, freeSum * 24);
+  const paidFree = Math.min(freePool, freeSum * 24);
   const paidDep = Math.min(V.pools.depositor, depSum * 24);
   return {
     N, bots, groups: out,
-    fillFree: Math.min(1, V.pools.free / (freeSum * 24)), fillDep: depSum ? Math.min(1, V.pools.depositor / (depSum * 24)) : 1,
-    teamPerDayUsd: (paidFree + paidDep) * USD, burnedLeftoverPerDay: (V.pools.free - paidFree) + (V.pools.depositor - paidDep),
+    fillFree: Math.min(1, freePool / (freeSum * 24)), freePool, fillDep: depSum ? Math.min(1, V.pools.depositor / (depSum * 24)) : 1,
+    teamPerDayUsd: (paidFree + paidDep) * USD, burnedLeftoverPerDay: (freePool - paidFree) + (V.pools.depositor - paidDep),
     freeRateSum: freeSum, depRateSum: depSum, deposits10dUsd: out.slice(1).reduce((s, g) => s + g.n * g.spentUsd, 0),
   };
 }
@@ -66,7 +67,7 @@ if (isMain) {
   const usd = (t) => '$' + (t * USD).toFixed(2);
   for (const N of nArg ? [nArg] : [100, 250, 500, 1000, 1500, 2000]) {
     const r = realm(N, { bots });
-    console.log(`\n=== ${N} oyuncu${bots ? ` + ${bots} bot` : ''} · havuz doluluğu bedava %${Math.round(r.fillFree * 100)}, yatıran %${Math.round(r.fillDep * 100)} · ekip maliyeti ${'$' + r.teamPerDayUsd.toFixed(0)}/gün · dağıtılmayan (yakılır) ${(r.burnedLeftoverPerDay / 1e6).toFixed(1)}M/gün`);
+    console.log(`\n=== ${N} oyuncu${bots ? ` + ${bots} bot` : ''} · bedava havuz ${(r.freePool / 1e6).toFixed(0)}M · havuz doluluğu bedava %${Math.round(r.fillFree * 100)}, yatıran %${Math.round(r.fillDep * 100)} · ekip maliyeti ${'$' + r.teamPerDayUsd.toFixed(0)}/gün · dağıtılmayan (yakılır) ${(r.burnedLeftoverPerDay / 1e6).toFixed(1)}M/gün`);
     console.log('Tip                  | kişi | üretim/saat | çekilebilir/gün     | biriken/gün | harcanan | anapara dönüşü | 10 günde toplam');
     for (const g of r.groups) {
       console.log(`${g.name.padEnd(20)} | ${String(g.n).padStart(4)} | ${String(Math.round(g.ratePerHour)).padStart(11)} | ${String(Math.round(g.withdrawPerDay)).padStart(9)} (${usd(g.withdrawPerDay).padStart(7)}) | ${String(Math.round(g.accumulatesPerDay)).padStart(11)} | ${('$' + g.spentUsd).padStart(8)} | ${g.spentUsd ? (g.returnHours.toFixed(0) + ' saat').padStart(14) : '             –'} | ${('$' + g.season10dUsd.toFixed(1)).padStart(8)}`);

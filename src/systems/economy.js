@@ -168,12 +168,12 @@ export const Economy = {
   // Bugünkü havuz payı (DGN/gün), realm doluluğuna göre
   poolPerDay() {
     const D = CONFIG.v5.demo, dep = this.isDepositor();
-    const pool = dep ? CONFIG.v5.pools.depositor : CONFIG.v5.pools.free;
+    const pool = dep ? CONFIG.v5.pools.depositor : F.freePoolSize(D.free.players + 1);
     return F.poolShare(pool, this.ratePerHour(), (dep ? D.depositor : D.free).rateSum);
   },
   realmFill() {
     const D = CONFIG.v5.demo, dep = this.isDepositor();
-    const pool = dep ? CONFIG.v5.pools.depositor : CONFIG.v5.pools.free;
+    const pool = dep ? CONFIG.v5.pools.depositor : F.freePoolSize(D.free.players + 1);
     const sum = (dep ? D.depositor : D.free).rateSum + this.ratePerHour();
     return Math.min(1, pool / (sum * 24));
   },

@@ -15,7 +15,7 @@ node sim/v5.mjs 1000 --bots 200 # with farming bots in the free pool
 
 ## Invariants (the owner decided these — do not break them)
 
-- Two fixed daily pools: free 10M DGN, depositor 10M DGN. Bonuses (clan top 5: 10/5/3/2/1 %) only
+- Daily pools: depositor fixed 10M DGN; free pool tiered by counted players (1M per 100, max 10M, see `CONFIG.v5.freePool`). Bonuses (clan top 5: 10/5/3/2/1 %) only
   change shares of the same pool; they never mint extra DGN.
 - Free players are capped at wave 20 (1,000 DGN/h max), loop 20 → 15 behind "The Sealed Gate".
 - Keys: 10 per tier per season, prices in USD, each new wave above 20 uses one key.

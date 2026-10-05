@@ -138,7 +138,7 @@ Ayrıntılar: **`whitepaper.html`**. Ayarlar: `src/config.js` → `CONFIG.v5`. S
   - Her yeni dalgaya ilk girişte 1 anahtar harcanır, dalga sezon boyunca açık kalır.
   - Kullanılmamış anahtarlar sonraki sezona taşınır.
   - Paketler sadece yatırılan DGN ile alınır. Tek Bronze anahtar üretilen DGN ile de alınabilir.
-- **Havuzlar:** Bedava ve yatıran havuzu, her biri günde 10M. Pay üretime orantılıdır ve kendi üretiminle sınırlıdır. Yatıranın havuz payı ilk yatırımdan 48 saat sonra başlar.
+- **Havuzlar:** Yatıran havuzu günde 10M sabit. Bedava havuz oyuncu sayısına göre kademeli: 1M ile başlar, 20. dalgaya ulaşmış her 100 aktif bedava oyuncuda +1M (120 → 2M, 220 → 3M…), 920 ve üstünde 10M sabit. Pay üretime orantılıdır ve kendi üretiminle sınırlıdır. Yatıranın havuz payı ilk yatırımdan 48 saat sonra başlar.
 - **Çekim:**
   - Önce yatırdığın kadar (günlük sınırsız), sonra sadece o günün havuz payı. Fazlası oyunda kalır.
   - İki adım: oyun → kasa (%5 komisyon, yarısı yakılır) → cüzdan.

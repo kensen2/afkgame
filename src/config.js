@@ -155,15 +155,20 @@ export const CONFIG = {
       { id: 'obsidian', tint: '#7c8696', name: 'Obsidian Key', icon: '🖤', from: 81, to: 90,  usd: 200 },
       { id: 'dragon', tint: '#ff8a3c',   name: 'Dragon Key',   icon: '🐉', from: 91, to: 100, usd: 500 },
     ],
-    pools: { free: 10000000, depositor: 10000000 },     // günlük DGN
+    pools: { free: 10000000, depositor: 10000000 },     // günlük DGN (free: üst sınır; gerçek boyut freePool kuralıyla)
+    // Bedava havuz oyuncu sayısına göre kademelidir: 1M ile başlar, her 100 sayılan oyuncuda +1M, en çok 10M.
+    // Bir üst kademeye sınırı 'margin' kadar aşınca geçilir (120 → 2M, 220 → 3M … 920+ → 10M).
+    // Sayılan oyuncu: bedava havuzdan pay alan, 'minWave'e ulaşmış ve son 'activeHours' saatte oynamış hesap.
+    // (Sayım sunucuda yapılmalı; Supabase bağlanana kadar demo realm sayısı kullanılır.)
+    freePool: { perStep: 1000000, step: 100, margin: 20, minWave: 20, activeHours: 1 },
     depositorPoolDelayHours: 48,
     withdraw: { fee: 0.05, feeBurn: 0.5, holdTokens: 20000, holdHours: 12, min: 1000 },
     // Forge: oyun içi bakiyeyle alınan güç (sezonluk). Her seviye hasar ve can ×1.10
     forge: { baseCost: 5000, growth: 1.32, per: 0.10, max: 40 },
     // Faz 1 demo realm (sim/v5.mjs, 1.000 oyuncu): havuzu paylaşan diğer oyuncuların toplam üretimi (DGN/saat)
     demo: {
-      free: { players: 800, rateSum: 1400000 },
-      depositor: { players: 200, rateSum: 1550000 },
+      free: { players: 800, rateSum: 658400 },
+      depositor: { players: 200, rateSum: 1556250 },
       burnedOnChain: 18400000, spentInDungeon: 96000000,
       market: { priceUsd: 0.0001, volume24h: 41200, liquidity: 30500, holders: 1840 },
     },
@@ -413,6 +418,12 @@ export const F = {
   forgeCost: (lvl) => Math.round(CONFIG.v5.forge.baseCost * Math.pow(CONFIG.v5.forge.growth, lvl)),
   seasonIndex: (now = Date.now()) => Math.floor((now - CONFIG.v5.seasonEpoch) / (CONFIG.v5.seasonDays * 86400000)),
   seasonEndsAt: (now = Date.now()) => CONFIG.v5.seasonEpoch + (F.seasonIndex(now) + 1) * CONFIG.v5.seasonDays * 86400000,
+  // Bedava havuzun bugünkü boyutu (DGN/gün), sayılan oyuncu sayısına göre
+  freePoolSize(players) {
+    const P = CONFIG.v5.freePool;
+    const tier = 1 + Math.floor(Math.max(0, players - P.margin) / P.step);
+    return Math.min(CONFIG.v5.pools.free, tier * P.perStep);
+  },
   // Havuz payı (DGN/gün): pool × benim / (diğerleri + benim), en fazla kendi üretimim kadar
   poolShare(pool, myRate, othersRateSum) {
     if (myRate <= 0) return 0;
