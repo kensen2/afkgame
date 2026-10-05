@@ -144,12 +144,13 @@ export class UI {
     click('btn-reset', () => {
       const b = $('btn-reset');
       if (!b.dataset.armed) {
-        b.dataset.armed = '1'; b.textContent = 'Are you sure? All progress will be lost. Click again';
+        b.dataset.armed = '1'; b.textContent = 'Erase gold, levels and upgrades? DGN and keys stay. Click again';
         setTimeout(() => { delete b.dataset.armed; b.textContent = 'Reset Save'; }, 3000);
         return;
       }
       delete b.dataset.armed; b.textContent = 'Reset Save';
       Economy.reset(); $('screen-pause').classList.add('hidden'); this.toMenu();
+      this.toast('Progress reset. Your DGN, keys and vault are untouched.');
     });
     click('btn-retry', () => this.respawnNow());
     click('btn-revive', () => {
@@ -188,7 +189,7 @@ export class UI {
         else if (!$('screen-settings').classList.contains('hidden')) this.closeSettings();
         else if (!$('screen-shop').classList.contains('hidden')) this.closeShop();
         else if (!$('screen-pause').classList.contains('hidden')) this.resume();
-        else if (this.game.phase !== 'dead') this.pause();
+        else if (this.game.phase !== 'dead' && this.game.phase !== 'victory') this.pause();
       }
     });
     document.addEventListener('visibilitychange', () => {
@@ -299,7 +300,8 @@ export class UI {
 
   toMenu() {
     this.hideGate();
-    for (const id of ['screen-shop', 'screen-wallet', 'screen-pause', 'screen-death']) $(id).classList.add('hidden');
+    this.stopCountdown();
+    for (const id of ['screen-shop', 'screen-wallet', 'screen-pause', 'screen-death', 'screen-victory', 'screen-settings', 'screen-clan']) $(id).classList.add('hidden');
     Audio.setMusic('menu');
     this.game.showMenuScene();
     $('hud').classList.add('hidden');
@@ -568,6 +570,8 @@ export class UI {
     $('screen-shop').classList.add('hidden');
     const from = this.shopReturn;
     if (this.game.hero) { this.game.hero.refreshStats(); this.buildSkills(this.game.hero); }
+    // kapıdan anahtar alıp döndüyse beklemeden devam et
+    if (this.game.hero && this.game.phase === 'gate' && Economy.keyCount(F.keyTier(this.game.gateWave)?.id)) this.game.gateT = CONFIG.v5.gateSeconds;
     // kapı ekranından anahtar almaya gidip almadan dönüldüyse kapı geri gelsin
     if (this.game.hero && this.game.phase === 'gate' && !Economy.keyCount(F.keyTier(this.game.gateWave)?.id)) this.showGate(this.game.gateWave, true);
     if (from === 'pause') $('screen-pause').classList.remove('hidden');
@@ -859,6 +863,7 @@ export class UI {
 
   // ---------- Ölüm ----------
   showDeath(game) {
+    if (!game.hero || game.phase !== 'dead') return;      // bu arada menüye dönüldüyse gösterme
     const d = Economy.data;
     $('death-stats').innerHTML = [
       ['Wave reached', game.wave], ['Best', d.bestWave], ['Kills', game.runKills], ['Gold earned', fmt(game.runGold)],
@@ -902,6 +907,7 @@ export class UI {
   }
 
   showVictory(game) {
+    if (!game.hero || game.phase !== 'victory') return;
     const d = Economy.data;
     $('victory-stats').innerHTML = [
       ['Waves cleared', CONFIG.wave.maxWave], ['Level', d.level], ['Total kills', fmt(d.totalKills)], ['Total gold', fmt(d.gold)],

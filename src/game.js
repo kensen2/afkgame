@@ -442,7 +442,10 @@ export class Game {
         this.ui.hideGate();
         // kapı ekranındayken anahtar aldıysa devam et, yoksa döngüye dön
         if (Economy.enterWave(this.gateWave)) this.wave = this.gateWave - 1;
-        else { this.wave = Economy.loopWave(this.gateWave) - 1; this.ui.banner(`Back to Wave ${this.wave + 1}`); }
+        else {
+          this.wave = Economy.loopWave(this.gateWave) - 1; this.ui.banner(`Back to Wave ${this.wave + 1}`);
+          Economy.data.resumeWave = this.wave + 1; Economy.save();   // döngüye girdikten sonra çıkıp girince de buradan devam
+        }
         this.phase = 'walking';
         this.walkTarget = hero.pos.x + 4;
       }

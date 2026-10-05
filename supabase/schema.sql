@@ -175,8 +175,9 @@ $$;
 -- Nick: sadece sunucu fonksiyonuyla alınır (ayrılmış adlar burada da engellenir)
 create or replace function set_nick(p_nick text) returns void language plpgsql security definer set search_path = public, pg_temp as $$
 begin
+  p_nick := trim(p_nick);       -- kontrol ve kayıt aynı metin üzerinden (baştaki boşlukla ayrılmış ad kuralı aşılmasın)
   if p_nick ~* '^(admin|mod|moderator|system|dev|support|official)' then raise exception 'nick_reserved'; end if;
-  insert into players (id, nick) values (auth.uid(), trim(p_nick))
+  insert into players (id, nick) values (auth.uid(), p_nick)
   on conflict (id) do update set nick = excluded.nick, updated_at = now();
 exception when unique_violation then raise exception 'nick_taken';
 end $$;

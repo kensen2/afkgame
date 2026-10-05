@@ -123,7 +123,10 @@ export const Economy = {
     const d = this.data, keep = {};
     for (const k of ['settings', 'season', 'balance', 'uncollected', 'depositBal', 'credit', 'poolAvail', 'poolDay', 'vault',
       'deposited', 'withdrawn', 'spentDungeon', 'feesBurned', 'seasonDeposited', 'firstDepositAt', 'keys', 'opened',
-      'seasonBest', 'lastAccrue', 'idlePass', 'clanBonus']) keep[k] = d[k];
+      'seasonBest', 'lastAccrue', 'idlePass', 'clanBonus',
+      // DGN ile alınanlar da kalır: Forge, Gold Rush, Skill Tome. Tome ile birlikte "yenilmiş boss" listesi de
+      // kalır; yoksa sıfırlayıp boss'ları tekrar yenerek bedava Tome toplanabilirdi.
+      'forge', 'goldRushUntil', 'tomes', 'bossesBeaten']) keep[k] = d[k];
     this.data = freshSave();
     Object.assign(this.data, keep);
     this.save(); this.emit();
@@ -443,7 +446,7 @@ export const Economy = {
     const sw = Math.min(w, Math.max(CONFIG.v5.freeMaxWave, this.data.opened || 0));
     if (sw > (this.data.seasonBest || 0)) this.data.seasonBest = sw;
     // çıkıp girince kaldığın dalgadan devam et
-    if (w >= 1 && w < CONFIG.wave.maxWave) this.data.resumeWave = w + 1;
+    if (w >= 1 && w < CONFIG.wave.maxWave) this.data.resumeWave = Math.min(w + 1, this.resumeCap());
 
   },
 
@@ -452,8 +455,13 @@ export const Economy = {
     this.data.resumeWave = Math.max(1, deathWave - CONFIG.respawnWavesBack);
   },
 
+  // Devam edilebilecek en yüksek dalga: açılmış son dalga; sıradaki dalga için anahtar varsa bir fazlası
+  resumeCap() {
+    const opened = Math.max(CONFIG.v5.freeMaxWave, this.data.opened || 0);
+    const next = F.keyTier(opened + 1);
+    return opened + (next && this.keyCount(next.id) > 0 ? 1 : 0);
+  },
   startWave() {
-    const cap = Math.max(CONFIG.v5.freeMaxWave, this.data.opened || 0);
-    return Math.max(1, Math.min(CONFIG.wave.maxWave, cap, this.data.resumeWave || 1));
+    return Math.max(1, Math.min(CONFIG.wave.maxWave, this.resumeCap(), this.data.resumeWave || 1));
   },
 };
