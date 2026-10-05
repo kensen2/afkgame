@@ -1,5 +1,4 @@
-// Açılış sahneleri (HTML/CSS katmanı + sesler):
-//   gate()    PLAY'e basınca: karanlık → kalp atışı ve uğultu → ağır kapı açılır, ışık sızar → kahraman seçimi
+// Açılış sahnesi (HTML/CSS katmanı + sesler):
 //   descent() ENTER THE DUNGEON'a basınca: kapı arkandan kapanır → adımlar → meşale tutuşur → kat adı → oyun
 // Tıklama ya da herhangi bir tuş sahneyi atlar. Otomatik testlerde (navigator.webdriver) ve
 // "hareketi azalt" ayarında sahne atlanır; ?intro=1 testte de oynatır.
@@ -34,22 +33,6 @@ export const Intro = {
     this._skip = (e) => { e?.stopPropagation?.(); if (this._finish) this._finish(); };
     this._at(350, () => { window.addEventListener('keydown', this._skip, true); el.addEventListener('pointerdown', this._skip); });
     return el;
-  },
-
-  // Karanlıktan aydınlığa açılan kapı. reveal: kapı aralanırken arkadaki ekranı hazırlar.
-  gate(reveal) {
-    if (SKIP || this.busy) { reveal(); return; }
-    let shown = false;
-    const show = () => { if (!shown) { shown = true; reveal(); } };
-    const el = this._begin('doorway', show);
-    $('intro-line').textContent = 'Few who enter are seen again.';
-    $('intro-sub').textContent = '';
-    Audio.play('introDrone');
-    this._at(250, () => Audio.play('heartbeat'));
-    this._at(300, () => el.classList.add('text'));
-    this._at(1700, () => { el.classList.add('seam'); Audio.play('doorCreak'); });
-    this._at(2300, () => { show(); el.classList.remove('text'); el.classList.add('open'); Audio.play('gateOpen'); Audio.play('lightSwell'); });
-    this._at(4300, () => this._finish?.());
   },
 
   // Zindana iniş. start: ekran tamamen karardığında oyunu başlatır.

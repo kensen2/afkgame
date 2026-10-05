@@ -10,3 +10,4 @@
 Evaluated and not used: VoltAgent/awesome-claude-code-subagents (generic, references tools this setup does not have),
 Godot/Unity/Unreal roles and skills (other engines), three.quarks (needs three ≥ r182, we use r170),
 pmndrs/postprocessing (compatible with r170 but needs its built package from npm, not installed).
+| skill icons (src/ui/icons.js) | github.com/game-icons/icons (Lorc, Delapouite) | CC BY 3.0, credited in the pause screen | paths copied unchanged, recoloured with CSS |

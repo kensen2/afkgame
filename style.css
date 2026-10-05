@@ -543,37 +543,11 @@ input[type=range]::-moz-range-thumb { border-radius: 2px; background: #c9a04e; b
 .seg button.on { background: var(--grain), linear-gradient(#d9ae5c, #a87b30); color: #1d1305; border-color: #0c0a08; box-shadow: inset 0 1px 0 var(--brass-hi); }
 
 /* ---------- açılış sahnesi: kapı ve iniş ---------- */
-.intro { position: fixed; inset: 0; z-index: 40; overflow: hidden; background: #000; perspective: 1400px; transition: opacity .6s ease, background-color .9s ease; }
+.intro { position: fixed; inset: 0; z-index: 40; overflow: hidden; background: #000; transition: opacity .6s ease, background-color .9s ease; }
 .intro.out { opacity: 0; pointer-events: none; }
-.intro-glow { position: absolute; inset: 0; opacity: 0; transition: opacity 1.4s ease;
-  background: radial-gradient(ellipse 34% 70% at 50% 52%, rgba(255,214,150,0.95), rgba(240,150,60,0.55) 38%, rgba(120,50,10,0.25) 62%, transparent 78%); }
-.intro-doors { position: absolute; inset: 0; display: flex; transform-style: preserve-3d; }
-.door { position: relative; flex: 1; height: 100%; transition: transform 2s cubic-bezier(.45,.05,.2,1), filter 2s ease; filter: brightness(0.16);
-  background:
-    linear-gradient(90deg, rgba(0,0,0,0.55), transparent 9%, transparent 91%, rgba(0,0,0,0.55)),
-    repeating-linear-gradient(90deg, transparent 0 calc(20% - 3px), rgba(0,0,0,0.6) calc(20% - 3px) 20%),
-    var(--grain), linear-gradient(#3a2a1a, #241910 55%, #17100a); }
-.door.left { transform-origin: left center; border-right: 3px solid #050403; }
-.door.right { transform-origin: right center; border-left: 3px solid #050403; }
-/* demir kuşaklar ve perçinler */
-.door::before, .door::after { content: ''; position: absolute; left: 0; right: 0; height: 34px;
-  background: radial-gradient(circle, #9a9080 0 3px, #2a2620 4px 6px, transparent 7px) 0 50% / 64px 34px repeat-x, var(--grain), linear-gradient(#4a443a, #2a2620);
-  box-shadow: 0 2px 0 #0c0a08, 0 -2px 0 #0c0a08, 0 6px 12px rgba(0,0,0,0.6); }
-.door::before { top: 22%; } .door::after { bottom: 22%; }
-/* halka tokmak */
-.door i { position: absolute; top: 50%; width: 54px; height: 54px; margin-top: -27px; border-radius: 50%; border: 7px solid #5a5244; box-shadow: 0 0 0 2px #0c0a08, inset 0 0 0 2px #0c0a08, 0 6px 10px rgba(0,0,0,0.7); }
-.door.left i { right: 26px; } .door.right i { left: 26px; }
-.intro.doorway.seam .intro-glow { opacity: 0.55; }
-.intro.doorway.seam .door { filter: brightness(0.5); }
-.intro.doorway.seam .door.left { transform: rotateY(-4deg); } .intro.doorway.seam .door.right { transform: rotateY(4deg); }
-.intro.doorway.open { background: transparent; }
-.intro.doorway.open .intro-glow { opacity: 0; transition: opacity 2.2s ease .5s; }
-.intro.doorway.open .door { filter: brightness(0.75); }
-.intro.doorway.open .door.left { transform: rotateY(-97deg); } .intro.doorway.open .door.right { transform: rotateY(97deg); }
 .intro-text { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; opacity: 0; transition: opacity 1s ease; padding: 0 20px; pointer-events: none; }
 .intro.text .intro-text { opacity: 1; }
 .intro-line { font-family: 'Cinzel', serif; font-weight: 800; font-size: clamp(22px, 4.2vw, 46px); color: var(--parch); letter-spacing: .05em; text-shadow: 0 3px 0 #000, 0 0 30px rgba(0,0,0,0.9); }
-.intro.doorway .intro-line { font-weight: 600; font-size: clamp(16px, 2.4vw, 24px); color: #a89a7c; letter-spacing: .12em; }
 .intro-sub { font-family: 'Cinzel', serif; color: var(--brass-hi); letter-spacing: .4em; font-size: 16px; margin-bottom: 8px; }
 .intro-skip { position: absolute; bottom: 16px; left: 0; right: 0; text-align: center; font-size: 12px; color: #5d5648; }
 /* iniş: kapı yok, karanlık + meşale ışığı */
@@ -590,3 +564,50 @@ input[type=range]::-moz-range-thumb { border-radius: 2px; background: #c9a04e; b
 .toggle[aria-pressed="true"] span { background: var(--brass-hi); }
 .seg button { background: linear-gradient(#2c2822, #211d19); border: 1px solid #0c0a08; color: #9c927f; box-shadow: inset 0 1px 0 #4d463b; }
 .seg button.on { background: var(--grain), linear-gradient(#d9ae5c, #a87b30); color: #1d1305; border-color: #0c0a08; box-shadow: inset 0 1px 0 var(--brass-hi); }
+
+/* ---------- yetenek madalyonları: yuvarlak, dövme halka + renkli taş + beyaz siluet ---------- */
+.hud-bottom { bottom: 34px; gap: 18px; align-items: center; }
+#skills { gap: 20px; align-items: center; }
+.skill, .skill.ult { --sk: #d9a441; width: 70px; height: 70px; border-radius: 50%; border: none; overflow: visible; clip-path: none; background: none; animation: none;
+  box-shadow: 0 0 0 2px #0c0a08, 0 0 0 5px #4a443a, 0 0 0 6px #7a7160, 0 0 0 8px #0c0a08, 0 8px 16px rgba(0,0,0,0.7); transition: transform .12s, box-shadow .2s, filter .2s; }
+.skill .disc { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--sk) 55%, #1a1410), color-mix(in srgb, var(--sk) 22%, #120e0b) 58%, #0b0907 100%);
+  box-shadow: inset 0 3px 6px rgba(255,255,255,0.14), inset 0 -8px 14px rgba(0,0,0,0.6); }
+.sk-ico { width: 68%; height: 68%; color: #fbf3dd; filter: drop-shadow(0 2px 0 rgba(0,0,0,0.75)) drop-shadow(0 0 6px color-mix(in srgb, var(--sk) 70%, transparent)); }
+.skill .cd { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(rgba(6,5,3,0.82) var(--p, 0%), transparent 0); }
+.skill .cdt { font-family: 'Cinzel', serif; font-size: 24px; color: #fff; text-shadow: 0 2px 0 #000, 0 0 8px #000; z-index: 2; }
+/* tuş: altta küçük pirinç pul */
+.skill .key, .skill.ult .key { top: auto; bottom: -12px; left: 50%; transform: translateX(-50%); width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #1d1305; text-shadow: none; background: linear-gradient(#e3bf74, #a87b30); box-shadow: 0 0 0 2px #0c0a08, 0 2px 4px rgba(0,0,0,0.6); z-index: 3; }
+/* seviye: sağ üstte demir pul */
+.skill .slvl { top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--parch); background: linear-gradient(#4a443a, #26221c); box-shadow: 0 0 0 2px #0c0a08; z-index: 3; }
+.skill .sname, .skill.ult .sname { bottom: -30px; left: -22px; right: -22px; background: none; padding: 0; font-size: 10px; font-weight: 700; color: #cfc3a6; text-shadow: 0 1px 2px #000, 0 0 6px #000; white-space: nowrap; }
+.skill:hover { transform: translateY(-3px); }
+.skill:not(.ready) .sk-ico { opacity: 0.45; filter: grayscale(0.6) drop-shadow(0 2px 0 rgba(0,0,0,0.75)); }
+.skill.ready, .skill.ult.ready { box-shadow: 0 0 0 2px #0c0a08, 0 0 0 5px #b8893a, 0 0 0 6px #e3bf74, 0 0 0 8px #0c0a08, 0 0 18px color-mix(in srgb, var(--sk) 75%, transparent), 0 8px 16px rgba(0,0,0,0.7); }
+/* ultimate: daha büyük, çift halkalı, hazırken nabız gibi parlar */
+.skill.ult { width: 84px; height: 84px; margin-left: 6px;
+  box-shadow: 0 0 0 2px #0c0a08, 0 0 0 4px #5a2f12, 0 0 0 7px #4a443a, 0 0 0 8px #7a7160, 0 0 0 10px #0c0a08, 0 8px 18px rgba(0,0,0,0.7); }
+.skill.ult.ready { animation: ultPulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 0 2px #0c0a08, 0 0 0 4px var(--sk), 0 0 0 7px #b8893a, 0 0 0 8px #e3bf74, 0 0 0 10px #0c0a08, 0 0 26px color-mix(in srgb, var(--sk) 85%, transparent), 0 8px 18px rgba(0,0,0,0.7); }
+@keyframes ultPulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.25) drop-shadow(0 0 10px var(--sk)); } }
+.skill.flash { animation: pop .3s; }
+.btn.auto { border-radius: 50%; width: 58px; height: 58px; }
+/* kart ve dükkândaki küçük ikonlar */
+.card .skills-mini span { --sk: #d9a441; }
+.card .skills-mini .sk-ico { display: block; width: 30px; height: 30px; margin: 0 auto 3px; padding: 4px; border-radius: 50%; color: #fbf3dd;
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--sk) 55%, #1a1410), #120e0b 75%); box-shadow: 0 0 0 1px #0c0a08, 0 0 0 2px #6a6253; filter: none; }
+.item .ic.sk { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--sk) 55%, #1a1410), #120e0b 75%); box-shadow: 0 0 0 1px #0c0a08, 0 0 0 3px #4a443a, 0 0 0 4px #0c0a08; }
+.item .ic.sk .sk-ico { width: 70%; height: 70%; }
+@media (max-width: 760px) { .skill { width: 56px; height: 56px; } .skill.ult { width: 68px; height: 68px; } }
+@media (max-width: 520px) {
+  .hud-bottom { bottom: 30px; gap: 12px; } #skills { gap: 15px; }
+  .skill { width: 42px; height: 42px; border-radius: 50%; } .skill.ult { width: 48px; height: 48px; border-radius: 50%; margin-left: 2px; }
+  .skill .cdt { font-size: 17px; } .skill .sname, .skill.ult .sname { font-size: 8px; bottom: -26px; left: -8px; right: -8px; overflow: hidden; text-overflow: ellipsis; }
+  .skill .key, .skill.ult .key { width: 16px; height: 16px; font-size: 9px; bottom: -10px; } .skill .slvl { min-width: 16px; height: 16px; font-size: 9px; top: -5px; right: -5px; }
+  .btn.auto { width: 40px; height: 40px; border-radius: 50%; font-size: 9px; }
+  .btn.auto small { font-size: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .skill.ult.ready { animation: none; } }

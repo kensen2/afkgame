@@ -7,6 +7,7 @@ import { Audio } from '../core/audio.js';
 import { Social } from '../systems/social.js';
 import { SocialUI } from './social-ui.js';
 import { Intro } from './intro.js';
+import { skillIcon, skillTint } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 // ?dev=1 → cüzdanda ek test butonları (+1 gün, cüzdana gönderimi simüle et)
@@ -94,7 +95,7 @@ export class UI {
 
   _bind() {
     const click = (id, fn) => $(id).addEventListener('click', () => { Audio.play('click'); fn(); });
-    click('btn-play', () => { Audio.setMusic('menu'); Intro.gate(() => this.showSelect()); });
+    click('btn-play', () => { Audio.setMusic('menu'); this.showSelect(); });
     click('btn-music', () => this.toggleMusic());
     click('btn-title-settings', () => this.openSettings('title'));
     click('btn-hud-settings', () => this.openSettings('game'));
@@ -278,7 +279,7 @@ export class UI {
         ${[['Health', st.maxHp, maxes.maxHp, fmt(st.maxHp)], ['Damage', st.atk, maxes.atk, st.atk.toFixed(1)], ['Armor', st.armor, maxes.armor, Math.round(st.armor)],
           ['Attack Speed', st.atkSpd, maxes.atkSpd, st.atkSpd.toFixed(2)], ['Crit', st.crit, maxes.crit, Math.round(st.crit * 100) + '%']]
           .map(([n, v, m, t]) => `<div class="stat-row"><span>${n}</span><div class="sb"><div style="width:${Math.min(100, v / m * 100)}%"></div></div><b>${t}</b></div>`).join('')}
-        <div class="skills-mini">${h.skills.map((s, i) => `<span title="${s.desc}">${s.icon}<br>${s.name}<br><small>Lv ${Economy.skillLevel(id, i)}</small></span>`).join('')}${(h.ultimates || []).map((u) => `<span class="ult-mini" title="${u.desc}">${u.icon}<br>${u.name}<br><small>ULTIMATE</small></span>`).join('')}</div>`;
+        <div class="skills-mini">${h.skills.map((s, i) => `<span title="${s.desc}" style="--sk:${skillTint(s)}">${skillIcon(s)}${s.name}<br><small>Lv ${Economy.skillLevel(id, i)}</small></span>`).join('')}${(h.ultimates || []).map((u) => `<span class="ult-mini" title="${u.desc}" style="--sk:${skillTint(u)}">${skillIcon(u)}${u.name}<br><small>ULTIMATE</small></span>`).join('')}</div>`;
       card.addEventListener('click', () => {
         Audio.play('click');
         this.selected = id;
@@ -340,7 +341,8 @@ export class UI {
       const el = document.createElement('div');
       el.className = 'skill';
       el.title = `${s.name} — ${s.desc}`;
-      el.innerHTML = `<span>${s.icon}</span><div class="cd"></div><div class="cdt"></div><div class="key">${i + 1}</div><div class="slvl">Lv${Economy.skillLevel(h.id, i)}</div><div class="sname">${s.name}</div>`;
+      el.style.setProperty('--sk', skillTint(s));
+      el.innerHTML = `<div class="disc">${skillIcon(s)}<div class="cd"></div></div><div class="cdt"></div><div class="key">${i + 1}</div><div class="slvl">${Economy.skillLevel(h.id, i)}</div><div class="sname">${s.name}</div>`;
       el.addEventListener('pointerdown', (e) => { e.preventDefault(); Skills.tryCast(this.game, i, true); });
       wrap.appendChild(el);
       return el;
@@ -350,7 +352,8 @@ export class UI {
       const el = document.createElement('div');
       el.className = 'skill ult';
       el.title = `ULTIMATE · ${u.name} — ${u.desc} Cooldown ${u.cd}s.`;
-      el.innerHTML = `<span>${u.icon}</span><div class="cd"></div><div class="cdt"></div><div class="key">${4 + j}</div><div class="ulttag">ULT</div><div class="sname">${u.name}</div>`;
+      el.style.setProperty('--sk', skillTint(u));
+      el.innerHTML = `<div class="disc">${skillIcon(u)}<div class="cd"></div></div><div class="cdt"></div><div class="key">${4 + j}</div><div class="sname">${u.name}</div>`;
       el.addEventListener('pointerdown', (e) => { e.preventDefault(); Skills.tryUlt(this.game, j, true); });
       wrap.appendChild(el);
       return el;
@@ -609,7 +612,7 @@ export class UI {
         const cur = u.kind === 'mult' ? `×${Math.pow(1 + u.per, lvl).toFixed(2)}` : u.kind === 'pct' ? `+${Math.round(lvl * u.per * 100)}%` : key === 'crit' || key === 'regen' ? `+${(lvl * u.per * 100).toFixed(1)}%` : `+${lvl * u.per}`;
         const el = document.createElement('div');
         el.className = 'item';
-        el.innerHTML = `<div class="ic">${u.icon}</div>
+        el.innerHTML = `<div class="ic sk" style="--sk:${skillTint(u)}">${skillIcon(u)}</div>
           <div><div class="nm">${u.name}<small>Lv ${lvl}${u.max ? '/' + u.max : ''}</small></div><div class="ds">${u.desc}</div><div class="val">Current: ${cur}</div></div>
           <button class="btn small" ${maxed || !Economy.canAfford(cost) ? 'disabled' : ''}>${maxed ? 'MAX' : `<span class="coin"></span>${fmt(cost)}`}</button>`;
         el.querySelector('button').addEventListener('click', () => {
@@ -627,7 +630,7 @@ export class UI {
         const pw = Math.round(F.skillPower(s, lvl) * 100), cd = F.skillCd(s, lvl).toFixed(1);
         const el = document.createElement('div');
         el.className = 'item';
-        el.innerHTML = `<div class="ic">${s.icon}</div>
+        el.innerHTML = `<div class="ic sk" style="--sk:${skillTint(s)}">${skillIcon(s)}</div>
           <div><div class="nm">${s.name}<small>Lv ${lvl}/${CONFIG.skillUpgrade.maxLevel}</small></div><div class="ds">${s.desc}</div>
           <div class="val">Power: ${pw}% · Cooldown: ${cd}s</div>
           ${tome ? `<div class="req">📘 Lv ${lvl + 1} needs ${tome} Skill Tome${tome > 1 ? 's' : ''} (you have ${Economy.data.tomes || 0})</div>` : ''}</div>
