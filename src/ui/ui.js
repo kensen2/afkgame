@@ -6,6 +6,7 @@ import { Assets } from '../core/assets.js';
 import { Audio } from '../core/audio.js';
 import { Social } from '../systems/social.js';
 import { SocialUI } from './social-ui.js';
+import { Intro } from './intro.js';
 
 const $ = (id) => document.getElementById(id);
 // ?dev=1 → cüzdanda ek test butonları (+1 gün, cüzdana gönderimi simüle et)
@@ -93,7 +94,7 @@ export class UI {
 
   _bind() {
     const click = (id, fn) => $(id).addEventListener('click', () => { Audio.play('click'); fn(); });
-    click('btn-play', () => { Audio.setMusic('menu'); this.showSelect(); });
+    click('btn-play', () => { Audio.setMusic('menu'); Intro.gate(() => this.showSelect()); });
     click('btn-music', () => this.toggleMusic());
     click('btn-title-settings', () => this.openSettings('title'));
     click('btn-hud-settings', () => this.openSettings('game'));
@@ -174,7 +175,7 @@ export class UI {
       t.classList.add('active'); this.shopTab = t.dataset.tab; this.renderShop();
     }));
     window.addEventListener('keydown', (e) => {
-      if (!this.game?.hero) return;
+      if (!this.game?.hero || Intro.busy) return;
       const k = e.key.toLowerCase();
       // bir kutuya yazı yazılırken oyun kısayolları çalışmasın (Escape hariç)
       if (k !== 'escape' && e.target instanceof HTMLElement && e.target.matches('input, textarea')) return;
@@ -293,9 +294,14 @@ export class UI {
   }
 
   startGame() {
+    if (Intro.busy) return;
     Audio.play('click');
-    $('screen-select').classList.add('hidden');
-    this.game.startRun(this.selected);
+    const w = Economy.startWave(), fi = F.floorOf(w);
+    Intro.descent(fi + 1, CONFIG.floors[fi % CONFIG.floors.length].name, () => {
+      $('screen-select').classList.add('hidden');
+      this.game.startRun(this.selected);
+      this.game.zoom = 0.5;            // kamera yakından başlar, yavaşça geri çekilir
+    });
   }
 
   toMenu() {

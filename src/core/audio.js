@@ -44,6 +44,10 @@ const BANK = {
   wave:   { files: ['doorOpen_2'], vol: 0.55, pitch: [0.8, 0.9], gap: 500 },
   click:  { files: ['click_002', 'select_001'], vol: 0.45, pitch: [0.95, 1.05], gap: 40 },
   denied: { files: ['error_006'], vol: 0.5, pitch: [1, 1], gap: 150 },
+  // Açılış sahneleri: ağır kapı (perdesi düşürülmüş) + alçak darbe
+  gateOpen: { files: ['doorOpen_2'], vol: 1.0, pitch: [0.42, 0.46], gap: 400, thump: { f0: 70, vol: 0.5, dur: 0.5 } },
+  gateSlam: { files: ['doorClose_4'], vol: 1.0, pitch: [0.5, 0.55], gap: 400,
+            layer: { files: ['impactWood_heavy_000'], vol: 0.9 }, thump: { f0: 62, vol: 1.0, dur: 0.7 } },
   page:   { files: ['bookFlip2'], vol: 0.5, pitch: [0.95, 1.05], gap: 80 },
 };
 const buffers = {};   // dosya adı -> AudioBuffer
@@ -151,6 +155,26 @@ const SYNTH = {
   meteor: () => { thump(95, 0.7, 0.45); noise({ dur: 0.4, vol: 0.25, freq: 1200, f1: 150, type: 'lowpass', q: 0.8 }); },
   boulderLift: () => { noise({ dur: 0.8, vol: 0.25, freq: 120, f1: 260, type: 'lowpass', q: 1 }); thump(60, 0.5, 0.6); },
   boulderHit: () => { thump(70, 1.0, 0.8); noise({ dur: 0.7, vol: 0.4, freq: 900, f1: 120, type: 'lowpass', q: 0.8 }); noise({ dur: 0.25, vol: 0.2, freq: 2500, q: 1.5, delay: 0.02 }); },
+  // ---- açılış sahneleri ----
+  // alçak, ürpertici uğultu: birbirinden hafif kaymış iki ses + yavaşça açılan rüzgâr
+  introDrone: () => {
+    tone({ type: 'sawtooth', f0: 55, f1: 49, dur: 4.2, vol: 0.05, attack: 1.2 });
+    tone({ type: 'sawtooth', f0: 58.3, f1: 51, dur: 4.2, vol: 0.04, attack: 1.4 });
+    tone({ type: 'sine', f0: 110, f1: 98, dur: 4.0, vol: 0.05, attack: 1.6 });
+    noise({ dur: 4.0, vol: 0.06, freq: 220, f1: 700, type: 'bandpass', q: 0.6 });
+  },
+  heartbeat: () => { [0, 0.22, 0.95, 1.17].forEach((d) => setTimeout(() => thump(58, d % 0.9 < 0.1 ? 0.9 : 0.6, 0.22), d * 1000)); },
+  // menteşe gıcırtısı: yükselip alçalan dar bantlı gürültü + titreyen testere dişi
+  doorCreak: () => {
+    noise({ dur: 1.5, vol: 0.2, freq: 380, f1: 900, type: 'bandpass', q: 9 });
+    noise({ dur: 1.2, vol: 0.12, freq: 1300, f1: 600, type: 'bandpass', q: 12, delay: 0.25 });
+    tone({ type: 'sawtooth', f0: 92, f1: 61, dur: 1.4, vol: 0.05, attack: 0.2 });
+  },
+  lightSwell: () => { tone({ type: 'sine', f0: 196, f1: 392, dur: 1.6, vol: 0.05, attack: 0.5 }); tone({ type: 'sine', f0: 294, f1: 587, dur: 1.6, vol: 0.035, attack: 0.7 }); noise({ dur: 1.4, vol: 0.05, freq: 1800, f1: 5000, q: 0.8 }); },
+  steps: () => { [0, 0.34, 0.68, 1.02].forEach((d, i) => setTimeout(() => { thump(95 - i * 6, 0.5 - i * 0.07, 0.14); noise({ dur: 0.09, vol: 0.07, freq: 900, f1: 300, type: 'lowpass' }); }, d * 1000)); },
+  torchLight: () => { noise({ dur: 0.7, vol: 0.22, freq: 500, f1: 3200, type: 'bandpass', q: 0.9 }); noise({ dur: 1.4, vol: 0.06, freq: 1400, f1: 900, type: 'lowpass', delay: 0.3 }); thump(140, 0.35, 0.25); },
+  gateOpen: () => { thump(70, 0.8, 0.6); noise({ dur: 0.8, vol: 0.2, freq: 200, f1: 90, type: 'lowpass' }); },
+  gateSlam: () => { thump(60, 1.0, 0.8); noise({ dur: 0.5, vol: 0.3, freq: 700, f1: 100, type: 'lowpass' }); },
   swing: () => {}, // kılıç savurma sesi yok; sadece vuruş anında tok ses çalar
   // dosya yüklenemezse yedekler (yine gürültüsüz)
   hit: () => thump(150, 0.6, 0.16),

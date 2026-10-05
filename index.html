@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>AFK Dungeon</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Alegreya+Sans:wght@500;700;800&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
 <script type="importmap">
 { "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/" } }
@@ -59,6 +59,14 @@
   </div>
 </div>
 
+<!-- Açılış sahnesi: kapı ve iniş -->
+<div id="intro" class="intro hidden" aria-hidden="true">
+  <div class="intro-glow"></div>
+  <div class="intro-doors"><div class="door left"><i></i></div><div class="door right"><i></i></div></div>
+  <div class="intro-torch"></div>
+  <div class="intro-text"><div class="intro-sub" id="intro-sub"></div><div class="intro-line" id="intro-line"></div></div>
+  <div class="intro-skip">click to skip</div>
+</div>
 <div id="banner" class="hidden"></div>
 <div id="toast" class="hidden"></div>
 <div id="fade" class="hidden"><div class="fade-inner"><div class="fade-small" id="fade-small">FLOOR 2</div><div class="fade-big" id="fade-big">—</div></div></div>

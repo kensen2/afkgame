@@ -42,3 +42,6 @@ Exit code is 1 if the page threw an error.
 2. Desktop (1100×620) and phone (390×800) screenshots: nothing clipped or overlapping, text readable, the effect visible where it should land.
 3. For skills: frames before, during and after impact.
 4. For a floor/theme change: start at a wave inside that floor (e.g. `--wave 12` for floor 2).
+
+The opening scenes (door, descent) are skipped under automation. Add `?intro=1` to the URL in your own Playwright script to test them;
+the software renderer is too slow to film them live, so freeze stages by setting classes on `#intro` (see `src/ui/intro.js`).
