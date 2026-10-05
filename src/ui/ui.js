@@ -7,7 +7,7 @@ import { Audio } from '../core/audio.js';
 import { Social } from '../systems/social.js';
 import { SocialUI } from './social-ui.js';
 import { Intro } from './intro.js';
-import { skillIcon, skillTint } from './icons.js';
+import { skillIcon, skillTint, gearIcon } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 // ?dev=1 → cüzdanda ek test butonları (+1 gün, cüzdana gönderimi simüle et)
@@ -408,6 +408,10 @@ export class UI {
   }
 
   updateWave(game) {
+    { // boss sandığı kutsaması
+      const bl = $('hud-bless'), b = F.blessing(Economy.data);
+      if (bl) { bl.classList.toggle('hidden', !b); if (b) bl.textContent = `${b.icon} ${b.text} · ${Economy.data.blessing.left + 1} waves`; }
+    }
     this._enemyTick = this._enemyTick || 0;
     const w = Math.max(1, game.phase === 'combat' || game.phase === 'dead' ? game.wave : game.wave + 1);
     $('hud-floor').textContent = `Floor ${F.floorOf(w) + 1}`;
@@ -611,9 +615,12 @@ export class UI {
         const cost = Economy.upgradeCost(hid, key);
         const cur = u.kind === 'mult' ? `×${Math.pow(1 + u.per, lvl).toFixed(2)}` : u.kind === 'pct' ? `+${Math.round(lvl * u.per * 100)}%` : key === 'crit' || key === 'regen' ? `+${(lvl * u.per * 100).toFixed(1)}%` : `+${lvl * u.per}`;
         const el = document.createElement('div');
-        el.className = 'item';
-        el.innerHTML = `<div class="ic sk" style="--sk:${skillTint(u)}">${skillIcon(u)}</div>
-          <div><div class="nm">${u.name}<small>Lv ${lvl}${u.max ? '/' + u.max : ''}</small></div><div class="ds">${u.desc}</div><div class="val">Current: ${cur}</div></div>
+        const g = F.gearTier(key, lvl);
+        el.className = 'item gear';
+        el.style.setProperty('--sk', g.tint);
+        el.innerHTML = `<div class="ic sk gear-ic t${g.i}">${gearIcon(g.icon)}<span class="gear-lv">${lvl}</span></div>
+          <div><div class="slot">${g.slot === u.name ? g.slot : `${g.slot} · ${u.name}`}</div><div class="nm">${g.name}<small>Lv ${lvl}${u.max ? '/' + u.max : ''}</small></div><div class="ds">${u.desc}</div>
+          <div class="val">Current: ${cur}${g.next ? `<span class="nxt">Next: ${g.next.name} at Lv ${g.next.lvl}</span>` : ''}</div></div>
           <button class="btn small" ${maxed || !Economy.canAfford(cost) ? 'disabled' : ''}>${maxed ? 'MAX' : `<span class="coin"></span>${fmt(cost)}`}</button>`;
         el.querySelector('button').addEventListener('click', () => {
           if (Economy.buyUpgrade(hid, key)) { Audio.play('buy'); this.renderShop(); } else Audio.play('denied');
@@ -644,7 +651,7 @@ export class UI {
       (hdef.ultimates || []).forEach((u, j) => {
         const el = document.createElement('div');
         el.className = 'item ult-item';
-        el.innerHTML = `<div class="ic">${u.icon}</div>
+        el.innerHTML = `<div class="ic sk" style="--sk:${skillTint(u)}">${skillIcon(u)}</div>
           <div><div class="nm">${u.name}<small>ULTIMATE · key ${4 + j}</small></div><div class="ds">${u.desc}</div>
           <div class="val">Power: ${Math.round(u.power * 100)}% · Cooldown: ${u.cd}s</div></div>
           <span class="ult-note">Grows with your damage</span>`;

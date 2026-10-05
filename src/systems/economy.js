@@ -440,6 +440,23 @@ export const Economy = {
     return true;
   },
 
+  // Boss sandığı kutsaması: { id, left } — kalan dalga sayısı. Kalıcı değildir, sıfırlamada silinir.
+  grantBlessing() {
+    const list = CONFIG.bossChest.blessings;
+    const b = list[Math.floor(Math.random() * list.length)];
+    this.data.blessing = { id: b.id, left: CONFIG.bossChest.blessWaves - 1 };
+    this.save();
+    return b;
+  },
+  // Her yeni dalgada bir azalır; bittiyse true döner.
+  tickBlessing() {
+    const b = this.data.blessing;
+    if (!b) return false;
+    if (--b.left >= 0) return false;
+    this.data.blessing = null;
+    return true;
+  },
+
   recordWave(w) {
     if (w > this.data.bestWave) this.data.bestWave = w;
     // üretim sadece bu sezon açılmış dalgalara kadar sayılır (sezon devrinde eski dalga yeni sezona taşınmasın)

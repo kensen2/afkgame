@@ -79,6 +79,31 @@ export const CONFIG = {
     regen:   { name: 'Regeneration',  icon: '✨', baseCost: 12, costExp: 1.9, per: 0.004,kind: 'flat', desc: 'Heal 0.4% of max health per second', max: 15 },
   },
 
+  // ---- Ekipman görünümü (DENEME: gear-test dalı) ----
+  // Geliştirmeler aynı sayılarla çalışır; sadece her biri bir ekipman yuvası olarak gösterilir.
+  // tiers: [bu seviyeden itibaren, ad, ikon]. Renk kademeye göre: demir → çelik → altın → kor.
+  gear: {
+    atk:     { slot: 'Weapon', tiers: [[0, 'Rusty Sword', 'rusty-sword'], [6, 'Broadsword', 'broadsword'], [14, 'Greatsword', 'two-handed-sword'], [26, 'Relic Blade', 'relic-blade']] },
+    hp:      { slot: 'Helm',   tiers: [[0, 'Light Helm', 'light-helm'], [6, 'Barbute', 'barbute'], [14, 'Visored Helm', 'visored-helm'], [26, 'Crested Helm', 'crested-helmet']] },
+    armor:   { slot: 'Armor',  tiers: [[0, 'Leather Armor', 'leather-armor'], [6, 'Mail Shirt', 'mail-shirt'], [14, 'Breastplate', 'breastplate'], [26, 'Lamellar Plate', 'lamellar']] },
+    atkSpd:  { slot: 'Gloves', tiers: [[0, 'Leather Gloves', 'gloves'], [7, 'Gauntlets', 'gauntlet'], [14, 'Mailed Fists', 'mailed-fist']] },
+    crit:    { slot: 'Ring',   tiers: [[0, 'Iron Ring', 'ring'], [9, 'Diamond Ring', 'diamond-ring'], [18, 'Ring of Power', 'power-ring']] },
+    goldBon: { slot: 'Purse',  tiers: [[0, 'Coin Pouch', 'swap-bag'], [10, 'Satchel', 'knapsack'], [20, 'Strongbox', 'locked-chest']] },
+    regen:   { slot: 'Amulet', tiers: [[0, 'Bone Charm', 'primitive-necklace'], [4, 'Tribal Pendant', 'tribal-pendant'], [8, 'Gem Pendant', 'gem-pendant'], [12, 'Emerald Necklace', 'emerald-necklace']] },
+  },
+  gearTints: ['#9a9080', '#7fb4ee', '#e3bf74', '#ff8a3c'],
+  // Boss sandığı: her boss yenildiğinde çıkar. Kalıcı güç vermez: ekstra gold + 10 dalgalık küçük bir kutsama.
+  bossChest: {
+    goldWaves: 1.5,            // o dalganın ortalama gold'unun kaç katı
+    blessWaves: 10,
+    blessings: [
+      { id: 'might',   name: 'Blessing of Might',   icon: '⚔️', atk: 0.12,     text: '+12% damage' },
+      { id: 'vigor',   name: 'Blessing of Vigor',   icon: '❤️', hp: 0.12,      text: '+12% health' },
+      { id: 'haste',   name: 'Blessing of Haste',   icon: '💨', atkSpd: 0.08,  text: '+8% attack speed' },
+      { id: 'fortune', name: 'Blessing of Fortune', icon: '💰', gold: 0.20,    text: '+20% gold' },
+    ],
+  },
+
   // ---- Yetenek geliştirme ----
   skillUpgrade: {
     baseCost: 50, costExp: 2.2,     // gold maliyeti = baseCost × seviye^costExp  (v3.1: 12×lv² çok ucuzdu)
@@ -390,20 +415,32 @@ export const F = {
   armorMult: (armor) => 1 - armor / (armor + CONFIG.armorK),
 
   // Kahramanın tüm bonuslar dahil istatistikleri
+  blessing: (save) => (save.blessing ? CONFIG.bossChest.blessings.find((b) => b.id === save.blessing.id) || null : null),
+  // Ekipman kademesi: { i, name, icon, tint, next: {lvl, name} | null }
+  gearTier(key, lvl) {
+    const g = CONFIG.gear[key];
+    if (!g) return null;
+    let i = 0;
+    for (let k = 0; k < g.tiers.length; k++) if (lvl >= g.tiers[k][0]) i = k;
+    const n = g.tiers[i + 1];
+    return { i, slot: g.slot, name: g.tiers[i][1], icon: g.tiers[i][2], tint: CONFIG.gearTints[Math.min(i, CONFIG.gearTints.length - 1)], next: n ? { lvl: n[0], name: n[1] } : null };
+  },
   heroStats(heroId, save) {
     const h = CONFIG.heroes[heroId];
     const up = save.heroes[heroId].upgrades;
     const U = CONFIG.upgrades;
     const lv = save.level - 1;
     const forge = Math.pow(1 + CONFIG.v5.forge.per, save.forge || 0);
+    const B = F.blessing(save) || {};      // boss sandığından gelen geçici kutsama
     return {
-      maxHp: h.hp * Math.pow(1 + U.hp.per, up.hp || 0) * (1 + lv * CONFIG.account.hpPerLevel) * forge,
-      atk: h.atk * Math.pow(1 + U.atk.per, up.atk || 0) * (1 + lv * CONFIG.account.atkPerLevel) * forge,
+      maxHp: h.hp * Math.pow(1 + U.hp.per, up.hp || 0) * (1 + lv * CONFIG.account.hpPerLevel) * forge * (1 + (B.hp || 0)),
+      atk: h.atk * Math.pow(1 + U.atk.per, up.atk || 0) * (1 + lv * CONFIG.account.atkPerLevel) * forge * (1 + (B.atk || 0)),
       armor: h.armor + (up.armor || 0) * U.armor.per,
-      atkSpd: h.atkSpd * (1 + (up.atkSpd || 0) * U.atkSpd.per),
+      atkSpd: h.atkSpd * (1 + (up.atkSpd || 0) * U.atkSpd.per) * (1 + (B.atkSpd || 0)),
       crit: Math.min(0.9, h.crit + (up.crit || 0) * U.crit.per),
       critDmg: h.critDmg,
       goldMult: 1 + (up.goldBon || 0) * U.goldBon.per,
+      blessGold: B.gold || 0,               // sadece canlı oyunda düşen gold'a uygulanır (çevrimdışı kazanca değil)
       regen: (up.regen || 0) * U.regen.per,
       speed: h.speed, range: h.range,
     };

@@ -611,3 +611,24 @@ input[type=range]::-moz-range-thumb { border-radius: 2px; background: #c9a04e; b
   .btn.auto small { font-size: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .skill.ult.ready { animation: none; } }
+
+/* ---- Ekipman görünümü + boss sandığı (DENEME: gear-test) ---- */
+.item.gear { grid-template-columns: 58px 1fr auto; border-color: color-mix(in srgb, var(--sk) 28%, transparent); }
+.item.gear .gear-ic { position: relative; width: 54px; height: 54px; border-radius: 9px; display: grid; place-items: center; color: var(--sk);
+  background: var(--grain), linear-gradient(160deg, #2b2620, #15120f); border: 2px solid color-mix(in srgb, var(--sk) 65%, #000);
+  box-shadow: inset 0 0 12px rgba(0,0,0,0.7), 0 0 10px color-mix(in srgb, var(--sk) 22%, transparent); }
+.item.gear .gear-ic .sk-ico { width: 38px; height: 38px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.8)); }
+.item.gear .gear-ic.t3 { box-shadow: inset 0 0 12px rgba(0,0,0,0.7), 0 0 16px color-mix(in srgb, var(--sk) 55%, transparent); }
+.item.gear .gear-lv { position: absolute; right: -5px; bottom: -5px; min-width: 20px; padding: 0 4px; border-radius: 10px; font-size: 11px; font-weight: 800;
+  line-height: 18px; text-align: center; color: #1a1510; background: var(--sk); border: 1px solid #000; }
+.item.gear .slot { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+.item.gear .nm { color: var(--sk); font-family: 'Cinzel', serif; }
+.item.gear .nxt { display: block; color: var(--muted); }
+.item.gear .nm small, .item.gear .slot { white-space: nowrap; }
+.wave-bless { margin-top: 3px; font-size: 12px; font-weight: 700; color: var(--brass-hi); text-shadow: 0 1px 2px #000; }
+@media (max-width: 520px) {
+  .item.gear { grid-template-columns: 48px 1fr auto; }
+  .item.gear .gear-ic { width: 44px; height: 44px; }
+  .item.gear .gear-ic .sk-ico { width: 30px; height: 30px; }
+  .item.gear .nxt { display: block; margin-left: 0; }
+}

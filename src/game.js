@@ -133,6 +133,7 @@ export class Game {
     this.clearProjectiles();
     for (const c of this.coins) this.scene.remove(c.mesh);
     this.coins = [];
+    this.removeChest();
     this.fx.clear();
     this.ults.clear();
     if (this.hero) { this.hero.dispose(); this.hero = null; }
@@ -161,6 +162,7 @@ export class Game {
     }
     this.wave++;
     const w = this.wave;
+    if (Economy.tickBlessing()) { this.hero.refreshStats(); this.ui.toast('The blessing fades'); }
     const fi = F.floorOf(w);
     if (fi !== this.floorIndex) {
       // yeni kat
@@ -246,7 +248,7 @@ export class Game {
     if (e.rank === 'boss') this.fx.shake(1);
     // gold paraları saç
     // Tam sayı gold: küsurat olasılıkla yuvarlanır (1.4 gold → %40 ihtimalle 2, yoksa 1)
-    const raw = e.gold * this.hero.stats.goldMult * Economy.goldMult();
+    const raw = e.gold * this.hero.stats.goldMult * (1 + (this.hero.stats.blessGold || 0)) * Economy.goldMult();
     const total = Math.floor(raw) + (Math.random() < raw % 1 ? 1 : 0);
     if (total > 0) {
       const want = e.rank === 'boss' ? 14 : e.rank === 'elite' ? 6 : Math.min(4, 1 + Math.floor(Math.random() * 3));
@@ -262,6 +264,7 @@ export class Game {
         setTimeout(() => this.ui.toast(`First boss kill! +${r.tomes} Skill Tome${r.tomes > 1 ? 's' : ''}`), 1200);
       }
     }
+    if (e.rank === 'boss') this.spawnChest(e.pos);
     const lv = Economy.addXp(e.xp);
     this.runXp += e.xp;
     if (lv > 0) {
@@ -273,6 +276,58 @@ export class Game {
       this.ui.toast(`Level ${Economy.data.level}! +1 skill point`);
     }
     this.ui.updateWave(this);
+  }
+
+  // ---- Boss sandığı (DENEME) ----
+  // Boss ölünce yere düşer, kısa süre sonra açılır: ekstra gold saçar + birkaç dalgalık kutsama verir.
+  // Kalıcı güç ya da DGN vermez.
+  spawnChest(pos) {
+    this.removeChest();
+    const mesh = cloneDungeon('chest_gold');
+    mesh.position.set(pos.x, 6, pos.z);
+    mesh.rotation.y = -Math.PI / 2;
+    mesh.scale.setScalar(1.5);
+    this.scene.add(mesh);
+    this.chest = { mesh, t: 0, opened: false, wave: this.wave };
+  }
+  removeChest() {
+    if (!this.chest) return;
+    if (!this.chest.opened) this.openChest(true);     // açılmadan temizlenirse ödül kaybolmasın
+    this.scene.remove(this.chest.mesh);
+    this.chest = null;
+  }
+  openChest(quiet) {
+    const c = this.chest, C = CONFIG.bossChest;
+    c.opened = true;
+    const gold = Math.max(1, Math.round(F.waveGold(c.wave) * C.goldWaves));
+    const b = Economy.grantBlessing();
+    if (quiet) { Economy.addGold(gold); return; }
+    const n = 12, each = Math.floor(gold / n);
+    for (let i = 0; i < n; i++) this.spawnCoin(c.mesh.position, each + (i < gold - each * n ? 1 : 0));
+    const p = c.mesh.position.clone().setY(1.2);
+    this.fx.burst(p, { count: 46, color: 0xffd76a, speed: 4, up: 6, size: 0.45, life: 0.9 });
+    this.fx.floater(p.clone().setY(3), `${b.icon} ${b.name}`, 'level');
+    this.audio.play('levelup');
+    if (this.hero && !this.hero.dead) this.hero.refreshStats();
+    this.ui.toast(`Boss chest: +${gold} gold · ${b.name} (${b.text}, ${C.blessWaves} waves)`);
+    this.ui.updateWave(this);
+  }
+  updateChest(dt) {
+    const c = this.chest;
+    if (!c) return;
+    c.t += dt;
+    const m = c.mesh;
+    if (c.t < 0.45) m.position.y = 6 * (1 - (c.t / 0.45) ** 2);                 // düşüş
+    else if (!c.opened) {
+      m.position.y = 0;
+      const k = (c.t - 0.45) / 0.55;
+      m.scale.setScalar(1.5 * (1 + 0.12 * Math.sin(k * Math.PI * 4) * (1 - k)));  // yere çarpıp titrer
+      if (c.t >= 1.0) this.openChest(false);
+    } else if (c.t > 2.6) {
+      const s = Math.max(0, 1 - (c.t - 2.6) / 0.4);
+      m.scale.setScalar(1.5 * s);
+      if (s <= 0) { this.scene.remove(m); this.chest = null; }
+    }
   }
 
   spawnCoin(pos, value) {
@@ -465,6 +520,7 @@ export class Game {
     }
     this.updateProjectiles(dt);
     this.updateCoins(dt);
+    this.updateChest(dt);
     this.dungeon.update(hero.pos.x, dt);
     this.fx.update(dt);
     this.ults.update(dt);
