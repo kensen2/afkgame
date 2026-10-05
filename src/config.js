@@ -96,6 +96,7 @@ export const CONFIG = {
   bossChest: {
     goldWaves: 1.5,            // o dalganın ortalama gold'unun kaç katı
     blessWaves: 10,
+    linger: 3.2,               // ganimet yerde kaç saniye durur
     blessings: [
       { id: 'might',   name: 'Blessing of Might',   icon: '⚔️', atk: 0.12,     text: '+12% damage' },
       { id: 'vigor',   name: 'Blessing of Vigor',   icon: '❤️', hp: 0.12,      text: '+12% health' },
@@ -140,14 +141,14 @@ export const CONFIG = {
     rate: { w1: 100, w20: 2000, exp: 0.8, returnHours: 48 },
     // Anahtar kademeleri: paket = 10 anahtar, her yeni dalgada 1 tane otomatik harcanır.
     keys: [
-      { id: 'bronze',   name: 'Bronze Key',   icon: '🥉', from: 21, to: 30,  usd: 10, singleUsd: 4 },
-      { id: 'silver',   name: 'Silver Key',   icon: '🥈', from: 31, to: 40,  usd: 15 },
-      { id: 'gold',     name: 'Gold Key',     icon: '🥇', from: 41, to: 50,  usd: 25 },
-      { id: 'platinum', name: 'Platinum Key', icon: '💠', from: 51, to: 60,  usd: 40 },
-      { id: 'diamond',  name: 'Diamond Key',  icon: '💎', from: 61, to: 70,  usd: 60 },
-      { id: 'ruby',     name: 'Ruby Key',     icon: '❤️', from: 71, to: 80,  usd: 100 },
-      { id: 'obsidian', name: 'Obsidian Key', icon: '🖤', from: 81, to: 90,  usd: 200 },
-      { id: 'dragon',   name: 'Dragon Key',   icon: '🐉', from: 91, to: 100, usd: 500 },
+      { id: 'bronze', tint: '#d08a52',   name: 'Bronze Key',   icon: '🥉', from: 21, to: 30,  usd: 10, singleUsd: 4 },
+      { id: 'silver', tint: '#c9d2dc',   name: 'Silver Key',   icon: '🥈', from: 31, to: 40,  usd: 15 },
+      { id: 'gold', tint: '#f0c24a',     name: 'Gold Key',     icon: '🥇', from: 41, to: 50,  usd: 25 },
+      { id: 'platinum', tint: '#9fe0d8', name: 'Platinum Key', icon: '💠', from: 51, to: 60,  usd: 40 },
+      { id: 'diamond', tint: '#7fd0ff',  name: 'Diamond Key',  icon: '💎', from: 61, to: 70,  usd: 60 },
+      { id: 'ruby', tint: '#ff5a6a',     name: 'Ruby Key',     icon: '❤️', from: 71, to: 80,  usd: 100 },
+      { id: 'obsidian', tint: '#7c8696', name: 'Obsidian Key', icon: '🖤', from: 81, to: 90,  usd: 200 },
+      { id: 'dragon', tint: '#ff8a3c',   name: 'Dragon Key',   icon: '🐉', from: 91, to: 100, usd: 500 },
     ],
     pools: { free: 10000000, depositor: 10000000 },     // günlük DGN
     depositorPoolDelayHours: 48,
@@ -180,15 +181,15 @@ export const CONFIG = {
   },
   // Token mağazası (eski Gems mağazası; fiyatlar aynı dolar değerinde)
   tokenShop: {
-    timeSkip: { name: 'Time Skip',  icon: '⏩', price: 3000,  hours: 2,
+    timeSkip: { ico: 'sands-of-time', tint: '#7fb4ee', name: 'Time Skip',  icon: '⏩', price: 3000,  hours: 2,
                 desc: 'Instantly collect 2 hours of offline gold (uses your offline rate).' },
-    goldRush: { name: 'Gold Rush',  icon: '💰', price: 5000,  hours: 24, mult: 2,
+    goldRush: { ico: 'two-coins', tint: '#f0c24a', name: 'Gold Rush',  icon: '💰', price: 5000,  hours: 24, mult: 2,
                 desc: 'Double gold from every source for 24 hours.' },
-    idlePass: { name: 'Idle Pass',  icon: '🌙', price: 30000, permanent: true, efficiency: 0.25, maxHours: 24,
+    idlePass: { ico: 'night-sleep', tint: '#c9d2dc', name: 'Idle Pass',  icon: '🌙', price: 30000, permanent: true, efficiency: 0.25, maxHours: 24,
                 desc: 'Offline gold rate 10% → 25% and cap 12h → 24h for the season.' },
-    tome:     { name: 'Skill Tome', icon: '📘', price: 2000,
+    tome:     { ico: 'spell-book', tint: '#7fd0ff', name: 'Skill Tome', icon: '📘', price: 2000,
                 desc: 'Needed to raise a skill to Lv 4 and above. Bosses drop them the first time you beat them.' },
-    revive:   { name: 'Revive',     icon: '💖', price: 1000,
+    revive:   { ico: 'heart-wings', tint: '#ff5a6a', name: 'Revive',     icon: '💖', price: 1000,
                 desc: 'On the defeat screen: continue from the wave you fell on, not one wave back.' },
   },
   // Boss'un İLK yenilişi: Skill Tome (token basılmaz; token sadece havuzdan gelir)

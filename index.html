@@ -24,7 +24,9 @@
       <div class="hud-name"><span id="hud-hero">—</span> <span class="lvl">Lv <b id="hud-level">1</b></span></div>
       <div class="bar hp"><div id="hp-fill"></div><span id="hp-text">0 / 0</span></div>
       <div class="bar xp"><div id="xp-fill"></div><span id="xp-text">XP</span></div>
+      <button id="btn-hud-stats" class="hud-stats-toggle" aria-expanded="false" aria-controls="hud-stats">Stats <span class="chev">▾</span></button>
     </div>
+    <div id="hud-stats" class="hud-stats panel hidden"></div>
   </div>
   <div class="hud-center">
     <div class="wave-title"><span id="hud-floor">Floor 1</span> · <span id="hud-wave">Wave 1</span></div>
@@ -34,8 +36,8 @@
   </div>
   <div class="hud-right">
     <div class="wallet-row">
-      <button id="btn-hud-clan" class="hud-chip panel" title="Your clan"><span>🛡</span><b>Clan</b></button>
-      <button id="btn-hud-rank" class="hud-chip panel" title="Rankings"><span>🏆</span><b>Rank</b></button>
+      <button id="btn-hud-clan" class="hud-chip panel" title="Your clan"><span data-ico="swords-emblem"></span><b>Clan</b></button>
+      <button id="btn-hud-rank" class="hud-chip panel" title="Rankings"><span data-ico="trophy"></span><b>Rank</b></button>
       <div class="gold panel"><span class="coin"></span><b id="hud-gold">0</b></div>
       <div class="gems panel" title="Your in-game DGN balance"><span class="gem">◈</span><b id="hud-gems">0</b></div>
     </div>
@@ -48,7 +50,7 @@
     </div>
     <div id="hud-rush" class="rush-chip hidden">💰 Gold Rush ×2 · <span id="hud-rush-t">0h</span></div>
     <div class="hud-buttons">
-      <button id="btn-shop" class="btn small" title="Shop (B)">🛒 Shop</button>
+      <button id="btn-shop" class="btn small" title="Shop (B)"><i data-ico="shopping-bag"></i> Shop</button>
       <button id="btn-speed" class="btn small" title="Game speed (H)">1x</button>
       <button id="btn-hud-settings" class="btn small" title="Settings">⚙</button>
       <button id="btn-pause" class="btn small" title="Pause (Esc)">⏸</button>
@@ -106,10 +108,10 @@
       <button class="btn small close" id="btn-clan-close">✕</button>
     </div>
     <div class="tabs">
-      <button class="tab" data-ctab="clan">🛡 My Clan</button>
+      <button class="tab" data-ctab="clan"><i data-ico="swords-emblem"></i> My Clan</button>
       <button class="tab" data-ctab="find">🔍 Find</button>
-      <button class="tab" data-ctab="players">🏆 Lords</button>
-      <button class="tab" data-ctab="clans">🏆 Clans</button>
+      <button class="tab" data-ctab="players"><i data-ico="trophy"></i> Lords</button>
+      <button class="tab" data-ctab="clans"><i data-ico="trophy"></i> Clans</button>
     </div>
     <div class="wallet-body" id="clan-body"></div>
   </div>
@@ -131,7 +133,7 @@
   <h1 class="screen-title">Choose Your Hero</h1>
   <div class="cards" id="hero-cards"></div>
   <div class="select-actions">
-    <button class="btn" id="btn-select-shop">🛒 Shop</button>
+    <button class="btn" id="btn-select-shop"><i data-ico="shopping-bag"></i> Shop</button>
     <button class="btn big" id="btn-start">⚔️ ENTER THE DUNGEON</button>
   </div>
   <div class="hint" id="start-hint"></div>
@@ -147,15 +149,15 @@
       </div>
       <div class="shop-wallet">
         <div class="gold"><span class="coin"></span><b id="shop-gold">0</b> <span class="gems-inline">◈ <b id="shop-gems">0</b> DGN</span></div>
-        <div class="sp">⭐ <b id="shop-sp">0</b> skill points · 📘 <b id="shop-tomes">0</b> tomes</div>
+        <div class="sp"><i data-ico="round-star"></i> <b id="shop-sp">0</b> skill points · <i data-ico="spell-book"></i> <b id="shop-tomes">0</b> tomes</div>
       </div>
       <button class="btn small close" id="btn-shop-close">✕</button>
     </div>
     <div class="tabs">
       <button class="tab active" data-tab="upg">Upgrades</button>
       <button class="tab" data-tab="skl">Skills</button>
-      <button class="tab gems-tab" data-tab="keys">🗝 Keys</button>
-      <button class="tab gems-tab" data-tab="forge">⚒ Forge</button>
+      <button class="tab gems-tab" data-tab="keys"><i data-ico="key"></i> Keys</button>
+      <button class="tab gems-tab" data-tab="forge"><i data-ico="anvil-impact"></i> Forge</button>
       <button class="tab gems-tab" data-tab="store">Store</button>
       <button class="tab" data-tab="stats">Stats</button>
     </div>
@@ -172,7 +174,7 @@
     <div class="death-actions">
       <button class="btn big" id="btn-retry">↻ Try Again</button>
       <button class="btn gem-btn" id="btn-revive">💖 Revive · ◈1000</button>
-      <button class="btn" id="btn-death-shop">🛒 Shop</button>
+      <button class="btn" id="btn-death-shop"><i data-ico="shopping-bag"></i> Shop</button>
       <button class="btn" id="btn-death-menu">Choose Hero</button>
     </div>
   </div>
@@ -210,11 +212,11 @@
   <div class="panel gate">
     <div class="gate-eyebrow" id="gate-eyebrow">Wave 21</div>
     <div class="gate-title">THE SEALED GATE</div>
-    <div class="gate-icon" id="gate-icon">🥉</div>
+    <div class="gate-icon" id="gate-icon"></div>
     <div class="gate-main" id="gate-main">Deposit to open waves 21–30</div>
     <div class="gate-small">This is the way to earn more.</div>
     <div class="gate-rate" id="gate-rate"></div>
-    <div class="gate-actions"><button class="btn big" id="btn-gate-keys">🗝 Get Keys</button></div>
+    <div class="gate-actions"><button class="btn big" id="btn-gate-keys"><i data-ico="key"></i> Get Keys</button></div>
     <div class="gate-count" id="gate-count">Returning to Wave 15 in 10…</div>
   </div>
 </div>
@@ -278,7 +280,7 @@
   <div class="panel pause">
     <div class="shop-title">Paused</div>
     <button class="btn big" id="btn-resume">Resume</button>
-    <button class="btn" id="btn-pause-shop">🛒 Shop</button>
+    <button class="btn" id="btn-pause-shop"><i data-ico="shopping-bag"></i> Shop</button>
     <button class="btn" id="btn-pause-settings">⚙ Settings</button>
     <button class="btn" id="btn-quit">Main Menu</button>
     <button class="btn danger small" id="btn-reset">Reset Save</button>

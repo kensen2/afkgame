@@ -7,7 +7,7 @@ import { Audio } from '../core/audio.js';
 import { Social } from '../systems/social.js';
 import { SocialUI } from './social-ui.js';
 import { Intro } from './intro.js';
-import { skillIcon, skillTint, gearIcon } from './icons.js';
+import { skillIcon, skillTint, gearIcon, fillIcons, ico } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 // ?dev=1 → cüzdanda ek test butonları (+1 gün, cüzdana gönderimi simüle et)
@@ -74,6 +74,16 @@ class Previewer {
 
 export class UI {
   constructor() {
+    fillIcons();
+    // HUD: XP barının altındaki açılır-kapanır istatistik paneli
+    $('btn-hud-stats').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const p = $('hud-stats'), open = p.classList.toggle('hidden') === false;
+      e.currentTarget.setAttribute('aria-expanded', open);
+      e.currentTarget.classList.toggle('open', open);
+      clearInterval(this._statsTimer);
+      if (open) { this.renderHudStats(); this._statsTimer = setInterval(() => this.renderHudStats(), 500); }
+    });
     this.game = null;
     this.selected = Economy.data.selectedHero || 'warrior';
     this.previewers = [];
@@ -640,8 +650,8 @@ export class UI {
         el.innerHTML = `<div class="ic sk" style="--sk:${skillTint(s)}">${skillIcon(s)}</div>
           <div><div class="nm">${s.name}<small>Lv ${lvl}/${CONFIG.skillUpgrade.maxLevel}</small></div><div class="ds">${s.desc}</div>
           <div class="val">Power: ${pw}% · Cooldown: ${cd}s</div>
-          ${tome ? `<div class="req">📘 Lv ${lvl + 1} needs ${tome} Skill Tome${tome > 1 ? 's' : ''} (you have ${Economy.data.tomes || 0})</div>` : ''}</div>
-          <button class="btn small" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : `<span class="coin"></span>${fmt(cost)} + ⭐1${tome ? ` + 📘${tome}` : ''}`}</button>`;
+          ${tome ? `<div class="req">${ico('spell-book')} Lv ${lvl + 1} needs ${tome} Skill Tome${tome > 1 ? 's' : ''} (you have ${Economy.data.tomes || 0})</div>` : ''}</div>
+          <button class="btn small" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : `<span class="coin"></span>${fmt(cost)} + ${ico('round-star')}1${tome ? ` + ${ico('spell-book')}${tome}` : ''}`}</button>`;
         el.querySelector('button').addEventListener('click', () => {
           if (Economy.buySkill(hid, i)) { Audio.play('buy'); this.renderShop(); } else Audio.play('denied');
         });
@@ -669,16 +679,26 @@ export class UI {
       this.renderStore(body);
     } else {
       const st = F.heroStats(hid, Economy.data);
-      const d = Economy.data;
       const g = document.createElement('div');
       g.className = 'stats-grid';
-      const rows = [['Max Health', fmt(st.maxHp)], ['Damage', st.atk.toFixed(1)], ['Armor', Math.round(st.armor) + ` (${Math.round((1 - F.armorMult(st.armor)) * 100)}% reduction)`],
-        ['Attack Speed', st.atkSpd.toFixed(2) + '/s'], ['Crit Chance', Math.round(st.crit * 100) + '%'], ['Crit Damage', 'x' + st.critDmg],
-        ['Gold Bonus', '+' + Math.round((st.goldMult - 1) * 100) + '%'], ['Regeneration', (st.regen * 100).toFixed(1) + '%/s'],
-        ['Account Level', d.level], ['Best Wave', d.bestWave], ['Total Kills', fmt(d.totalKills)], ['Starting Wave', Economy.startWave()]];
+      const rows = this.statRows(hid, st);
       g.innerHTML = rows.map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('');
       body.appendChild(g);
     }
+  }
+
+  statRows(hid, st) {
+    const d = Economy.data;
+    return [['Max Health', fmt(st.maxHp)], ['Damage', st.atk.toFixed(1)], ['Armor', Math.round(st.armor) + ` (${Math.round((1 - F.armorMult(st.armor)) * 100)}% reduction)`],
+      ['Attack Speed', st.atkSpd.toFixed(2) + '/s'], ['Crit Chance', Math.round(st.crit * 100) + '%'], ['Crit Damage', 'x' + st.critDmg],
+      ['Gold Bonus', '+' + Math.round((st.goldMult - 1) * 100) + '%'], ['Regeneration', (st.regen * 100).toFixed(1) + '%/s'],
+      ['Account Level', d.level], ['Best Wave', d.bestWave], ['Total Kills', fmt(d.totalKills)], ['Starting Wave', Economy.startWave()]];
+  }
+  renderHudStats() {
+    const h = this.game?.hero, p = $('hud-stats');
+    if (!h || p.classList.contains('hidden')) return;
+    const html = this.statRows(h.id, F.heroStats(h.id, Economy.data)).slice(0, 8).map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('');
+    if (html !== this._statsHtml) { this._statsHtml = html; p.innerHTML = html; }
   }
 
   syncTabs() {
@@ -703,7 +723,7 @@ export class UI {
   showGate(w, quiet = false) {
     const k = F.keyTier(w);
     $('gate-eyebrow').textContent = `Wave ${w}`;
-    $('gate-icon').textContent = k ? k.icon : '🔒';
+    { const gi = $('gate-icon'); gi.style.color = k ? k.tint : '#9a9080'; gi.innerHTML = gearIcon(k ? 'skeleton-key' : 'padlock'); }
     $('gate-main').textContent = k ? `Deposit to open waves ${k.from}–${k.to}` : 'Sealed';
     const now = Math.round(Economy.ratePerHour()), then = Math.round(F.rateAt(k ? k.to : w));
     $('gate-rate').innerHTML = `Your production: <b>${now.toLocaleString('en-US')}/h</b> → up to <b>${then.toLocaleString('en-US')}/h</b> at wave ${k ? k.to : w}`;
@@ -727,19 +747,20 @@ export class UI {
       const single = k.singleUsd ? Economy.keySinglePrice(k) : 0;
       const canSingle = single && unlocked && room > 0 && Economy.canAffordTokens(single);
       let status;
-      if (!unlocked) status = `🔒 Reach wave ${k.from - 1} to unlock`;
+      if (!unlocked) status = `${ico('padlock')} Reach wave ${k.from - 1} to unlock`;
       else if (room <= 0) status = `All 10 keys for this tier are yours this season`;
       else status = `${n} key${n > 1 ? 's' : ''}: ◈${fmt(cost)} (${usd(cost)})${canPack ? '' : ' · needs deposited DGN'}`;
       const el = document.createElement('div');
-      el.className = 'item' + (unlocked ? '' : ' locked');
-      el.innerHTML = `<div class="ic">${k.icon}</div>
+      el.className = 'item gear' + (unlocked ? '' : ' locked');
+      el.style.setProperty('--sk', k.tint);
+      el.innerHTML = `<div class="ic sk gear-ic">${gearIcon('skeleton-key')}</div>
         <div><div class="nm">${k.name}<small>×${have}${used ? ` · ${used} used` : ''}</small></div>
         <div class="ds">Opens waves ${k.from}–${k.to}. Production at wave ${k.to}: ${Math.round(F.rateAt(k.to)).toLocaleString('en-US')}/h. Max 10 per season.</div>
         <div class="val">${status}</div></div>
-        <div class="key-btns"><button class="btn small gem-buy" data-p="1" ${canPack ? '' : 'disabled'}>${!unlocked ? '🔒' : room <= 0 ? 'MAX' : `${n} · ◈${fmt(cost)}`}</button>${single ? `<button class="btn small gem-buy" data-s="1" ${canSingle ? '' : 'disabled'}>1 · ◈${fmt(single)}</button>` : ''}</div>`;
+        <div class="key-btns"><button class="btn small gem-buy" data-p="1" ${canPack ? '' : 'disabled'}>${!unlocked ? ico('padlock') : room <= 0 ? 'MAX' : `${n} · ◈${fmt(cost)}`}</button>${single ? `<button class="btn small gem-buy" data-s="1" ${canSingle ? '' : 'disabled'}>1 · ◈${fmt(single)}</button>` : ''}</div>`;
       el.querySelector('[data-p]').addEventListener('click', () => {
         const got = Economy.buyKeyPack(k.id);
-        if (got) { Audio.play('buy'); this.toast(`${k.icon} ${got} ${k.name}${got > 1 ? 's' : ''} added. Your production pays back what you deposited; pool earnings start 48h after your first deposit.`); this.renderShop(); }
+        if (got) { Audio.play('buy'); this.toast(`${got} ${k.name}${got > 1 ? 's' : ''} added. Your production pays back what you deposited; pool earnings start 48h after your first deposit.`); this.renderShop(); }
         else { Audio.play('denied'); this.toast('Key packs are bought with deposited DGN. Open your Wallet to deposit.'); }
       });
       el.querySelector('[data-s]')?.addEventListener('click', () => {
@@ -757,8 +778,9 @@ export class UI {
     const d = Economy.data, F5 = CONFIG.v5.forge, lvl = d.forge || 0;
     const cost = Economy.forgeCost(), maxed = lvl >= F5.max;
     const el = document.createElement('div');
-    el.className = 'item realm-card wide';
-    el.innerHTML = `<div class="ic">⚒️</div>
+    el.className = 'item gear realm-card wide';
+    el.style.setProperty('--sk', '#ff8a3c');
+    el.innerHTML = `<div class="ic sk gear-ic">${gearIcon('anvil-impact')}</div>
       <div><div class="nm">The Forge<small>Lv ${lvl}/${F5.max}</small></div>
       <div class="ds">Temper your hero with DGN. Every level multiplies damage and health by ×${(1 + F5.per).toFixed(2)} for both heroes. Resets each season.</div>
       <div class="val">Current: damage and health ×${Math.pow(1 + F5.per, lvl).toFixed(2)}</div></div>
@@ -855,8 +877,9 @@ export class UI {
       if (id === 'tome') status = `You have ${d.tomes || 0}`;
       if (id === 'revive') { status = 'Use it from the defeat screen.'; disabled = true; }
       const el = document.createElement('div');
-      el.className = 'item';
-      el.innerHTML = `<div class="ic">${it.icon}</div>
+      el.className = 'item gear';
+      el.style.setProperty('--sk', it.tint);
+      el.innerHTML = `<div class="ic sk gear-ic">${gearIcon(it.ico)}</div>
         <div><div class="nm">${it.name}</div><div class="ds">${it.desc}</div>${status ? `<div class="req">${status}</div>` : ''}</div>
         <button class="btn small gem-buy" ${disabled ? 'disabled' : ''}>${label}</button>`;
       el.querySelector('button').addEventListener('click', () => {

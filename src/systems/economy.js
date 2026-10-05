@@ -126,7 +126,7 @@ export const Economy = {
       'seasonBest', 'lastAccrue', 'idlePass', 'clanBonus',
       // DGN ile alınanlar da kalır: Forge, Gold Rush, Skill Tome. Tome ile birlikte "yenilmiş boss" listesi de
       // kalır; yoksa sıfırlayıp boss'ları tekrar yenerek bedava Tome toplanabilirdi.
-      'forge', 'goldRushUntil', 'tomes', 'bossesBeaten']) keep[k] = d[k];
+      'forge', 'goldRushUntil', 'tomes', 'bossesBeaten', 'chestsTaken']) keep[k] = d[k];
     this.data = freshSave();
     Object.assign(this.data, keep);
     this.save(); this.emit();
@@ -441,6 +441,12 @@ export const Economy = {
   },
 
   // Boss sandığı kutsaması: { id, left } — kalan dalga sayısı. Kalıcı değildir, sıfırlamada silinir.
+  // Her boss'un sandığı bir kez düşer (tekrar yenince düşmez; sıfırlamada da geri gelmez).
+  chestAvailable(w) { return !(this.data.chestsTaken || []).includes(w); },
+  takeChest(w) {
+    const l = this.data.chestsTaken || (this.data.chestsTaken = []);
+    if (!l.includes(w)) l.push(w);
+  },
   grantBlessing() {
     const list = CONFIG.bossChest.blessings;
     const b = list[Math.floor(Math.random() * list.length)];

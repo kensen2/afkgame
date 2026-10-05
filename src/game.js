@@ -282,31 +282,40 @@ export class Game {
   // Boss ölünce yere düşer, kısa süre sonra açılır: ekstra gold saçar + birkaç dalgalık kutsama verir.
   // Kalıcı güç ya da DGN vermez.
   spawnChest(pos) {
+    if (!Economy.chestAvailable(this.wave)) return;
     this.removeChest();
     const mesh = cloneDungeon('chest_gold');
     mesh.position.set(pos.x, 6, pos.z);
-    mesh.rotation.y = -Math.PI / 2;
+    mesh.rotation.y = -Math.PI / 2 + 0.5;            // kameraya hafif dönük
     mesh.scale.setScalar(1.5);
     this.scene.add(mesh);
-    this.chest = { mesh, t: 0, opened: false, wave: this.wave };
+    const lid = mesh.getObjectByName('chest_gold_lid');
+    const light = new THREE.PointLight(0xffc860, 0, 9, 2);
+    light.position.set(pos.x, 1.6, pos.z);
+    this.scene.add(light);
+    this.chest = { mesh, lid, light, t: 0, opened: false, burst: false, wave: this.wave };
   }
   removeChest() {
-    if (!this.chest) return;
-    if (!this.chest.opened) this.openChest(true);     // açılmadan temizlenirse ödül kaybolmasın
-    this.scene.remove(this.chest.mesh);
+    const c = this.chest;
+    if (!c) return;
+    if (!c.burst) this.openChest(true);              // açılmadan temizlenirse ödül kaybolmasın
+    this.scene.remove(c.mesh); this.scene.remove(c.light); c.light.dispose();
     this.chest = null;
   }
+  // Ödülü verir. quiet: görsel olmadan (kat geçişi/çıkış sırasında)
   openChest(quiet) {
     const c = this.chest, C = CONFIG.bossChest;
-    c.opened = true;
+    c.burst = true;
+    Economy.takeChest(c.wave);
     const gold = Math.max(1, Math.round(F.waveGold(c.wave) * C.goldWaves));
     const b = Economy.grantBlessing();
     if (quiet) { Economy.addGold(gold); return; }
-    const n = 12, each = Math.floor(gold / n);
-    for (let i = 0; i < n; i++) this.spawnCoin(c.mesh.position, each + (i < gold - each * n ? 1 : 0));
+    const n = 14, each = Math.floor(gold / n);
+    for (let i = 0; i < n; i++) this.spawnCoin(c.mesh.position, each + (i < gold - each * n ? 1 : 0), C.linger);
     const p = c.mesh.position.clone().setY(1.2);
-    this.fx.burst(p, { count: 46, color: 0xffd76a, speed: 4, up: 6, size: 0.45, life: 0.9 });
-    this.fx.floater(p.clone().setY(3), `${b.icon} ${b.name}`, 'level');
+    this.fx.burst(p, { count: 60, color: 0xffd76a, speed: 4, up: 7, size: 0.45, life: 1.1 });
+    this.fx.floater(p.clone().setY(3.2), `${b.icon} ${b.name}`, 'level');
+    this.fx.shake(0.35);
     this.audio.play('levelup');
     if (this.hero && !this.hero.dead) this.hero.refreshStats();
     this.ui.toast(`Boss chest: +${gold} gold · ${b.name} (${b.text}, ${C.blessWaves} waves)`);
@@ -316,27 +325,39 @@ export class Game {
     const c = this.chest;
     if (!c) return;
     c.t += dt;
-    const m = c.mesh;
-    if (c.t < 0.45) m.position.y = 6 * (1 - (c.t / 0.45) ** 2);                 // düşüş
-    else if (!c.opened) {
+    const m = c.mesh, T = c.t, end = 1.9 + CONFIG.bossChest.linger;
+    if (T < 0.45) m.position.y = 6 * (1 - (T / 0.45) ** 2);                       // düşüş
+    else {
       m.position.y = 0;
-      const k = (c.t - 0.45) / 0.55;
-      m.scale.setScalar(1.5 * (1 + 0.12 * Math.sin(k * Math.PI * 4) * (1 - k)));  // yere çarpıp titrer
-      if (c.t >= 1.0) this.openChest(false);
-    } else if (c.t > 2.6) {
-      const s = Math.max(0, 1 - (c.t - 2.6) / 0.4);
-      m.scale.setScalar(1.5 * s);
-      if (s <= 0) { this.scene.remove(m); this.chest = null; }
+      if (T < 1.0) {                                                              // yere çarpıp sallanır
+        const k = (T - 0.45) / 0.55;
+        m.scale.setScalar(1.5 * (1 + 0.12 * Math.sin(k * Math.PI * 4) * (1 - k)));
+        m.rotation.z = 0.08 * Math.sin(k * Math.PI * 6);
+        if (!c.opened && T > 0.47) { c.opened = true; this.audio.play('gateSlam'); }
+      } else {
+        m.rotation.z = 0; 
+        // kapak açılır (hafif geri yaylanma ile)
+        const k = Math.min(1, (T - 1.0) / 0.45), e = 1 - Math.pow(1 - k, 3);
+        if (c.lid) c.lid.rotation.x = -1.95 * e + 0.25 * Math.sin(k * Math.PI) * (1 - k);
+        c.light.intensity = 9 * e * (T > end - 0.6 ? Math.max(0, (end - T) / 0.6) : 1);
+        if (!c.burst && T >= 1.2) this.openChest(false);
+        if (T > end - 0.4) {
+          const s = Math.max(0, (end - T) / 0.4);
+          m.scale.setScalar(1.5 * s);
+          if (s <= 0) this.removeChest();
+        } else m.scale.setScalar(1.5);
+      }
     }
   }
 
-  spawnCoin(pos, value) {
+  // hold: yerde kaç saniye bekleyeceği (sandık ganimeti bir süre görünsün)
+  spawnCoin(pos, value, hold = 0) {
     const mesh = cloneDungeon('coin');
     mesh.scale.setScalar(1.6);
     mesh.position.set(pos.x, 1, pos.z);
     this.scene.add(mesh);
     const a = Math.random() * Math.PI * 2, s = 1.5 + Math.random() * 2;
-    this.coins.push({ mesh, value, v: new THREE.Vector3(Math.cos(a) * s, 4 + Math.random() * 3, Math.sin(a) * s * 0.6), t: 0, magnet: false });
+    this.coins.push({ mesh, value, v: new THREE.Vector3(Math.cos(a) * s, 4 + Math.random() * 3, Math.sin(a) * s * 0.6), t: 0, magnet: false, hold });
   }
 
   updateCoins(dt) {
@@ -350,7 +371,7 @@ export class Game {
         c.v.y -= 16 * dt;
         m.position.addScaledVector(c.v, dt);
         if (m.position.y < 0.15) { m.position.y = 0.15; c.v.y *= -0.35; c.v.x *= 0.6; c.v.z *= 0.6; }
-        if (c.t > 0.9 || this.phase !== 'combat') c.magnet = true;
+        if (c.hold ? c.t > c.hold : (c.t > 0.9 || this.phase !== 'combat')) c.magnet = true;
       } else {
         const target = new THREE.Vector3(hp.x, 1.2, hp.z);
         const d = target.sub(m.position);
@@ -507,7 +528,7 @@ export class Game {
     }
     if (this.phase === 'loot') {
       this.lootT += dt;
-      if (this.lootT > 1.0 && this.coins.length === 0) {
+      if (this.lootT > 1.0 && this.coins.length === 0 && !this.chest) {
         this.phase = 'walking';
         this.walkTarget = hero.pos.x + CONFIG.wave.walkDistance;
       }
