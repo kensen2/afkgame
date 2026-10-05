@@ -104,6 +104,69 @@ const IMPL = {
       return g.ults.cast(h, { ...def, power: def.power * k, burn: def.burn * k });
     },
   },
+  roar: {
+    ready(h, g) { return enemiesWithin(g, h.pos, 3.2).length >= 3 || (g.bossAlive() && enemiesWithin(g, h.pos, 3.2).length >= 1); },
+    cast(h, g, def, lvl) {
+      const mult = F.skillPower(def, lvl);
+      for (const e of enemiesWithin(g, h.pos, def.radius)) {
+        const { dmg, crit } = h.rollDamage(mult);
+        e.takeDamage(dmg, g, crit);
+        e.applyStun(def.stun);
+        e.knockback(new THREE.Vector3(e.pos.x - h.pos.x, 0, e.pos.z - h.pos.z).normalize(), 2.2);
+      }
+      g.fx.ring(h.pos, { color: 0xffb040, radius: def.radius, life: 0.45 });
+      g.fx.ring(h.pos, { color: 0xffe0a0, radius: def.radius * 0.6, life: 0.3 });
+      g.fx.burst(h.pos.clone().setY(1.4), { count: 26, color: 0xffb040, speed: 6, up: 2, size: 0.45 });
+      g.fx.shake(0.6); g.audio.play('roar');
+      return true;
+    },
+  },
+  // ---------- Ember Mage ----------
+  fireball: {
+    ready(h, g) { return !!g.nearestEnemy(h.pos); },
+    cast(h, g, def, lvl) {
+      const t = g.nearestEnemy(h.pos); if (!t) return false;
+      h.setFacing(Math.sign(t.pos.x - h.pos.x));
+      h.play('attack', true, 2.0); h.attacking = true; h.onAnimEnd = () => { h.attacking = false; };
+      const mult = F.skillPower(def, lvl);
+      const from = h.pos.clone().add(new THREE.Vector3(h.facing * 0.8, 1.6, 0.3));
+      const to = t.pos.clone(); to.y = 1.2;
+      g.fx.slashWave(from, to, {
+        facing: h.facing, color: 0xff6a1a, size: 2.0,
+        onArrive: () => {
+          for (const e of enemiesWithin(g, to, def.radius)) {
+            const { dmg, crit } = h.rollDamage(mult);
+            e.takeDamage(dmg, g, crit);
+            e.knockback(new THREE.Vector3(e.pos.x - to.x, 0, e.pos.z - to.z).normalize(), 0.8);
+          }
+          g.fx.impact(to, { color: 0xffc060, size: 3.0, life: 0.16 });
+          g.fx.burst(to, { count: 36, color: 0xff7a2e, speed: 6, up: 4, size: 0.5, life: 0.6 });
+          g.fx.ring(to.clone().setY(0), { color: 0xff8a3c, radius: def.radius, life: 0.4 });
+          g.hitStop(0.06); g.fx.shake(0.5); g.audio.play('crit');
+        },
+      });
+      g.audio.play('skill');
+      return true;
+    },
+  },
+  nova: {
+    ready(h, g) { return enemiesWithin(g, h.pos, 2.6).length >= 2 || (h.hp / h.stats.maxHp < 0.6 && enemiesWithin(g, h.pos, 2.6).length >= 1); },
+    cast(h, g, def, lvl) {
+      const mult = F.skillPower(def, lvl);
+      for (const e of enemiesWithin(g, h.pos, def.radius)) {
+        const { dmg, crit } = h.rollDamage(mult);
+        e.takeDamage(dmg, g, crit);
+        e.applyStun(def.stun);
+        e.knockback(new THREE.Vector3(e.pos.x - h.pos.x, 0, e.pos.z - h.pos.z).normalize(), 1.8);
+        g.fx.burst(e.pos.clone().setY(1.2), { count: 8, color: 0xbfe8ff, speed: 3, size: 0.4 });
+      }
+      g.fx.ring(h.pos, { color: 0x8fd8ff, radius: def.radius, life: 0.5 });
+      g.fx.ring(h.pos, { color: 0xffffff, radius: def.radius * 0.55, life: 0.3 });
+      g.fx.burst(h.pos.clone().setY(1.0), { count: 30, color: 0x9fe0ff, speed: 6, up: 1.5, size: 0.45 });
+      g.fx.shake(0.4); g.audio.play('shield');
+      return true;
+    },
+  },
   rage: {
     ready(h, g) { return enemiesWithin(g, h.pos, 4).length >= 2 || g.bossAlive(); },
     cast(h, g, def, lvl) {

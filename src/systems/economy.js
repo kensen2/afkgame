@@ -48,7 +48,7 @@ function freshSave() {
     wins: 0,
     totalKills: 0,
     selectedHero: 'warrior',
-    heroes: { warrior: freshHero(), lion: freshHero() },
+    heroes: { warrior: freshHero(), lion: freshHero(), mage: freshHero() },
     settings: { auto: true, speed: 1, sound: true, music: true, musicVol: 0.1, sfxVol: 0.1, audioVer: 2, offline: true },
     lastSeen: 0,         // son görülme zamanı (çevrimdışı kazanç için)
     offlineTotal: 0,

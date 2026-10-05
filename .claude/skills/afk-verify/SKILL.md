@@ -14,7 +14,7 @@ python3 .claude/skills/afk-verify/scripts/play.py --hero warrior --wave 8 --pres
 
 | Flag | Meaning |
 |---|---|
-| `--hero warrior\|lion` | which hero card to pick |
+| `--hero warrior\|lion\|mage` | which hero card to pick |
 | `--wave N` | start wave (floors change every 10 waves) |
 | `--press 2,5` | keys pressed in order once combat starts (`1`–`3` skills, `4`/`5` ultimates). The script waits for the hero to finish casting before the next key, because the game ignores keys while a cast is running. |
 | `--at 0.5,1.2` | screenshots at these **game** seconds after the first key press (hit-stop and slow rendering do not skew them) |

@@ -234,17 +234,34 @@ export const CONFIG = {
       skills: [
         { id: 'spin',  name: 'Whirlwind',   icon: '🌀', cd: 7,  power: 1.8, radius: 3.0,
           desc: 'Deals 180% damage to every enemy around him.' },
-        { id: 'inferno', name: 'Inferno', icon: '☄️', cd: 15, power: 1.6, radius: 3.2, burn: 0.35, dur: 4,
-          desc: 'A pillar of fire erupts (160% damage) and leaves the ground burning for 4s: 35% damage every second to enemies inside.' },
+        { id: 'roar',  name: 'Roar',        icon: '🦁', cd: 12, power: 0.6, radius: 4.0, stun: 1.2,
+          desc: 'A roar that hits everyone around for 60% damage, throws them back and stuns for 1.2s.' },
         { id: 'rage',  name: 'Rage',        icon: '🔥', cd: 16, power: 0.6, dur: 5,
           desc: '+60% attack speed and +20% crit chance for 5s.' },
       ],
-      // Deneme: iki ultimate (4 ve 5 tuşları). Beğenilmeyen silinecek.
+      ultimates: [
+        { id: 'spirit', name: 'Lion Spirit', icon: '🦁', cd: 34, power: 3.0, dist: 14, width: 1.8, stun: 0.8,
+          desc: 'A giant golden spirit of the Lion charges forward: 300% damage to everything in its path, knocks enemies away and stuns them for 0.8s.' },
+      ],
+    },
+    // Ember Mage: uzaktan saldırır, az can. KayKit Mage modelinden üretilmiş sprite (CC0), kor kırmızısı renkte.
+    mage: {
+      name: 'Ember Mage',
+      role: 'Ranged',
+      desc: 'Burns the pack from a distance. Fragile up close.',
+      hp: 140, atk: 17, armor: 2, atkSpd: 1.0, crit: 0.10, critDmg: 2.0,
+      speed: 3.5, range: 6.5, hitFrame: 4, height: 3.1, slash: 0xff7a2e,
+      skills: [
+        { id: 'fireball', name: 'Fireball', icon: '🔥', cd: 6, power: 2.2, radius: 2.2,
+          desc: 'Hurls a fireball at the nearest enemy: 220% damage to everything around the impact.' },
+        { id: 'inferno', name: 'Inferno', icon: '☄️', cd: 15, power: 1.6, radius: 3.2, burn: 0.35, dur: 4,
+          desc: 'A pillar of fire erupts (160% damage) and leaves the ground burning for 4s: 35% damage every second to enemies inside.' },
+        { id: 'nova', name: 'Frost Nova', icon: '❄️', cd: 13, power: 0.9, radius: 3.6, stun: 1.5,
+          desc: 'A ring of frost: 90% damage, throws nearby enemies back and freezes them for 1.5s.' },
+      ],
       ultimates: [
         { id: 'meteor', name: 'Meteor Rain', icon: '🌠', cd: 34, power: 1.5, count: 7, radius: 1.6, spread: 3.6, burn: 0.3, dur: 3,
           desc: '7 meteors fall on the enemy pack: 150% damage each and a small patch of burning ground (30% damage every second for 3s).' },
-        { id: 'spirit', name: 'Lion Spirit', icon: '🦁', cd: 34, power: 3.0, dist: 14, width: 1.8, stun: 0.8,
-          desc: 'A giant golden spirit of the Lion charges forward: 300% damage to everything in its path, knocks enemies away and stuns them for 0.8s.' },
       ],
     },
   },

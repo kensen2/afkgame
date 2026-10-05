@@ -22,7 +22,7 @@ def free_port():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--hero', choices=['warrior', 'lion'], default='warrior')
+    ap.add_argument('--hero', choices=['warrior', 'lion', 'mage'], default='warrior')
     ap.add_argument('--wave', type=int, default=1)
     ap.add_argument('--press', default='', help='savaş başlayınca basılacak tuşlar, virgülle (ör. 4 veya 1,2)')
     ap.add_argument('--at', default='0', help='tuşa bastıktan sonra oyun saniyesi cinsinden çekim anları, virgülle')
@@ -56,7 +56,7 @@ def main():
                 shots.append(os.path.join(a.out, 'title.png')); pg.screenshot(path=shots[-1])
             else:
                 pg.click('#btn-play'); pg.wait_for_timeout(400)
-                pg.click(f"#hero-cards .card:nth-child({1 if a.hero == 'warrior' else 2})"); pg.wait_for_timeout(200)
+                pg.click(f"#hero-cards .card:nth-child({['warrior', 'lion', 'mage'].index(a.hero) + 1})"); pg.wait_for_timeout(200)
                 if a.screen == 'select':
                     shots.append(os.path.join(a.out, 'select.png')); pg.screenshot(path=shots[-1])
                 else:

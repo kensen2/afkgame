@@ -55,7 +55,7 @@ export class Hero {
     this.shield.mesh.position.y = 1.45;
     this.group.add(this.shield.mesh);
     // kılıç izi rengi: Warrior beyaz-mavi, Lion beyaz-altın
-    this.slashColor = this.id === 'lion' ? 0xffc860 : 0x8fc8ff;
+    this.slashColor = this.def.slash ?? (this.id === 'lion' ? 0xffc860 : 0x8fc8ff);
     scene.add(this.group);
 
     this.pos = this.group.position;

@@ -53,7 +53,7 @@ export async function loadAll(onProgress) {
       Assets.dungeon[name] = g.scene;
     })));
   }
-  const heroAnims = { warrior: ['idle', 'walk', 'run', 'attack'], lion: ['idle', 'walk', 'attack'] };
+  const heroAnims = { warrior: ['idle', 'walk', 'run', 'attack'], lion: ['idle', 'walk', 'attack'], mage: ['idle', 'walk', 'attack'] };
   for (const [hid, anims] of Object.entries(heroAnims)) {
     Assets.heroes[hid] = { textures: {} };
     for (const a of anims) {
