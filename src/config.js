@@ -138,7 +138,12 @@ export const CONFIG = {
     gateSeconds: 10,              // Mühürlü Kapı ekranı süresi
     offlineHours: 12,             // oyun kapalıyken üretim en fazla 12 saat birikir
     // Saatlik üretim eğrisi (DGN/saat, sezonun en iyi dalgasına göre)
-    rate: { w1: 100, w20: 2000, exp: 0.8, returnHours: 48 },
+    rate: {
+      // Bedava dalgalar (1–20): elle yazılmış, kademeli artan tablo. 20. dalgada 1.000 DGN/saat.
+      free: [57, 93, 132, 174, 218, 261, 307, 354, 403, 451, 502, 552, 605, 657, 712, 766, 823, 879, 938, 1000],
+      keyBase: 2000,           // 21+ dalgaların tabanı (anahtarlı bölge; değişmedi)
+      returnHours: 48,
+    },
     // Anahtar kademeleri: paket = 10 anahtar, her yeni dalgada 1 tane otomatik harcanır.
     keys: [
       { id: 'bronze', tint: '#d08a52',   name: 'Bronze Key',   icon: '🥉', from: 21, to: 30,  usd: 10, singleUsd: 4 },
@@ -395,8 +400,8 @@ export const F = {
   rateAt(w) {
     const R = CONFIG.v5.rate;
     if (w <= 0) return 0;
-    if (w <= CONFIG.v5.freeMaxWave) return R.w1 + (R.w20 - R.w1) * Math.pow((w - 1) / (CONFIG.v5.freeMaxWave - 1), R.exp);
-    let r = R.w20;
+    if (w <= CONFIG.v5.freeMaxWave) return R.free[Math.min(R.free.length, Math.ceil(w)) - 1];
+    let r = R.keyBase;
     for (const k of CONFIG.v5.keys) {
       if (w < k.from) break;
       const perWave = F.keyPackTokens(k) / R.returnHours / (k.to - k.from + 1);

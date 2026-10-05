@@ -38,7 +38,7 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
 ## Economy invariants (owner decisions)
 
 - Two fixed daily pools of 10M DGN (free, depositor). Clan top-5 bonus (10/5/3/2/1 %) only shifts shares.
-- Free players: waves 1–20, max 2,000 DGN/h, loop 20 → 15 at "The Sealed Gate" (10 s screen).
+- Free players: waves 1–20, max 1,000 DGN/h (hand-written table `CONFIG.v5.rate.free`; waves 21+ still build on 2,000), loop 20 → 15 at "The Sealed Gate" (10 s screen).
 - Keys: 10 per tier per season, USD prices, one key per new wave above 20, unused keys carry over.
 - Withdrawal: deposit back first, then today's pool share; 5% fee (half burned); vault → wallet;
   wallet must hold 20K DGN for 12h; depositor pool starts 48h after first deposit. No staking. 10-day seasons.
