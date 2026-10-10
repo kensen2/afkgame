@@ -48,6 +48,7 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
   Clan top-5 bonus (10/5/3/2/1 %) only shifts shares.
 - Free players: waves 1–20, max 1,000 DGN/h (hand-written table `CONFIG.v5.rate.free`; waves 21+ still build on 2,000), loop 20 → 15 at "The Sealed Gate" (10 s screen).
 - Keys: 10 per tier per season, USD prices, one key per new wave above 20, unused keys carry over.
+  Packs (10 keys) only with deposited DGN; single keys in every tier with any DGN at pack/10 × `singleKeyMult` (4).
 - Withdrawal: deposit back first, then today's pool share; game → vault fee grows per move in 24h: 5/10/20/40 %
   (capped at 40, back to 5 after 24h without a move; half burned); 2h between moves; vault → wallet needs a
   12-hour time-weighted average wallet balance of 20K DGN; "Get DGN" button (not "Buy"); depositor pool starts 48h after first deposit. No staking. 10-day seasons.

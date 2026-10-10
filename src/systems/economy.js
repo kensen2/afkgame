@@ -320,7 +320,7 @@ export const Economy = {
   // ---- Anahtarlar ve dalga kapıları ----
   keyCount(id) { return (this.data.keys || {})[id] || 0; },
   keyPackPrice(k) { return F.keyPackTokens(k); },
-  keySinglePrice(k) { return F.tokensForUsd(k.singleUsd); },
+  keySinglePrice(k) { return Math.round(this.keyPackPrice(k) / 10 * CONFIG.v5.singleKeyMult); },
   // Bu sezon o kademede kullanılmış anahtar (açılmış dalga) sayısı
   keysUsedInTier(k) { return Math.max(0, Math.min(10, (this.data.opened || 0) - k.from + 1)); },
   // Kademe başına en fazla 10 anahtar: elde duran + bu sezon kullanılan
@@ -342,7 +342,7 @@ export const Economy = {
   // Tek anahtar (sadece Bronze): her türlü bakiyeyle, pahalı
   buyKeySingle(id) {
     const k = CONFIG.v5.keys.find((x) => x.id === id);
-    if (!k?.singleUsd || !this.keyUnlocked(k) || this.keyRoom(k) <= 0 || !this.spendTokens(this.keySinglePrice(k))) return false;
+    if (!k || !this.keyUnlocked(k) || this.keyRoom(k) <= 0 || !this.spendTokens(this.keySinglePrice(k))) return false;
     this.data.keys[id] = this.keyCount(id) + 1;
     this.save(); this.emit({ type: 'keys', id });
     return true;

@@ -744,7 +744,7 @@ export class UI {
       const unlocked = Economy.keyUnlocked(k);
       const n = Economy.keyPackCount(k), cost = Economy.keyPackCost(k);
       const canPack = n > 0 && d.depositBal >= cost;
-      const single = k.singleUsd ? Economy.keySinglePrice(k) : 0;
+      const single = Economy.keySinglePrice(k);
       const canSingle = single && unlocked && room > 0 && Economy.canAffordTokens(single);
       let status;
       if (!unlocked) status = `${ico('padlock')} Reach wave ${k.from - 1} to unlock`;
@@ -757,10 +757,10 @@ export class UI {
         <div><div class="nm">${k.name}<small>×${have}${used ? ` · ${used} used` : ''}</small></div>
         <div class="ds">Opens waves ${k.from}–${k.to}. Production at wave ${k.to}: ${Math.round(F.rateAt(k.to)).toLocaleString('en-US')}/h. Max 10 per season.</div>
         <div class="val">${status}</div></div>
-        <div class="key-btns"><button class="btn small gem-buy" data-p="1" ${canPack ? '' : 'disabled'}>${!unlocked ? ico('padlock') : room <= 0 ? 'MAX' : `${n} · ◈${fmt(cost)}`}</button>${single ? `<button class="btn small gem-buy" data-s="1" ${canSingle ? '' : 'disabled'}>1 · ◈${fmt(single)}</button>` : ''}</div>`;
+        <div class="key-btns"><button class="btn small gem-buy" data-p="1" ${canPack ? '' : 'disabled'}>${!unlocked ? ico('padlock') : room <= 0 ? 'MAX' : `Pack ×${n} · ◈${fmt(cost)}`}</button>${single ? `<button class="btn small gem-buy" data-s="1" ${canSingle ? '' : 'disabled'}>Single · ◈${fmt(single)}</button>` : ''}</div>`;
       el.querySelector('[data-p]').addEventListener('click', () => {
         const got = Economy.buyKeyPack(k.id);
-        if (got) { Audio.play('buy'); this.toast(`${got} ${k.name}${got > 1 ? 's' : ''} added. Your production pays back what you deposited; pool earnings start 48h after your first deposit.`); this.renderShop(); }
+        if (got) { Audio.play('buy'); this.toast(`${got} ${k.name}${got > 1 ? 's' : ''} added. Your production pays back what you deposited first; after that you can take out part of it each day.`); this.renderShop(); }
         else { Audio.play('denied'); this.toast('Key packs are bought with deposited DGN. Open your Wallet to deposit.'); }
       });
       el.querySelector('[data-s]')?.addEventListener('click', () => {
@@ -770,7 +770,7 @@ export class UI {
     }
     const note = document.createElement('div');
     note.className = 'hint'; note.style.gridColumn = '1 / -1';
-    note.textContent = `Packs are bought with DGN you deposited. A single Bronze key can also be bought with DGN you produced. Prices are set in USD and converted at the current ${sym} price.`;
+    note.textContent = `Packs (10 keys) are bought with DGN you deposited. Single keys cost ${CONFIG.v5.singleKeyMult}× more per key and can be bought with DGN you earned in the game. Prices are set in USD and converted at the current ${sym} price.`;
     body.appendChild(note);
   }
 

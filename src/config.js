@@ -176,6 +176,9 @@ export const CONFIG = {
     //  3) Tüm yatıranların o gün çekebileceği toplam = o sezon yatırılanların capOfDeposits'i. Aşılırsa herkes oranla kısılır.
     //  Çekilmeyen üretim kaybolmaz, oyun içi bakiyede kalır. Kazanç garantisi yoktur.
     depositor: { schedule: [0.5, 0.4, 0.3, 0.2], capOfDeposits: 0.10 },
+    // Tekli anahtar: her kademede, oyunda biriken DGN ile alınabilir. Fiyat = paket fiyatı / 10 × singleKeyMult.
+    // (Paketler yine sadece yatırılan DGN ile.) 4 kat: 1M yatıran sezonda ~1,8M çeker (sim/v6-depositor.mjs).
+    singleKeyMult: 4,
     // Çekim: oyundan kasaya geçerken kesinti alınır. Kesinti 24 saat içindeki her yeni çekimde artar (%5 → %10 → %20 → %40,
     // %40'ta durur); 24 saat çekim yapılmazsa %5'e döner. İki çekim arasında en az cooldownHours saat.
     // Kasadan cüzdana: cüzdanın son holdHours saatteki ortalama bakiyesi en az holdTokens olmalı (sunucu kontrol eder).
