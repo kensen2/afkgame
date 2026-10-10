@@ -37,7 +37,12 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
 
 ## Economy invariants (owner decisions)
 
-- Daily pools: depositor fixed 10M DGN. Free pool is tiered by counted players (`CONFIG.v5.freePool`, `F.freePoolSize`):
+- Depositors (v6, trial): no fixed pool. Production first pays back what they deposited (only the fee applies);
+  after payback they can take out a share of their own production that steps down daily (`CONFIG.v5.depositor.schedule`
+  50/40/30/20 %, last value until season end). All depositors together are capped at `capOfDeposits` (10 %) of the season's
+  deposits per day; above that everyone is scaled down. The rest stays in the game balance. No guaranteed return, and
+  this is not written into the whitepaper (owner decision).
+- Free pool is tiered by counted players (`CONFIG.v5.freePool`, `F.freePoolSize`):
   1M up to 119, +1M per 100 (120 → 2M, 220 → 3M …), fixed 10M from 920. Counted = free-pool account that reached wave 20
   and played in the last hour (to become 24h after online launch); must be counted server-side.
   Clan top-5 bonus (10/5/3/2/1 %) only shifts shares.

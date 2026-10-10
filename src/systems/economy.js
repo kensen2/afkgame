@@ -122,7 +122,7 @@ export const Economy = {
   reset() {
     const d = this.data, keep = {};
     for (const k of ['settings', 'season', 'balance', 'uncollected', 'depositBal', 'credit', 'poolAvail', 'poolDay', 'vault',
-      'deposited', 'withdrawn', 'spentDungeon', 'feesBurned', 'vaultMoves', 'walletBal', 'walletHist', 'seasonDeposited', 'firstDepositAt', 'keys', 'opened',
+      'deposited', 'withdrawn', 'spentDungeon', 'feesBurned', 'vaultMoves', 'prodSinceDeposit', 'roiAt', 'walletBal', 'walletHist', 'seasonDeposited', 'firstDepositAt', 'keys', 'opened',
       'seasonBest', 'lastAccrue', 'idlePass', 'clanBonus',
       // DGN ile alınanlar da kalır: Forge, Gold Rush, Skill Tome. Tome ile birlikte "yenilmiş boss" listesi de
       // kalır; yoksa sıfırlayıp boss'ları tekrar yenerek bedava Tome toplanabilirdi.
@@ -147,11 +147,21 @@ export const Economy = {
   // ======================= DGN (Ekonomi v5) =======================
   // Faz 1: sunucu ve zincir yok. Yatırma "demo token", havuz payı config.v5.demo'daki örnek realm'e göre.
   isDepositor() { return (this.data.seasonDeposited || 0) > 0; },
-  poolEligible(now = Date.now()) {
+  // Yatıran: kazanç, yatırdığını üretimiyle geri alınca (ROI) başlar
+  poolEligible() {
     if (!this.isDepositor()) return true;
-    return now >= (this.data.firstDepositAt || now) + CONFIG.v5.depositorPoolDelayHours * 3600000;
+    return !!this.data.roiAt;
   },
-  poolStartsAt() { return (this.data.firstDepositAt || 0) + CONFIG.v5.depositorPoolDelayHours * 3600000; },
+  // ROI'ye kalan üretim ve tahmini zaman
+  roiLeft() { return Math.max(0, (this.data.seasonDeposited || 0) - (this.data.prodSinceDeposit || 0)); },
+  poolStartsAt(now = Date.now()) { const r = this.ratePerHour(); return r > 0 ? now + this.roiLeft() / r * 3600000 : Infinity; },
+  // ROI'den sonraki gün sayısına göre üretimin çekilebilir oranı (havuz sınırı dahil)
+  depositorRate(now = Date.now()) {
+    const D = CONFIG.v5.depositor, d = this.data;
+    if (!d.roiAt) return 0;
+    const day = Math.max(0, Math.floor((now - d.roiAt) / 86400000));
+    return D.schedule[Math.min(day, D.schedule.length - 1)] * CONFIG.v5.demo.depositor.capK;
+  },
   // Üretim: sezonun en iyi dalgası × (1 + clan bonusu). Bonus ilk 5 clana girince hemen başlar.
   baseRatePerHour() { return F.rateAt(this.data.seasonBest || 0); },
   ratePerHour() { return this.baseRatePerHour() * (1 + (this.rateBonus || 0)); },
@@ -167,12 +177,14 @@ export const Economy = {
   },
   // Bugünkü havuz payı (DGN/gün), realm doluluğuna göre
   poolPerDay() {
-    const D = CONFIG.v5.demo, dep = this.isDepositor();
+    if (this.isDepositor()) return this.ratePerHour() * 24 * this.depositorRate();
+    const D = CONFIG.v5.demo, dep = false;
     const pool = dep ? CONFIG.v5.pools.depositor : F.freePoolSize(D.free.players + 1);
     return F.poolShare(pool, this.ratePerHour(), (dep ? D.depositor : D.free).rateSum);
   },
   realmFill() {
-    const D = CONFIG.v5.demo, dep = this.isDepositor();
+    if (this.isDepositor()) return CONFIG.v5.demo.depositor.capK;
+    const D = CONFIG.v5.demo, dep = false;
     const pool = dep ? CONFIG.v5.pools.depositor : F.freePoolSize(D.free.players + 1);
     const sum = (dep ? D.depositor : D.free).rateSum + this.ratePerHour();
     return Math.min(1, pool / (sum * 24));
@@ -182,7 +194,8 @@ export const Economy = {
     const d = this.data;
     this.seasonCheck(now);
     const day = Math.floor(now / 86400000);
-    if (d.poolDay !== day) { d.poolDay = day; d.poolAvail = 0; }
+    // bedava oyuncu: bugünkü havuz payı gün dönünce sıfırlanır. Yatıran: kendi üretiminden açılan hak birikir (sezon sonuna kadar).
+    if (d.poolDay !== day) { d.poolDay = day; if (!this.isDepositor()) d.poolAvail = 0; }
     if (!d.lastAccrue) { d.lastAccrue = now; return { produced: 0, pool: 0 }; }
     const secs = Math.max(0, Math.min((now - d.lastAccrue) / 1000, CONFIG.v5.offlineHours * 3600));
     d.lastAccrue = now;
@@ -190,7 +203,17 @@ export const Economy = {
     const produced = this.ratePerHour() * secs / 3600;
     d.uncollected += produced;
     let pool = 0;
-    if (this.poolEligible(now)) { pool = this.poolPerDay() * secs / 86400; d.poolAvail += pool; }
+    if (this.isDepositor()) {
+      // önce geri ödeme; ROI anında kalan üretim kazanca sayılır
+      let earnPart = produced;
+      if (!d.roiAt) {
+        const need = this.roiLeft();
+        d.prodSinceDeposit = (d.prodSinceDeposit || 0) + Math.min(produced, need);
+        earnPart = Math.max(0, produced - need);
+        if (this.roiLeft() <= 0) d.roiAt = now - (earnPart / Math.max(1e-9, this.ratePerHour())) * 3600000;
+      }
+      if (d.roiAt && earnPart > 0) { pool = earnPart * this.depositorRate(now); d.poolAvail += pool; }
+    } else if (this.poolEligible(now)) { pool = this.poolPerDay() * secs / 86400; d.poolAvail += pool; }
     return { produced, pool };
   },
   claim() {
@@ -210,6 +233,7 @@ export const Economy = {
     const d = this.data;
     d.balance += n; d.depositBal += n; d.credit += n; d.deposited += n; d.seasonDeposited += n;
     if (!d.firstDepositAt) d.firstDepositAt = now;
+    d.roiAt = 0;                       // yeni yatırılan da önce üretimle geri ödenir
     this.save(); this.emit({ type: 'deposit', amount: n });
     return n;
   },

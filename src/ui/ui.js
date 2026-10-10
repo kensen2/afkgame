@@ -825,8 +825,10 @@ export class UI {
         <div class="wbox"><span>Production</span><b>+${n(Economy.ratePerHour())} / h</b><small>best wave ${d.seasonBest || 0} this season${Economy.rateBonus ? ` · clan +${Math.round(Economy.rateBonus * 100)}%` : ''}</small></div>
       </div>
       <div class="wbox line">${eligible
-        ? `Your share of today's pool is <b>${n(perDay)} ${sym}</b> a day (${usd(perDay)}) · <b>${n(d.poolAvail)}</b> of it ready now. The realm is ${Math.round(Economy.realmFill() * 100)}% full: more lords means a smaller share for each.`
-        : `Pool earnings start in <b>${fmtDur(Economy.poolStartsAt() - now)}</b>, 48 hours after your first deposit. Until then your production pays back what you deposited.`}</div>
+        ? (Economy.isDepositor()
+          ? `You can take out <b>${Math.round(Economy.depositorRate(now) * 100)}%</b> of your production today, about <b>${n(perDay)} ${sym}</b> a day · <b>${n(d.poolAvail)}</b> ready now. The share steps down each day after payback (${V.depositor.schedule.map((x) => Math.round(x * 100) + '%').join(' → ')}) and shrinks when many depositors take out at once. The rest stays in your balance for the game. Nothing here is guaranteed.`
+          : `Your share of today's pool is <b>${n(perDay)} ${sym}</b> a day (${usd(perDay)}) · <b>${n(d.poolAvail)}</b> of it ready now. The realm is ${Math.round(Economy.realmFill() * 100)}% full: more lords means a smaller share for each.`)
+        : `Your production is paying back what you deposited: <b>${n(Economy.roiLeft())} ${sym}</b> to go, about <b>${fmtDur(Economy.poolStartsAt(now) - now)}</b> at your current rate. After that you can take out part of your production each day.`}</div>
       <div class="wbox line">${d.credit > 0
         ? `<b>${n(d.credit)} ${sym}</b> of what you can take out is ${sym} you brought in yourself. It is not limited by the daily share.`
         : `You have not deposited this season. Everything you take out comes from the daily pool.`}</div>
