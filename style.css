@@ -649,3 +649,20 @@ input[type=range]::-moz-range-thumb { border-radius: 2px; background: #c9a04e; b
 .hud-stats div { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
 .hud-stats div:last-child { border-bottom: 0; }
 .hud-stats span { color: var(--muted); } .hud-stats b { color: var(--gold); white-space: nowrap; }
+
+/* ---- Çekim: artan kesinti merdiveni + 12 saat tutma kuralı ---- */
+.fee-ladder { display: flex; align-items: center; gap: 4px; margin: 6px 0 2px; flex-wrap: wrap; }
+.fee-ladder span { padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700; color: var(--muted); background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08); }
+.fee-ladder span.used { color: #7a6f60; text-decoration: line-through; }
+.fee-ladder span.on { color: #1a1510; background: var(--brass); border-color: var(--brass-hi); }
+.fee-ladder i { color: var(--muted); font-style: normal; font-size: 11px; }
+.hold { margin: 8px 0; padding: 8px 10px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid rgba(214,90,70,0.35); display: grid; gap: 3px; }
+.hold.ok { border-color: rgba(120,200,120,0.4); }
+.hold-h { font-weight: 800; color: var(--parch); font-size: 13px; }
+.hold-r { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.hold-r span { color: var(--muted); }
+.hold-r .bar { flex: 1; height: 6px; background: #0f0d0a; border: 1px solid #0c0a08; }
+.hold-r .bar i { display: block; height: 100%; background: linear-gradient(90deg, #b8553c, var(--brass)); }
+.hold.ok .hold-r .bar i { background: linear-gradient(90deg, #4f9a4f, #8fd08f); }
+.hold-msg { font-size: 12px; color: #e8a090; margin-top: 2px; }
+.hold.ok .hold-msg { color: #9fd89f; }

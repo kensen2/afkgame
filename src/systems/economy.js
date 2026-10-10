@@ -122,7 +122,7 @@ export const Economy = {
   reset() {
     const d = this.data, keep = {};
     for (const k of ['settings', 'season', 'balance', 'uncollected', 'depositBal', 'credit', 'poolAvail', 'poolDay', 'vault',
-      'deposited', 'withdrawn', 'spentDungeon', 'feesBurned', 'seasonDeposited', 'firstDepositAt', 'keys', 'opened',
+      'deposited', 'withdrawn', 'spentDungeon', 'feesBurned', 'vaultMoves', 'walletBal', 'walletHist', 'seasonDeposited', 'firstDepositAt', 'keys', 'opened',
       'seasonBest', 'lastAccrue', 'idlePass', 'clanBonus',
       // DGN ile alınanlar da kalır: Forge, Gold Rush, Skill Tome. Tome ile birlikte "yenilmiş boss" listesi de
       // kalır; yoksa sıfırlayıp boss'ları tekrar yenerek bedava Tome toplanabilirdi.
@@ -227,29 +227,68 @@ export const Economy = {
     const d = this.data;
     return Math.max(0, Math.floor(Math.min(d.balance, d.credit + d.poolAvail)));
   },
-  // 1. adım: oyundan kasaya (%5 komisyon burada kesilir)
+  // Son 24 saatteki kasaya aktarımlar (artan kesinti ve bekleme süresi için)
+  recentMoves(now = Date.now()) {
+    const W = CONFIG.v5.withdraw;
+    const list = (this.data.vaultMoves || []).filter((t) => now - t < W.feeWindowHours * 3600000);
+    this.data.vaultMoves = list;
+    return list;
+  },
+  // Bir sonraki aktarımın kesinti oranı
+  nextFee(now = Date.now()) {
+    const F5 = CONFIG.v5.withdraw.fees;
+    return F5[Math.min(this.recentMoves(now).length, F5.length - 1)];
+  },
+  // Kesinti oranının %5'e döneceği an (son 24 saatteki en eski aktarım + 24 saat)
+  feeResetsAt(now = Date.now()) {
+    const l = this.recentMoves(now);
+    return l.length ? Math.max(...l) + CONFIG.v5.withdraw.feeWindowHours * 3600000 : 0;
+  },
+  // Bekleme bitene kadar kalan ms (0 = hazır)
+  cooldownLeft(now = Date.now()) {
+    const l = this.recentMoves(now);
+    if (!l.length) return 0;
+    return Math.max(0, Math.max(...l) + CONFIG.v5.withdraw.cooldownHours * 3600000 - now);
+  },
+  // 1. adım: oyundan kasaya (kesinti burada alınır)
   moveToVault(amount) {
-    const d = this.data, W = CONFIG.v5.withdraw;
+    const d = this.data, W = CONFIG.v5.withdraw, now = Date.now();
     amount = Math.floor(amount);
     if (amount < W.min || amount > this.withdrawable()) return false;
+    if (this.cooldownLeft(now) > 0) return false;
+    const rate = this.nextFee(now);
     const fromCredit = Math.min(d.credit, amount);
     d.credit -= fromCredit; d.poolAvail = Math.max(0, d.poolAvail - (amount - fromCredit));
     // çekilen anapara, paket almakta kullanılan "yatırılmış" kısımdan da düşer
     d.balance -= amount; d.depositBal = Math.min(Math.max(0, d.depositBal - fromCredit), d.balance);
-    const fee = Math.ceil(amount * W.fee);
+    const fee = Math.ceil(amount * rate);
     d.feesBurned += fee * W.feeBurn;
     d.vault += amount - fee;
+    d.vaultMoves = [...this.recentMoves(now), now];
     this.save(); this.emit({ type: 'vault', amount });
-    return { net: amount - fee, fee };
+    return { net: amount - fee, fee, rate };
   },
-  // 2. adım: kasadan cüzdana. Şart: cüzdanda 12 saattir kesintisiz 20K+ DGN (sunucu kontrol eder).
-  // Faz 1'de cüzdan bağlantısı yok; test modunda (?dev=1) simüle edilir.
+  // Cüzdan (Faz 1: simülasyon). Gerçekte bakiye ve geçmişi zincirden sunucu okur.
+  walletAvg(now = Date.now()) { return F.avgHeld(this.data.walletHist, now, CONFIG.v5.withdraw.holdHours); },
+  setWallet(bal, now = Date.now()) {
+    const d = this.data, keep = now - (CONFIG.v5.withdraw.holdHours + 1) * 3600000;
+    d.walletBal = Math.max(0, bal);
+    // eski kayıtları at ama pencerenin başındaki bakiyeyi bilmek için pencere öncesinden son kaydı tut
+    const h = (d.walletHist || []);
+    const before = h.filter((x) => x.t <= keep).pop();
+    d.walletHist = [...(before ? [before] : []), ...h.filter((x) => x.t > keep), { t: now, bal: d.walletBal }];
+  },
+  holdOk(now = Date.now()) { return this.walletAvg(now) >= CONFIG.v5.withdraw.holdTokens; },
+  // 2. adım: kasadan cüzdana. Şart: cüzdanın son 12 saatteki ortalama bakiyesi 20K+ DGN (sunucu kontrol eder).
+  // Faz 1'de gerçek cüzdan yok; test modunda (?dev=1) simüle edilir.
   sendToWallet(demoPass = false) {
     const d = this.data;
     if (d.vault <= 0) return { ok: false, reason: 'empty' };
     if (!demoPass) return { ok: false, reason: 'wallet' };
+    if (!this.holdOk()) return { ok: false, reason: 'hold' };
     const n = Math.floor(d.vault);
     d.vault = 0; d.withdrawn += n;
+    this.setWallet((d.walletBal || 0) + n);
     this.save(); this.emit({ type: 'withdraw', amount: n });
     return { ok: true, amount: n };
   },

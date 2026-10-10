@@ -813,6 +813,10 @@ export class UI {
     const wd = Economy.withdrawable();
     const M = V.demo.market;
     const body = $('wallet-body');
+    const fee = Economy.nextFee(now), step = V.withdraw.fees.indexOf(fee), cd = Economy.cooldownLeft(now), resetAt = Economy.feeResetsAt(now);
+    const avg = Economy.walletAvg(now), holdOk = avg >= V.withdraw.holdTokens;
+    // 12 saatin geri kalanında ortalamayı tutturmak için cüzdanda olması gereken ek miktar (kabaca)
+    const need = Math.max(0, V.withdraw.holdTokens - (d.walletBal || 0));
     body.innerHTML = `
       ${CONFIG.token.testMode ? `<div class="wbox test"><b>TEST MODE.</b> ${sym} is not live yet. Deposits give free demo tokens and nothing is sent to a real wallet.</div>` : ''}
       <div class="wgrid">
@@ -827,11 +831,20 @@ export class UI {
         ? `<b>${n(d.credit)} ${sym}</b> of what you can take out is ${sym} you brought in yourself. It is not limited by the daily share.`
         : `You have not deposited this season. Everything you take out comes from the daily pool.`}</div>
       <div class="wbox line">You can move up to <b>${n(wd)} ${sym}</b> right now.
-        <div class="wrow"><input id="w-amt" type="number" min="0" value="${wd}"><button class="btn small" id="w-vault" ${wd >= V.withdraw.min ? '' : 'disabled'}>Move to the vault</button></div>
-        <small>${Math.round(V.withdraw.fee * 100)}% fee is taken here, half of it is burned. Minimum ${n(V.withdraw.min)}.</small></div>
+        <div class="wrow"><input id="w-amt" type="number" min="0" value="${wd}"><button class="btn small" id="w-vault" ${wd >= V.withdraw.min && !cd ? '' : 'disabled'}>${cd ? `Ready in ${fmtDur(cd)}` : `Move to the vault · ${Math.round(fee * 100)}% fee`}</button></div>
+        <div class="fee-ladder">${V.withdraw.fees.map((f, i) => `<span class="${i === step ? 'on' : i < step ? 'used' : ''}">${Math.round(f * 100)}%</span>`).join('<i>›</i>')}</div>
+        <small>The fee grows with every move in 24 hours and stops at ${Math.round(V.withdraw.fees.at(-1) * 100)}%. ${resetAt ? `It drops back to ${Math.round(V.withdraw.fees[0] * 100)}% in <b>${fmtDur(resetAt - now)}</b>.` : 'One move a day keeps it at the lowest rate.'} Half of every fee is burned. ${V.withdraw.cooldownHours} hours between moves. Minimum ${n(V.withdraw.min)}.</small></div>
       <div class="wbox line"><span class="wlabel">Waiting in the vault</span> <b>◈ ${n(d.vault)}</b>
-        <div class="wrow"><button class="btn small" id="w-send" ${d.vault > 0 ? '' : 'disabled'}>Send to my wallet</button></div>
-        <small>Your wallet must have held at least ${n(V.withdraw.holdTokens)} ${sym} for the last ${V.withdraw.holdHours} hours. This stops lords from farming the pool and leaving the same hour.</small></div>
+        <div class="hold ${holdOk ? 'ok' : ''}">
+          <div class="hold-h">12-hour holding rule</div>
+          <div class="hold-r"><span>Required</span><b>${n(V.withdraw.holdTokens)} ${sym}</b></div>
+          <div class="hold-r"><span>In your wallet now</span><b>${n(d.walletBal || 0)} ${sym}</b></div>
+          <div class="hold-r"><span>Your 12-hour average</span><b>${n(avg)} ${sym}</b></div>
+          <div class="hold-r"><span class="bar"><i style="width:${Math.min(100, avg / V.withdraw.holdTokens * 100)}%"></i></span></div>
+          ${holdOk ? `<div class="hold-msg">Ready. Your wallet meets the rule.</div>` : `<div class="hold-msg">Your wallet needs to average <b>${n(V.withdraw.holdTokens)}</b> over 12 hours. ${need > 0 ? `Hold about <b>${n(need)} ${sym}</b> more and keep it there.` : 'You hold enough now. Keep it there while the average catches up.'}</div>`}
+        </div>
+        <div class="wrow"><button class="btn small" id="w-send" ${d.vault > 0 ? '' : 'disabled'}>Send to my wallet</button>${holdOk ? '' : `<button class="btn small gem-buy" disabled>Get ${sym} · launching on Robinhood Chain</button>`}</div>
+        <small>The average counts every hour of the last 12, so tokens bought a minute ago count only a little. This stops lords from farming the pool and leaving the same hour.</small></div>
       <div class="wbox line"><span class="wlabel">Deposit</span>
         <div class="wrow">${[50000, 100000, 500000, 1000000].map((a) => `<button class="btn small" data-dep="${a}">+${fmt(a)}</button>`).join('')}</div>
         <small>${CONFIG.token.testMode ? 'Demo tokens for testing.' : `Send ${sym} from your wallet.`} Deposited ${sym} buys key packs. Deposited so far: ${n(d.deposited)}.</small></div>
@@ -842,14 +855,14 @@ export class UI {
       </div>
       <div class="wbox market"><span class="wlabel">${sym} market</span>
         <div class="mrow"><span>Price</span><b>$${M.priceUsd.toFixed(6)}</b><span>Volume 24h</span><b>$${n(M.volume24h)}</b><span>Liquidity</span><b>$${n(M.liquidity)}</b><span>Holders</span><b>${n(M.holders)}</b></div>
-        <button class="btn small" disabled>Buy ${sym} · launching on Robinhood Chain</button></div>
-      ${DEV ? '<div class="wrow"><button class="btn small" id="w-day">+1 day (test)</button><button class="btn small" id="w-sim">Simulate wallet send (test)</button></div>' : ''}`;
+        <button class="btn small" disabled>Get ${sym} · launching on Robinhood Chain</button></div>
+      ${DEV ? '<div class="wrow"><button class="btn small" id="w-day">+1 day (test)</button><button class="btn small" id="w-sim">Simulate wallet send (test)</button><button class="btn small" id="w-wal">+25K in wallet (test)</button><button class="btn small" id="w-hr">+2 hours (test)</button></div>' : ''}`;
     const q = (id) => body.querySelector('#' + id);
     q('w-claim').addEventListener('click', () => { const c = Economy.claim(); if (c) Audio.play('coin'); this.renderWallet(); });
     q('w-vault').addEventListener('click', () => {
       const r = Economy.moveToVault(+q('w-amt').value || 0);
-      if (!r) { Audio.play('denied'); this.toast(`You can move between ${fmt(V.withdraw.min)} and ${fmt(Economy.withdrawable())} ${sym}`); return; }
-      Audio.play('coin'); this.toast(`${fmt(r.net)} ${sym} moved to the vault (fee ${fmt(r.fee)})`); this.renderWallet();
+      if (!r) { Audio.play('denied'); this.toast(Economy.cooldownLeft() > 0 ? `Next move in ${fmtDur(Economy.cooldownLeft())}` : `You can move between ${fmt(V.withdraw.min)} and ${fmt(Economy.withdrawable())} ${sym}`); return; }
+      Audio.play('coin'); this.toast(`${fmt(r.net)} ${sym} moved to the vault (${Math.round(r.rate * 100)}% fee: ${fmt(r.fee)})`); this.renderWallet();
     });
     q('w-send').addEventListener('click', () => {
       const r = Economy.sendToWallet(false);
@@ -863,7 +876,11 @@ export class UI {
       const d2 = Economy.data; d2.lastAccrue -= 86400000; if (d2.firstDepositAt) d2.firstDepositAt -= 86400000;
       const r = Economy.accrue(); this.toast(`+1 day: produced ${fmt(r.produced)}, pool ${fmt(r.pool)}`); this.renderWallet();
     });
-    q('w-sim')?.addEventListener('click', () => { const r = Economy.sendToWallet(true); if (r.ok) this.toast(`${fmt(r.amount)} ${sym} sent (simulated)`); this.renderWallet(); });
+    q('w-sim')?.addEventListener('click', () => { const r = Economy.sendToWallet(true); this.toast(r.ok ? `${fmt(r.amount)} ${sym} sent (simulated)` : r.reason === 'hold' ? 'Holding rule not met yet' : 'The vault is empty'); this.renderWallet(); });
+    // test: zaman yolculuğu (geçmiş kayıtları geriye kaydırır)
+    const shift = (ms) => { const d2 = Economy.data; d2.vaultMoves = (d2.vaultMoves || []).map((t) => t - ms); d2.walletHist = (d2.walletHist || []).map((h) => ({ ...h, t: h.t - ms })); Economy.save(); };
+    q('w-wal')?.addEventListener('click', () => { Economy.setWallet((Economy.data.walletBal || 0) + 25000); Economy.save(); this.renderWallet(); });
+    q('w-hr')?.addEventListener('click', () => { shift(2 * 3600000); this.renderWallet(); });
   }
 
   renderStore(body) {

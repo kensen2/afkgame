@@ -162,7 +162,10 @@ export const CONFIG = {
     // (Sayım sunucuda yapılmalı; Supabase bağlanana kadar demo realm sayısı kullanılır.)
     freePool: { perStep: 1000000, step: 100, margin: 20, minWave: 20, activeHours: 1 },
     depositorPoolDelayHours: 48,
-    withdraw: { fee: 0.05, feeBurn: 0.5, holdTokens: 20000, holdHours: 12, min: 1000 },
+    // Çekim: oyundan kasaya geçerken kesinti alınır. Kesinti 24 saat içindeki her yeni çekimde artar (%5 → %10 → %20 → %40,
+    // %40'ta durur); 24 saat çekim yapılmazsa %5'e döner. İki çekim arasında en az cooldownHours saat.
+    // Kasadan cüzdana: cüzdanın son holdHours saatteki ortalama bakiyesi en az holdTokens olmalı (sunucu kontrol eder).
+    withdraw: { fees: [0.05, 0.10, 0.20, 0.40], feeWindowHours: 24, cooldownHours: 2, feeBurn: 0.5, holdTokens: 20000, holdHours: 12, min: 1000 },
     // Forge: oyun içi bakiyeyle alınan güç (sezonluk). Her seviye hasar ve can ×1.10
     forge: { baseCost: 5000, growth: 1.32, per: 0.10, max: 40 },
     // Faz 1 demo realm (sim/v5.mjs, 1.000 oyuncu): havuzu paylaşan diğer oyuncuların toplam üretimi (DGN/saat)
@@ -440,6 +443,17 @@ export const F = {
     const P = CONFIG.v5.freePool;
     const tier = 1 + Math.floor(Math.max(0, players - P.margin) / P.step);
     return Math.min(CONFIG.v5.pools.free, tier * P.perStep);
+  },
+  // Zaman ağırlıklı ortalama bakiye: hist = [{t, bal}] (bal, t anından sonraki bakiye), son 'hours' saat
+  avgHeld(hist, now, hours) {
+    const from = now - hours * 3600000;
+    let sum = 0, bal = 0, t0 = from;
+    for (const h of hist || []) {
+      if (h.t <= from) { bal = h.bal; continue; }
+      sum += bal * (h.t - t0); t0 = h.t; bal = h.bal;
+    }
+    sum += bal * (now - t0);
+    return sum / (now - from);
   },
   // Havuz payı (DGN/gün): pool × benim / (diğerleri + benim), en fazla kendi üretimim kadar
   poolShare(pool, myRate, othersRateSum) {
