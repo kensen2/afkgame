@@ -58,5 +58,7 @@ export const ERRORS = {
   leader_must_transfer: 'Make someone else leader before you leave, or disband the clan.',
   not_found: 'Not found.',
   need_nick: 'Pick a nickname first.',
+  server_error: 'The server could not do that. Try again in a moment.',
+  offline: 'Cannot reach the server. Check your connection.',
 };
 export const errText = (code) => ERRORS[code] || 'Something went wrong.';

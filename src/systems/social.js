@@ -4,11 +4,12 @@
 //    - bugün: LocalBackend (bot dünya, localStorage)
 //    - yarın: SupabaseBackend (aynı metotlar, gerçek oyuncular)
 //  Clan bonusu: ilk 5 clanın üyeleri üretim hızına bonus alır (%10/5/3/2/1),
-//  clana girildiği an başlar. Havuzlar sabit 10M olduğu için bonus havuzdaki paydan gelir.
+//  clana girildiği an başlar. Bonus yeni token basmaz, havuzdaki payı kaydırır.
 // =====================================================================
 import { CONFIG } from '../config.js';
 import { Economy } from './economy.js';
 import { LocalBackend } from '../net/local-backend.js';
+import { SupabaseBackend } from '../net/supabase-backend.js';
 
 const listeners = new Set();
 
@@ -18,8 +19,15 @@ export const Social = {
   clan: null,          // kendi clanının özeti (rank, bonus, üyeler, istekler)
   bonus: 0,
 
+  online: false,       // true: gerçek sunucu (Supabase), false: yerel bot dünyası
+
   async init() {
-    this.backend = new LocalBackend();
+    const S = CONFIG.server, local = new URLSearchParams(location.search).has('local');
+    if (S?.enabled && !local) {
+      try { this.backend = await new SupabaseBackend(S).connect(); this.online = true; }
+      catch (e) { console.warn('[social] server unreachable, using the local demo world:', e.message); }
+    }
+    if (!this.backend) this.backend = new LocalBackend();
     await this.refresh();
     // istek onayları, gelen istekler ve sıralama değişimi için düzenli kontrol
     setInterval(() => this.tick(), 2000);

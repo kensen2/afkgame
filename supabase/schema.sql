@@ -144,9 +144,9 @@ create or replace function transfer_leader(c uuid, p uuid) returns void language
 begin
   perform 1 from clans where id = c for update;
   if coalesce(my_role(c), '') <> 'leader' then raise exception 'no_permission'; end if;
+  if not exists (select 1 from clan_members where clan_id = c and player_id = p and player_id <> auth.uid()) then raise exception 'not_found'; end if;
   update clan_members set role = 'member' where clan_id = c and player_id = auth.uid();
   update clan_members set role = 'leader' where clan_id = c and player_id = p;
-  if not found then raise exception 'not_found'; end if;
 end $$;
 
 create or replace function disband_clan(c uuid) returns void language plpgsql security definer set search_path = public, pg_temp as $$
@@ -286,6 +286,11 @@ end $$;
 -- Yetkiler: fonksiyonları sadece giriş yapmış oyuncular çağırabilir
 revoke execute on all functions in schema public from public, anon;
 grant execute on all functions in schema public to authenticated;
+-- yardımcılar sadece diğer fonksiyonların içinden çalışır
+revoke execute on function my_role(uuid) from authenticated;
+revoke execute on function clan_summary(clan_ranking) from authenticated;
+-- istemci tablolara doğrudan yazamaz (RLS de engelliyor; bu ikinci kilit)
+revoke insert, update, delete, truncate, references, trigger on players, clans, clan_members, clan_requests from anon, authenticated;
 
 -- CANLIYA ÇIKMADAN ÖNCE (Faz 2):
 --  1) players.base_rate / best_wave ASLA istemciden alınmaz. Sunucu, kendi tuttuğu duruma

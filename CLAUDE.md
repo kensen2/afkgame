@@ -46,5 +46,9 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
 - Withdrawal: deposit back first, then today's pool share; game → vault fee grows per move in 24h: 5/10/20/40 %
   (capped at 40, back to 5 after 24h without a move; half burned); 2h between moves; vault → wallet needs a
   12-hour time-weighted average wallet balance of 20K DGN; "Get DGN" button (not "Buy"); depositor pool starts 48h after first deposit. No staking. 10-day seasons.
+- Server: Supabase project `wfsskmchilndcsauubbs` (eu-central-1). `supabase/schema.sql` is the source of truth;
+  the client (`src/net/supabase-backend.js`) only calls RPCs. Only the publishable key lives in `CONFIG.server`;
+  never put a secret/service_role key in the repo. If the server is unreachable the game falls back to the local bot world.
+  The Supabase MCP refuses SQL containing `delete` without a confirmation the owner may not see; give him that SQL to paste.
 - "Burned" only for on-chain burns; in-game spending is "Spent in the dungeon".
 - The creator does not trade the token. Never propose wash trading, volume bots or price support.

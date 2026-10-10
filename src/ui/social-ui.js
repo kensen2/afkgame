@@ -88,6 +88,8 @@ export class SocialUI {
     const t = evt.type;
     if (t === 'joined') { Audio.play('coin'); this.ui.toast(`You joined [${evt.tag}] ${evt.name}!${Social.bonus ? ` Clan bonus ${pct(Social.bonus)} production.` : ''}`); }
     if (t === 'request_failed') this.ui.toast('A clan you asked to join is full.');
+    if (t === 'removed') this.ui.toast('You are no longer in your clan.');
+    if (t === 'role') this.ui.toast(t && evt.role === 'leader' ? 'You are now the clan leader.' : evt.role === 'officer' ? 'You are now an officer of your clan.' : 'Your clan role changed.');
     if (t === 'requests' && can(Social.me.role, 'approve')) this.ui.toast(`🛡 New join request${evt.count > 1 ? 's' : ''} for your clan`);
     // açık listeyi yenile (yazı yazılan sekmelerde odak kaybolmasın diye sadece clan sekmesi tam yenilenir)
     if (this.isOpen() && t !== 'refresh') {
@@ -110,7 +112,7 @@ export class SocialUI {
     const gen = ++this._gen;
     document.querySelectorAll('#screen-clan [data-ctab]').forEach((b) => b.classList.toggle('active', b.dataset.ctab === this.tab));
     const c = Social.clan;
-    $('clan-sub').textContent = `Playing as ${Social.me.nick}${c ? ` · [${c.tag}] ${c.name}` : ''}`;
+    $('clan-sub').textContent = `Playing as ${Social.me.nick}${c ? ` · [${c.tag}] ${c.name}` : ''} · ${Social.online ? 'Online' : 'Offline demo world'}`;
     const body = $('clan-body');
     let html = '';
     if (this.tab === 'clan') html = c ? this._myClanHtml((await Social.getClan(c.id)).clan) : this._noClanHtml();

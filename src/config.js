@@ -124,6 +124,14 @@ export const CONFIG = {
   //  - Dışarı çekilebilen: yatırdığı tutar kadar serbest (anapara) + o günün havuz payı.
   //  - Günlük iki havuz: bedava oyuncular ve yatıranlar (her biri 10M). Pay, üretim hızına orantılı.
   //  - Yatıranın havuz payı ilk yatırımdan 48 saat sonra başlar (önce anaparasını geri üretir).
+  // Sunucu (Supabase). Bu anahtar herkese açık "publishable" anahtardır; gizli anahtar asla buraya yazılmaz.
+  // Bağlanamazsa oyun yerel bot dünyasıyla devam eder. ?local=1 her zaman yerel dünyayı kullanır.
+  server: {
+    enabled: true,
+    url: 'https://wfsskmchilndcsauubbs.supabase.co',
+    key: 'sb_publishable_t1N9dXmfqtpjYu9aOvYiKQ_CtACUdyX',
+    timeoutMs: 8000,
+  },
   token: {
     symbol: 'DGN',
     usdPerToken: 0.0001,          // demo kuru: 10.000 DGN = $1 (canlıda DEX fiyatı okunacak)
