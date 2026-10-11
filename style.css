@@ -673,19 +673,19 @@ input[type=range]::-moz-range-thumb { border-radius: 2px; background: #c9a04e; b
    ayarlar, duraklat, ölüm, kapı, çevrimdışı) açık renk, kalın çizgili, yuvarlak.
    ===================================================================== */
 .screen.modal > .panel {
-  --ink: #3b2814; --muted: #7d6648; --wood: #6b4220; --wood-d: #3a210c; --line: #e2c48a; --card: #fffaf0;
+  --ink: #3b2814; --muted: #7d6648; --wood: #6b4220; --wood-d: #3a210c; --line: #c9a668; --card: #efdfbd;
   --pm-green: #5aac36; --pm-gem: #18809a; --pm-gold: #b5700f;
   color: var(--ink); font-family: 'Fredoka', 'Trebuchet MS', system-ui, sans-serif; font-weight: 500;
   border-radius: 18px; border: 3px solid var(--wood-d);
-  background: linear-gradient(#fdf4dc, #f5e4ba);
-  box-shadow: 0 0 0 5px #a8702f, 0 0 0 8px var(--wood-d), inset 0 2px 0 #fff8e6, inset 0 -3px 0 rgba(150,100,40,0.18), 0 18px 40px rgba(0,0,0,0.7);
+  background: linear-gradient(#e2cc9f, #d3b882);
+  box-shadow: 0 0 0 5px #a8702f, 0 0 0 8px var(--wood-d), inset 0 2px 0 rgba(255,240,205,0.45), inset 0 -3px 0 rgba(120,80,30,0.2), 0 18px 40px rgba(0,0,0,0.7);
 }
 .screen.modal { background: rgba(10,6,2,0.72); }
 .screen.modal > .panel :is(.shop-title, .screen-title, .gate-title, h2, h3) {
-  font-family: 'Fredoka', 'Trebuchet MS', sans-serif; font-weight: 700; color: #6b3a0e; text-shadow: 0 2px 0 #fff3cf; letter-spacing: 0;
+  font-family: 'Fredoka', 'Trebuchet MS', sans-serif; font-weight: 700; color: #6b3a0e; text-shadow: 0 1px 0 rgba(255,236,190,0.6); letter-spacing: 0;
 }
 .screen.modal > .panel :is(.shop-hero, .wbox span, .wbox small, .wlabel, .gate-eyebrow, .gate-small, .gate-count, .hint, .dgn-season) { color: var(--muted); }
-.screen.modal > .panel .shop-head { border-bottom: 2px dashed var(--line); box-shadow: none; }
+.screen.modal > .panel .shop-head { border-bottom: 2px dashed #b8894a; box-shadow: none; }
 .screen.modal > .panel .shop-wallet .gold { color: var(--pm-gold); }
 .screen.modal > .panel .shop-wallet .sp { color: #8a5a12; }
 .screen.modal > .panel :is(.gems-inline, .item .req, .wgrid .wbox b, .crow .st, .off-dgn, .dgn-live) { color: var(--pm-gem); }
@@ -693,11 +693,11 @@ input[type=range]::-moz-range-thumb { border-radius: 2px; background: #c9a04e; b
 .screen.modal > .panel .wbox.line b { color: var(--ink); }
 
 /* sekmeler: her biri kendi renginde, yuvarlak üst köşe */
-.screen.modal > .panel .tabs { border-bottom: 3px solid #c99b55; box-shadow: none; gap: 6px; padding: 0 4px; }
+.screen.modal > .panel .tabs { border-bottom: 3px solid #b8894a; box-shadow: none; gap: 6px; padding: 0 4px; }
 .screen.modal > .panel .tab {
   font-family: 'Fredoka', 'Trebuchet MS', sans-serif; font-weight: 600; font-size: 15px; color: #6b4a22; text-shadow: none;
-  background: linear-gradient(#fff8e8, #f1ddb0); border: 2px solid #c99b55; border-bottom: none; border-radius: 12px 12px 0 0;
-  padding: 7px 14px 6px; box-shadow: inset 0 2px 0 #fff;
+  background: linear-gradient(#ecdab3, #dcc292); border: 2px solid #b8894a; border-bottom: none; border-radius: 12px 12px 0 0;
+  padding: 7px 14px 6px; box-shadow: inset 0 2px 0 rgba(255,245,220,0.5);
 }
 .screen.modal > .panel .tab.active { --tc: #4f9d2f; color: #fff; background: var(--tc); border-color: color-mix(in srgb, var(--tc) 60%, #000);
   text-shadow: 0 1px 0 rgba(0,0,0,0.45); box-shadow: inset 0 2px 0 rgba(255,255,255,0.35); }
@@ -712,7 +712,7 @@ input[type=range]::-moz-range-thumb { border-radius: 2px; background: #c9a04e; b
 /* satırlar: beyaz kart, bal rengi çerçeve, alt gölge */
 .screen.modal > .panel :is(.item, .wbox, .crow) {
   background: var(--card); color: var(--ink); border: 2px solid var(--line); border-radius: 14px;
-  box-shadow: 0 3px 0 #dcb873, inset 0 1px 0 #fff;
+  box-shadow: 0 3px 0 #b89458, inset 0 1px 0 rgba(255,245,220,0.6);
 }
 .screen.modal > .panel .item { padding: 10px 12px; }
 .screen.modal > .panel .item .nm { font-weight: 700; font-size: 16px; color: #3b2814; }
@@ -723,9 +723,9 @@ input[type=range]::-moz-range-thumb { border-radius: 2px; background: #c9a04e; b
 .screen.modal > .panel .item.gear .nm { font-family: 'Fredoka', sans-serif; color: color-mix(in srgb, var(--sk) 70%, #2a1a0a); }
 .screen.modal > .panel .item.gear .slot { color: var(--muted); }
 .screen.modal > .panel .item.gear .nxt { color: var(--muted); }
-.screen.modal > .panel .crow.me { background: #fff1c9; border-color: #e5a93a; }
+.screen.modal > .panel .crow.me { background: #f2d999; border-color: #e5a93a; }
 .screen.modal > .panel .crow.top { border-color: #e5b765; }
-.screen.modal > .panel .wbox.test { background: #fff0dc; border-color: #f0a35c; color: #9a4a10; box-shadow: 0 3px 0 #e39a52; }
+.screen.modal > .panel .wbox.test { background: #f1d9b8; border-color: #f0a35c; color: #9a4a10; box-shadow: 0 3px 0 #e39a52; }
 
 /* ikon kutuları: yuvarlak köşeli renkli karo */
 .screen.modal > .panel .item .ic.sk, .screen.modal > .panel .item.gear .gear-ic {
@@ -742,7 +742,7 @@ input[type=range]::-moz-range-thumb { border-radius: 2px; background: #c9a04e; b
 .screen.modal > .panel :is(.btn.gem-buy, .gem-btn) { background: linear-gradient(#5fd0e6, #1e8fae); border-color: #0f4f62; box-shadow: inset 0 2px 0 rgba(255,255,255,0.4), 0 3px 0 #0f4f62; color: #fff; }
 .screen.modal > .panel .btn.danger { background: linear-gradient(#ff7a6a, #d23a2e); border-color: #7a1810; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), 0 3px 0 #7a1810; }
 .screen.modal > .panel .btn:disabled, .screen.modal > .panel :is(.btn.gem-buy, .gem-btn):disabled {
-  color: #8d806b; text-shadow: none; background: linear-gradient(#efe4cc, #d9c8a4); border-color: #b9a47c; box-shadow: 0 3px 0 #b9a47c;
+  color: #8d806b; text-shadow: none; background: linear-gradient(#ddcba5, #c9b48a); border-color: #a68f63; box-shadow: 0 3px 0 #a68f63;
 }
 /* kapat: kırmızı yuvarlak */
 .screen.modal > .panel .btn.close {
@@ -751,12 +751,12 @@ input[type=range]::-moz-range-thumb { border-radius: 2px; background: #c9a04e; b
 }
 /* giriş kutuları */
 .screen.modal > .panel :is(.wrow input, .clan input, input) {
-  background: #fffdf6; color: var(--ink); border: 2px solid var(--line); border-radius: 10px; box-shadow: inset 0 2px 3px rgba(150,100,40,0.15);
+  background: #f6ead0; color: var(--ink); border: 2px solid var(--line); border-radius: 10px; box-shadow: inset 0 2px 3px rgba(150,100,40,0.15);
 }
 .screen.modal > .panel :is(.wrow input, .clan input, input):focus { outline: 2px solid #e5a93a; outline-offset: 1px; }
 /* kaydırma çubuğu */
 .screen.modal > .panel ::-webkit-scrollbar { width: 10px; height: 8px; }
-.screen.modal > .panel ::-webkit-scrollbar-thumb { background: #d8b878; border-radius: 6px; border: 2px solid #f8ebc8; }
+.screen.modal > .panel ::-webkit-scrollbar-thumb { background: #d8b878; border-radius: 6px; border: 2px solid #e2cc9f; }
 .screen.modal > .panel ::-webkit-scrollbar-track { background: transparent; }
 /* ikon karoları: kendi renginde dolu karo + beyaz siluet */
 .screen.modal > .panel .item .ic.sk {
@@ -768,18 +768,18 @@ input[type=range]::-moz-range-thumb { border-radius: 2px; background: #c9a04e; b
   border-color: color-mix(in srgb, var(--sk) 50%, #2a1606); color: #fff;
 }
 .screen.modal > .panel .item.gear .gear-ic .sk-ico, .screen.modal > .panel .item .ic.sk .sk-ico { filter: drop-shadow(0 2px 0 rgba(40,20,5,0.45)); }
-.screen.modal > .panel .item.gear .gear-lv { border: 2px solid #fff8e6; }
+.screen.modal > .panel .item.gear .gear-lv { border: 2px solid #efdfbd; }
 .screen.modal > .panel .tab .ico, .screen.modal > .panel .tab .ico .sk-ico, .screen.modal > .panel .btn .ico .sk-ico { color: inherit; }
 /* çekim kesintisi merdiveni + tutma kuralı */
-.screen.modal > .panel .fee-ladder span { color: #7d6648; background: #f4e6c4; border: 2px solid #e2c48a; border-radius: 8px; }
+.screen.modal > .panel .fee-ladder span { color: #6d5638; background: #e6d2a8; border: 2px solid #e2c48a; border-radius: 8px; }
 .screen.modal > .panel .fee-ladder span.on { color: #fff; background: #d8961c; border-color: #8a5a0c; text-shadow: 0 1px 0 rgba(0,0,0,0.4); }
 .screen.modal > .panel .fee-ladder span.used { color: #b3a184; }
-.screen.modal > .panel .hold { background: #fff3ec; border: 2px solid #f0b3a0; border-radius: 12px; }
-.screen.modal > .panel .hold.ok { background: #f1fae8; border-color: #a9d88c; }
+.screen.modal > .panel .hold { background: #f0d9c4; border: 2px solid #f0b3a0; border-radius: 12px; }
+.screen.modal > .panel .hold.ok { background: #dfe8c6; border-color: #a9d88c; }
 .screen.modal > .panel .hold-h { color: var(--ink); }
 .screen.modal > .panel .hold-msg { color: #b0422c; }
 .screen.modal > .panel .hold.ok .hold-msg { color: #2f8a3a; }
-.screen.modal > .panel .hold-r .bar { background: #efe2c3; border: 1px solid #d9c08a; }
+.screen.modal > .panel .hold-r .bar { background: #dcc79d; border: 1px solid #d9c08a; }
 .screen.modal > .panel .stats-grid div, .screen.modal > .panel .stat-row { border-color: #ead7ad; }
 /* telefon: dükkân başlığı iki satır, kapat butonu sağ üstte */
 @media (max-width: 520px) {
