@@ -56,5 +56,11 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
   the client (`src/net/supabase-backend.js`) only calls RPCs. Only the publishable key lives in `CONFIG.server`;
   never put a secret/service_role key in the repo. If the server is unreachable the game falls back to the local bot world.
   The Supabase MCP refuses SQL containing `delete` without a confirmation the owner may not see; give him that SQL to paste.
+  `supabase/03_admin.sql` (applied) adds the admin panel on top of schema.sql; both files together are the source of truth.
+- Admin panel: `admin.html` (+ `src/admin/admin.js`), not linked from the game. Login = Supabase e-mail account listed in the
+  `admins` table; every admin RPC checks `is_admin()` on the server and writes `admin_log`. Gifts/take-aways/wipe go through
+  `grants` and are applied by the game via `my_status` (balances still live in the player's browser until Phase 2).
+  Bans hide players from rankings and block nick/clan/stats; `player_limits.nerf` scales production. The game reports a
+  state snapshot + economy events every minute (`report_state`); these are player-reported and can be faked.
 - "Burned" only for on-chain burns; in-game spending is "Spent in the dungeon".
 - The creator does not trade the token. Never propose wash trading, volume bots or price support.

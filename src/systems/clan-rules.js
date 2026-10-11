@@ -37,6 +37,7 @@ export function validateClan(name, tag) {
 
 // Hata kodu → oyuncuya gösterilen metin (oyun dili İngilizce)
 export const ERRORS = {
+  banned: 'Your account is suspended. Online features are disabled.',
   nick_length: `Nickname must be ${CONFIG.social.nick.min}–${CONFIG.social.nick.max} characters.`,
   nick_chars: 'Use only letters, numbers and _.',
   nick_reserved: 'That nickname is reserved.',

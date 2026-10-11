@@ -32,7 +32,50 @@ export const Social = {
     // istek onayları, gelen istekler ve sıralama değişimi için düzenli kontrol
     setInterval(() => this.tick(), 2000);
     setInterval(() => this.refresh(), 30000);
+    // ekipten: ban, duyuru, ödüller (admin paneli). Sadece gerçek sunucuda.
+    if (this.online && this.backend.status) {
+      Economy.on((d, e) => this._noteEvent(e));
+      this.checkStatus(); setInterval(() => this.checkStatus(), 60000);
+    }
     return this;
+  },
+
+  banned: null,        // { until, reason } ya da null
+  notice: null,
+  // Panelde görünen işlem geçmişi: önemli ekonomi olayları kuyruğa, dakikada bir sunucuya
+  _events: [],
+  _noteEvent(e) {
+    const KEEP = { claim: 'amount', deposit: 'amount', vault: 'amount', withdraw: 'amount', tokenSpend: 'amount', keyUsed: 'wave',
+      forge: null, gemItem: 'id', keys: 'id', season: null, tomes: 'amount', xp: null };
+    if (!e?.type || !(e.type in KEEP) || (e.type === 'xp' && !e.leveled)) return;
+    const data = {};
+    for (const k of ['amount', 'id', 'wave']) if (e[k] != null) data[k] = typeof e[k] === 'number' ? Math.round(e[k]) : e[k];
+    if (e.type === 'keys' && e.id) data.have = Economy.keyCount(e.id);
+    if (e.type === 'forge') data.level = Economy.data.forge;
+    if (e.type === 'xp') data.level = Economy.data.level;
+    this._events.push({ kind: e.type, data, at: Date.now() });
+    if (this._events.length > 200) this._events.splice(0, this._events.length - 200);
+  },
+  async checkStatus() {
+    if (this.hasNick() && this.backend.report) {
+      const ev = this._events.splice(0, 50);
+      const rr = await this.backend.report(Economy.snapshot(), ev);
+      if (!rr?.ok) this._events.unshift(...ev);
+    }
+    const r = await this.backend.status();
+    if (!r?.ok) return;
+    Economy.setNerf(r.nerf ?? 1);
+    const msgs = [], notes = new Set();
+    for (const g of r.grants || []) {
+      const msg = Economy.applyGrant(g);
+      this._events.push({ kind: 'teamGift', data: { kind: g.kind, amount: g.amount }, at: Date.now() });
+      if (msg === 'wipe') { this.emit({ type: 'wipe' }); return; }
+      if (msg) { msgs.push(msg); if (g.note) notes.add(g.note); }
+    }
+    if (msgs.length) this.emit({ type: 'grant', msg: msgs.join(', '), note: [...notes].join(' · ') });
+    const ban = r.banned ? { until: r.banUntil, reason: r.banReason || '' } : null;
+    if (JSON.stringify(ban) !== JSON.stringify(this.banned)) { this.banned = ban; this.emit({ type: 'ban' }); }
+    if ((r.notice || null) !== this.notice) { this.notice = r.notice || null; this.emit({ type: 'notice' }); }
   },
 
   on(fn) { listeners.add(fn); return () => listeners.delete(fn); },

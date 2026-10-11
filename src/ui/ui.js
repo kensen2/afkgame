@@ -464,11 +464,11 @@ export class UI {
     this._bT = setTimeout(() => b.classList.add('hidden'), 1800);
   }
 
-  toast(text) {
+  toast(text, ms = 2500) {
     const t = $('toast');
     t.textContent = text; t.classList.add('hidden'); void t.offsetWidth; t.classList.remove('hidden');
     clearTimeout(this._tT);
-    this._tT = setTimeout(() => t.classList.add('hidden'), 2500);
+    this._tT = setTimeout(() => t.classList.add('hidden'), ms);
   }
 
   waveCleared(game) {

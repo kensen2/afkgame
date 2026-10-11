@@ -90,6 +90,9 @@ export class SocialUI {
     if (t === 'request_failed') this.ui.toast('A clan you asked to join is full.');
     if (t === 'removed') this.ui.toast('You are no longer in your clan.');
     if (t === 'role') this.ui.toast(t && evt.role === 'leader' ? 'You are now the clan leader.' : evt.role === 'officer' ? 'You are now an officer of your clan.' : 'Your clan role changed.');
+    if (t === 'grant') { Audio.play('coin'); this.ui.toast(`🎁 From the team: ${evt.msg}${evt.note ? ` · ${evt.note}` : ''}`, 7000); }
+    if (t === 'wipe') { this.ui.toast('Your progress was reset by the team. Reloading…', 3000); setTimeout(() => location.reload(), 2500); }
+    if (t === 'ban' || t === 'notice') this._renderNotice();
     if (t === 'requests' && can(Social.me.role, 'approve')) this.ui.toast(`🛡 New join request${evt.count > 1 ? 's' : ''} for your clan`);
     // açık listeyi yenile (yazı yazılan sekmelerde odak kaybolmasın diye sadece clan sekmesi tam yenilenir)
     if (this.isOpen() && t !== 'refresh') {
@@ -99,6 +102,24 @@ export class SocialUI {
   }
 
   // Sağ üstteki DGN panelinde clan satırı
+  // Üstte ince şerit: ekip duyurusu ya da hesap askıya alındı uyarısı (metin her zaman textContent ile)
+  _renderNotice() {
+    let bar = $('notice-bar');
+    if (!bar) {
+      bar = document.createElement('div'); bar.id = 'notice-bar'; bar.setAttribute('role', 'status');
+      bar.innerHTML = '<span class="nb-text"></span><button class="nb-x" aria-label="Close">✕</button>';
+      bar.querySelector('.nb-x').addEventListener('click', () => { bar.classList.add('hidden'); this._noticeClosed = Social.notice; });
+      document.body.appendChild(bar);
+    }
+    const ban = Social.banned, txt = bar.querySelector('.nb-text');
+    if (ban) {
+      txt.textContent = `Your account is suspended${ban.until === 'forever' ? '' : ` until ${ban.until}`}.${ban.reason ? ` Reason: ${ban.reason}.` : ''} Rankings, clans and rewards are disabled.`;
+      bar.className = 'ban'; bar.querySelector('.nb-x').hidden = true;
+    } else if (Social.notice && Social.notice !== this._noticeClosed) {
+      txt.textContent = Social.notice; bar.className = ''; bar.querySelector('.nb-x').hidden = false;
+    } else bar.className = 'hidden';
+  }
+
   updateHud() {
     const el = $('dgn-clan'), c = Social.clan;
     if (!el) return;

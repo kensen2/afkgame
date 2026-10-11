@@ -1,0 +1,256 @@
+// =====================================================================
+//  Admin paneli (admin.html). Oyundan ayrı sayfa, oyunda link yok.
+//  Giriş: Supabase e-posta/şifre hesabı. Yetki SUNUCUDA kontrol edilir (admins tablosu, is_admin()):
+//  bu sayfayı herkes açabilir ama admin olmayan biri hiçbir işlem yapamaz.
+//  Sadece herkese açık "publishable" anahtar kullanılır; gizli anahtar asla burada olmaz.
+//  Tüm metinler textContent ile yazılır (oyuncu nick'i / notu HTML olarak çalışmasın).
+// =====================================================================
+import { CONFIG } from '../config.js';
+
+const S = CONFIG.server, URL_ = S.url.replace(/\/$/, ''), KEY = S.key, SESSION = 'afk_admin_session_v1';
+const $ = (id) => document.getElementById(id);
+const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); for (const k of kids) e.append(k); return e; };
+const fmt = (n) => Number(n || 0).toLocaleString('en-US');
+const when = (ms) => (ms ? new Date(Number(ms)).toLocaleString() : '—');
+
+const KINDS = [['gold', 'Gold'], ['dgn', 'DGN (in-game)'], ['tomes', 'Skill Tomes'],
+  ...CONFIG.v5.keys.map((k) => ['key_' + k.id, k.name])];
+const kindName = (k) => (k === 'wipe' ? 'Save wipe' : (KINDS.find((x) => x[0] === k) || [k, k])[1]);
+const ERR = { not_admin: 'This account is not an admin.', not_found: 'Player not found.', cannot_ban_admin: 'Admins cannot be banned.',
+  already_claimed: 'The player already received it; it cannot be taken back.', not_allowed: 'Not allowed.', nick_taken: 'That nickname is taken.' };
+
+let session = null, current = null;
+
+// ---------- sunucu ----------
+async function call(path, body, auth = true) {
+  const headers = { apikey: KEY, 'Content-Type': 'application/json' };
+  if (auth && session) headers.Authorization = `Bearer ${session.access_token}`;
+  const r = await fetch(URL_ + path, { method: 'POST', headers, body: JSON.stringify(body || {}) });
+  const t = await r.text(); let d = null; try { d = t ? JSON.parse(t) : null; } catch (e) { d = t; }
+  return { ok: r.ok, status: r.status, data: d };
+}
+function keep(d) {
+  session = { access_token: d.access_token, refresh_token: d.refresh_token, expires_at: Date.now() + (d.expires_in || 3600) * 1000 };
+  try { sessionStorage.setItem(SESSION, JSON.stringify(session)); } catch (e) { /* yok */ }
+}
+async function fresh() {
+  if (session && Date.now() < session.expires_at - 60000) return true;
+  if (!session?.refresh_token) return false;
+  const r = await call('/auth/v1/token?grant_type=refresh_token', { refresh_token: session.refresh_token }, false);
+  if (r.ok && r.data?.access_token) { keep(r.data); return true; }
+  return false;
+}
+async function rpc(fn, args) {
+  if (!(await fresh())) { logout(); throw new Error('Session expired, sign in again.'); }
+  const r = await call(`/rest/v1/rpc/${fn}`, args);
+  if (r.ok) return r.data;
+  const m = r.data?.message || r.data?.msg || `Error ${r.status}`;
+  if (m === 'not_admin') logout(ERR.not_admin);
+  throw new Error(ERR[m] || m);
+}
+
+// ---------- giriş ----------
+$('login').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('l-msg').textContent = '';
+  const r = await call('/auth/v1/token?grant_type=password', { email: $('l-email').value.trim(), password: $('l-pass').value }, false);
+  $('l-pass').value = '';
+  if (!r.ok || !r.data?.access_token) { $('l-msg').textContent = r.data?.error_description || r.data?.msg || 'Sign-in failed.'; return; }
+  keep(r.data);
+  start();
+});
+function logout(msg) {
+  session = null; try { sessionStorage.removeItem(SESSION); } catch (e) { /* yok */ }
+  $('app').classList.add('hidden'); $('login').classList.remove('hidden');
+  $('l-msg').textContent = msg || '';
+}
+$('btn-logout').onclick = () => logout();
+
+async function start() {
+  try {
+    const me = await rpc('admin_whoami');
+    $('who').textContent = me.email || me.id;
+    $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+    await Promise.all([overview(), search(''), log()]);
+  } catch (e) { logout(e.message); }
+}
+
+// ---------- genel ----------
+async function overview() {
+  const o = await rpc('admin_overview');
+  const box = $('stats'); box.replaceChildren();
+  for (const [k, v] of [['Players', o.players], ['Active 24h', o.active24h], ['Banned', o.banned], ['Clans', o.clans], ['Rewards waiting', o.pendingGrants]])
+    box.append(el('div', { className: 'card' }, el('span', { className: 'muted', textContent: k }), el('b', { textContent: fmt(v) })));
+  $('notice').value = o.notice || '';
+}
+$('btn-refresh').onclick = () => Promise.all([overview(), search($('q').value), log(), current && openPlayer(current.id)]).catch(alert);
+
+for (const sel of ['g-kind', 'all-kind']) for (const [v, t] of KINDS) $(sel).append(el('option', { value: v, textContent: t }));
+
+function busy(btn, fn, msgEl) {
+  return async () => {
+    btn.disabled = true; if (msgEl) { msgEl.textContent = ''; msgEl.className = 'msg'; }
+    try { const m = await fn(); if (msgEl && m) { msgEl.textContent = m; msgEl.className = 'msg ok'; } }
+    catch (e) { if (msgEl) { msgEl.textContent = e.message; msgEl.className = 'msg bad'; } else alert(e.message); }
+    finally { btn.disabled = false; }
+  };
+}
+const amountOf = (id) => { const n = Math.floor(Number($(id).value)); if (!(n > 0)) throw new Error('Enter an amount above 0.'); return n; };
+
+$('btn-notice').onclick = busy($('btn-notice'), async () => {
+  await rpc('admin_set_notice', { p_text: $('notice').value.trim() }); await log();
+  return $('notice').value.trim() ? 'Saved. Players see it within a minute.' : 'Notice removed.';
+}, $('notice-msg'));
+
+$('btn-all').onclick = busy($('btn-all'), async () => {
+  const kind = $('all-kind').value, n = amountOf('all-amount'), note = $('all-note').value.trim();
+  if (!confirm(`Send ${fmt(n)} × ${kindName(kind)} to EVERY player?`)) return '';
+  const c = await rpc('admin_grant_all', { p_kind: kind, p_amount: n, p_note: note });
+  await Promise.all([overview(), log()]);
+  return `Sent to ${fmt(c)} players.`;
+}, $('all-msg'));
+
+// ---------- oyuncular ----------
+$('search').addEventListener('submit', (e) => { e.preventDefault(); search($('q').value).catch((er) => alert(er.message)); });
+async function search(q) {
+  const rows = await rpc('admin_find_players', { q: q.trim(), lim: 100 });
+  const tb = $('players'); tb.replaceChildren();
+  if (!rows.length) tb.append(el('tr', {}, el('td', { colSpan: 6, className: 'muted', textContent: 'No players found.' })));
+  for (const p of rows) {
+    const st = el('td');
+    if (p.banned) st.append(el('span', { className: 'tag ban', textContent: 'banned' }), ' ');
+    if (p.pending) st.append(el('span', { className: 'tag gift', textContent: `${p.pending} gift` }));
+    const tr = el('tr', { className: 'pick' + (current?.id === p.id ? ' sel' : '') },
+      el('td', { textContent: p.nick }), el('td', { textContent: p.wave }), el('td', { textContent: fmt(p.rate) }),
+      el('td', { textContent: p.tag ? `[${p.tag}] ${p.clan}` : '—' }), st, el('td', { textContent: when(p.updated) }));
+    tr.onclick = () => openPlayer(p.id).catch((er) => alert(er.message));
+    tb.append(tr);
+  }
+}
+
+async function openPlayer(id) {
+  const [p] = await rpc('admin_find_players', { q: id, lim: 1 });
+  if (!p) throw new Error(ERR.not_found);
+  current = p;
+  $('player').classList.remove('hidden');
+  $('p-title').textContent = `${p.nick} · wave ${p.wave} · ${fmt(p.rate)} DGN/h${p.tag ? ` · [${p.tag}] ${p.clan} (${p.role})` : ''}`;
+  $('p-id').textContent = `id: ${p.id} · joined ${when(p.created)} · last seen ${when(p.updated)}`;
+  $('p-ban-line').textContent = p.banned ? `Banned ${p.ban_until === 'forever' ? 'permanently' : `until ${p.ban_until} UTC`}${p.ban_reason ? ` · ${p.ban_reason}` : ''}` : '';
+  $('n-nick').value = '';
+  $('nf-mult').value = String(Number(p.nerf ?? 1));
+  $('nf-now').textContent = Number(p.nerf ?? 1) < 1 ? `Now ${Math.round(p.nerf * 100)}%${p.nerf_reason ? ` · ${p.nerf_reason}` : ''}` : 'Now normal';
+  await detail(id);
+  const gs = await rpc('admin_player_grants', { p: id });
+  const tb = $('p-grants'); tb.replaceChildren();
+  if (!gs.length) tb.append(el('tr', {}, el('td', { colSpan: 6, className: 'muted', textContent: 'Nothing sent yet.' })));
+  for (const g of gs) {
+    const status = g.revoked ? 'cancelled' : g.claimed ? `received ${when(g.claimed)}` : 'waiting';
+    const act = el('td');
+    if (!g.revoked && !g.claimed) {
+      const b = el('button', { className: 'plain', textContent: 'Cancel' });
+      b.onclick = busy(b, async () => { await rpc('admin_revoke_grant', { gid: g.id }); await openPlayer(id); await log(); });
+      act.append(b);
+    }
+    tb.append(el('tr', {}, el('td', { textContent: g.id }), el('td', { textContent: g.kind === 'wipe' ? 'Save wipe' : `${g.amount < 0 ? 'Take ' : ''}${fmt(Math.abs(g.amount))} × ${kindName(g.kind)}` }),
+      el('td', { textContent: g.note || '' }), el('td', { textContent: when(g.created) }), el('td', { textContent: status }), act));
+  }
+  document.querySelectorAll('#players tr').forEach((tr) => tr.classList.remove('sel'));
+  $('player').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+// Oyuncunun bildirdiği durum ve işlem geçmişi
+const EV = { claim: 'Claimed production', deposit: 'Deposited', vault: 'Moved to vault', withdraw: 'Sent to wallet', tokenSpend: 'Spent DGN',
+  keyUsed: 'Opened wave with a key', forge: 'Forge upgrade', gemItem: 'Bought store item', keys: 'Keys changed', season: 'New season',
+  tomes: 'Got Skill Tomes', xp: 'Level up', teamGift: 'Team gift / take' };
+async function detail(id) {
+  const d = await rpc('admin_player_detail', { p: id, lim: 300 });
+  const s = d.snapshot, box = $('p-snap'); box.replaceChildren();
+  $('p-snap-at').textContent = d.snapshotAt ? `· ${when(d.snapshotAt)}` : '· no report yet';
+  if (s) {
+    const keys = Object.entries(s.keys || {}).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`).join(', ') || 'none';
+    const heroes = Object.entries(s.heroes || {}).map(([h, v]) => `${h}: gear ${v.up}, skills ${v.sk}`).join(' · ');
+    for (const [k, v] of [['Gold', fmt(s.gold)], ['DGN in game', fmt(s.dgn)], ['Unclaimed', fmt(s.uncollected)], ['In vault', fmt(s.vault)],
+      ['Deposited (all)', fmt(s.deposited)], ['Deposited (season)', fmt(s.seasonDeposited)], ['Withdrawn', fmt(s.withdrawn)], ['Spent in dungeon', fmt(s.spent)],
+      ['Fees', fmt(s.fees)], ['DGN / hour', fmt(s.rate)], ['Level', s.level], ['Best wave', `${s.seasonBest} (ever ${s.bestWave})`], ['Opened up to', s.opened],
+      ['Forge', s.forge], ['Tomes', s.tomes], ['Season', s.season], ['Keys', keys]])
+      box.append(el('div', { className: 'card' }, el('span', { className: 'muted', textContent: k }), el('b', { textContent: String(v ?? '—'), style: 'font-size:17px' })));
+    box.append(el('div', { className: 'card', style: 'grid-column:1/-1' }, el('span', { className: 'muted', textContent: `Heroes (selected: ${s.hero})` }), el('div', { textContent: heroes })));
+  }
+  const tb = $('p-events'); tb.replaceChildren();
+  if (!d.events.length) tb.append(el('tr', {}, el('td', { colSpan: 3, className: 'muted', textContent: 'No activity reported yet.' })));
+  for (const e of d.events) {
+    const x = e.data || {};
+    const det = e.kind === 'teamGift' ? `${x.amount < 0 ? 'took' : 'gave'} ${fmt(Math.abs(x.amount))} × ${kindName(x.kind)}`
+      : e.kind === 'keys' ? `${x.id}: now ${x.have}` : e.kind === 'keyUsed' ? `wave ${x.wave}` : e.kind === 'xp' ? `level ${x.level}`
+      : e.kind === 'forge' ? `level ${x.level}` : e.kind === 'gemItem' ? x.id : x.amount != null ? fmt(x.amount) : '';
+    tb.append(el('tr', {}, el('td', { textContent: when(e.at) }), el('td', { textContent: EV[e.kind] || e.kind }), el('td', { textContent: det })));
+  }
+}
+$('p-close').onclick = () => { current = null; $('player').classList.add('hidden'); };
+
+const after = async () => { await Promise.all([openPlayer(current.id), search($('q').value), overview(), log()]); };
+$('btn-grant').onclick = busy($('btn-grant'), async () => {
+  const kind = $('g-kind').value, n = amountOf('g-amount');
+  await rpc('admin_grant', { p: current.id, p_kind: kind, p_amount: n, p_note: $('g-note').value.trim() });
+  $('g-amount').value = ''; $('g-note').value = ''; await after();
+  return `${fmt(n)} × ${kindName(kind)} sent. ${current.nick} gets it the next time the game is open.`;
+}, $('p-msg'));
+$('btn-take').onclick = busy($('btn-take'), async () => {
+  const kind = $('g-kind').value, n = amountOf('g-amount');
+  if (!confirm(`Take ${fmt(n)} × ${kindName(kind)} away from ${current.nick}?`)) return '';
+  await rpc('admin_grant', { p: current.id, p_kind: kind, p_amount: -n, p_note: $('g-note').value.trim() || 'Removed by the team' });
+  $('g-amount').value = ''; $('g-note').value = ''; await after();
+  return `${fmt(n)} × ${kindName(kind)} will be removed the next time the game is open.`;
+}, $('p-msg'));
+$('btn-nerf').onclick = busy($('btn-nerf'), async () => {
+  const m = Number($('nf-mult').value);
+  await rpc('admin_set_nerf', { p: current.id, mult: m, reason: $('nf-reason').value.trim() });
+  $('nf-reason').value = ''; await after();
+  return m < 1 ? `Production set to ${Math.round(m * 100)}%.` : 'Production back to normal.';
+}, $('p-msg'));
+$('btn-ban').onclick = busy($('btn-ban'), async () => {
+  const h = Number($('b-hours').value);
+  if (!confirm(`Ban ${current.nick} ${h ? `for ${h} hours` : 'permanently'}?`)) return '';
+  await rpc('admin_ban', { p: current.id, hours: h, reason: $('b-reason').value.trim() });
+  $('b-reason').value = ''; await after();
+  return `${current.nick} is banned.`;
+}, $('p-msg'));
+$('btn-unban').onclick = busy($('btn-unban'), async () => { await rpc('admin_unban', { p: current.id }); await after(); return 'Ban lifted.'; }, $('p-msg'));
+$('btn-nick').onclick = busy($('btn-nick'), async () => {
+  const n = $('n-nick').value.trim();
+  if (!/^[A-Za-z0-9_]{3,16}$/.test(n)) throw new Error('3–16 letters, numbers or _.');
+  await rpc('admin_set_nick', { p: current.id, p_nick: n }); await after(); return `Renamed to ${n}.`;
+}, $('p-msg'));
+$('btn-reset').onclick = busy($('btn-reset'), async () => {
+  if (!confirm(`Reset ${current.nick}'s ranking (wave and DGN/h) to 0?`)) return '';
+  await rpc('admin_reset_stats', { p: current.id }); await after(); return 'Ranking stats reset.';
+}, $('p-msg'));
+$('btn-wipe').onclick = busy($('btn-wipe'), async () => {
+  const typed = prompt(`This erases ALL of ${current.nick}'s progress next time they play.\nType the nickname to confirm:`);
+  if (typed !== current.nick) return typed === null ? '' : 'Nickname did not match; nothing was done.';
+  await rpc('admin_grant', { p: current.id, p_kind: 'wipe', p_amount: 0, p_note: 'Save reset by the team' });
+  await rpc('admin_reset_stats', { p: current.id });
+  await after(); return 'Wipe queued. It runs the next time the player opens the game.';
+}, $('p-msg'));
+
+// ---------- kayıt ----------
+const ACT = { ban: 'Ban', unban: 'Unban', grant: 'Reward', grant_all: 'Reward everyone', revoke_grant: 'Cancel reward', set_nick: 'Rename',
+  reset_stats: 'Reset stats', notice: 'Notice', nerf: 'Nerf' };
+async function log() {
+  const rows = await rpc('admin_log_list', { lim: 100 });
+  const tb = $('log'); tb.replaceChildren();
+  if (!rows.length) tb.append(el('tr', {}, el('td', { colSpan: 5, className: 'muted', textContent: 'No admin actions yet.' })));
+  for (const r of rows) {
+    const d = r.detail || {};
+    const det = r.action === 'grant' || r.action === 'grant_all'
+      ? `${d.kind === 'wipe' ? 'Save wipe' : `${d.amount < 0 ? 'take ' : ''}${fmt(Math.abs(d.amount))} × ${kindName(d.kind)}`}${d.count != null ? ` → ${fmt(d.count)} players` : ''}${d.note ? ` · ${d.note}` : ''}`
+      : r.action === 'ban' ? `${d.hours ? `${d.hours} h` : 'permanent'}${d.reason ? ` · ${d.reason}` : ''}`
+      : r.action === 'nerf' ? `${Math.round((d.mult ?? 1) * 100)}%${d.reason ? ` · ${d.reason}` : ''}`
+      : r.action === 'set_nick' ? `→ ${d.nick}` : r.action === 'notice' ? (d.text || '(removed)') : r.action === 'revoke_grant' ? `#${d.id}` : '';
+    tb.append(el('tr', {}, el('td', { textContent: when(r.at) }), el('td', { textContent: r.admin || '' }),
+      el('td', { textContent: ACT[r.action] || r.action }), el('td', { textContent: r.nick || '' }), el('td', { textContent: det })));
+  }
+}
+
+// ---------- açılış ----------
+try { const raw = sessionStorage.getItem(SESSION); if (raw) session = JSON.parse(raw); } catch (e) { /* yok */ }
+if (session) start(); else logout();

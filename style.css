@@ -796,3 +796,13 @@ input[type=range]::-moz-range-thumb { border-radius: 2px; background: #c9a04e; b
 .screen.modal > .panel .item.ult-item .ult-note { color: #b0541c; }
 .screen.modal > .panel .stats-grid b, .screen.modal > .panel .stat-row b { color: #8a4f0c; }
 @media (max-width: 520px) { .screen.modal > .panel .item .btn { min-width: 78px; padding-left: 8px; padding-right: 8px; } }
+
+/* ---- ekip duyurusu / askıya alma şeridi (admin paneli) ---- */
+#notice-bar { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 60; max-width: min(640px, 92vw);
+  display: flex; align-items: center; gap: 10px; padding: 7px 10px 7px 14px; border-radius: 12px; pointer-events: auto;
+  font: 600 14px 'Fredoka', 'Trebuchet MS', sans-serif; color: #3b2814; background: linear-gradient(#e2cc9f, #d3b882);
+  border: 2px solid #3a210c; box-shadow: 0 0 0 3px #a8702f, 0 6px 16px rgba(0,0,0,0.6); }
+#notice-bar.ban { color: #fff; background: linear-gradient(#b8382c, #8a2018); box-shadow: 0 0 0 3px #4a0f0a, 0 6px 16px rgba(0,0,0,0.6); }
+#notice-bar .nb-x { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #7a1810; color: #fff; cursor: pointer;
+  background: linear-gradient(#ff8070, #d23a2e); font-size: 11px; line-height: 1; }
+#toast { z-index: 70; }

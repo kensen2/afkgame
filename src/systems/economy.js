@@ -132,6 +132,43 @@ export const Economy = {
     this.save(); this.emit();
   },
 
+  // Ekipten gelen ödül ya da emir (admin paneli → sunucu → my_status). Oyuncuya gösterilecek kısa metni döner.
+  // wipe: hile/hata ile bozulmuş kaydı tamamen sıfırlar (sadece ayarlar kalır).
+  applyGrant(g) {
+    // eksi miktar = ekip geri aldı (hile ile basılan anahtar vb.); hiçbir değer 0'ın altına inmez
+    const d = this.data, n = Math.trunc(Number(g?.amount) || 0), fmt = (x) => Math.abs(x).toLocaleString('en-US');
+    const sign = n < 0 ? '−' : '+', add = (v) => Math.max(0, (v || 0) + n), plural = (w) => (Math.abs(n) === 1 ? w : w + 's');
+    switch (g?.kind) {
+      case 'gold': d.gold = add(d.gold); this.save(); this.emit({ type: 'grant' }); return `${sign}${fmt(n)} gold`;
+      case 'dgn': d.balance = add(d.balance); if (n < 0) d.depositBal = Math.min(d.depositBal || 0, d.balance); this.save(); this.emit({ type: 'grant' }); return `${sign}${fmt(n)} DGN`;
+      case 'tomes': d.tomes = add(d.tomes); this.save(); this.emit({ type: 'grant' }); return `${sign}${fmt(n)} ${plural('Skill Tome')}`;
+      case 'wipe': { const settings = d.settings; this.data = freshSave(); this.data.settings = settings; this.save(); this.emit({ type: 'wipe' }); return 'wipe'; }
+      default: {
+        const k = String(g?.kind || '').startsWith('key_') && CONFIG.v5.keys.find((x) => x.id === g.kind.slice(4));
+        if (!k) return null;
+        d.keys = d.keys || {}; d.keys[k.id] = add(this.keyCount(k.id));
+        this.save(); this.emit({ type: 'keys', id: k.id });
+        return `${sign}${fmt(n)} ${plural(k.name)}`;
+      }
+    }
+  },
+  // Ekibin kişiye özel üretim çarpanı (admin paneli "nerf"). 1 = normal.
+  nerf: 1,
+  setNerf(m) {
+    m = Math.min(1, Math.max(0, Number(m)));
+    if (!Number.isFinite(m) || m === this.nerf) return;
+    this.accrue(); this.nerf = m; this.emit({ type: 'rateBonus', bonus: this.rateBonus });
+  },
+  // Sunucuya giden özet (admin panelinde görünür)
+  snapshot() {
+    const d = this.data, lv = {};
+    for (const [h, v] of Object.entries(d.heroes || {})) lv[h] = { up: Object.values(v.upgrades || {}).reduce((a, b) => a + b, 0), sk: (v.skills || []).join('/') };
+    return { gold: Math.floor(d.gold), dgn: Math.floor(d.balance || 0), uncollected: Math.floor(d.uncollected || 0), vault: Math.floor(d.vault || 0),
+      deposited: d.deposited || 0, seasonDeposited: d.seasonDeposited || 0, withdrawn: Math.floor(d.withdrawn || 0), spent: Math.floor(d.spentDungeon || 0),
+      fees: Math.floor(d.feesBurned || 0), keys: d.keys || {}, opened: d.opened, seasonBest: d.seasonBest || 0, bestWave: d.bestWave || 0,
+      level: d.level, forge: d.forge || 0, tomes: d.tomes || 0, season: d.season, rate: Math.round(this.ratePerHour()), heroes: lv, hero: d.selectedHero };
+  },
+
   on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   emit(evt = {}) { for (const fn of listeners) fn(this.data, evt); },
 
@@ -164,7 +201,7 @@ export const Economy = {
   },
   // Üretim: sezonun en iyi dalgası × (1 + clan bonusu). Bonus ilk 5 clana girince hemen başlar.
   baseRatePerHour() { return F.rateAt(this.data.seasonBest || 0); },
-  ratePerHour() { return this.baseRatePerHour() * (1 + (this.rateBonus || 0)); },
+  ratePerHour() { return this.baseRatePerHour() * (1 + (this.rateBonus || 0)) * (this.nerf ?? 1); },
   rateBonus: 0,
   // Clan bonusu değişince önce eski hızla biriken kısmı yaz, sonra yeni hıza geç
   setRateBonus(b) {

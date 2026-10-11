@@ -11,7 +11,7 @@ import { validateNick, validateClan } from '../systems/clan-rules.js';
 
 const SESSION_KEY = 'afk_sb_session_v1';
 const KNOWN = new Set(['need_nick', 'already_in_clan', 'not_in_clan', 'clan_full', 'too_many_requests', 'already_requested',
-  'no_permission', 'officers_full', 'leader_must_transfer', 'not_found', 'nick_taken', 'nick_reserved', 'clan_name_taken', 'clan_tag_taken']);
+  'no_permission', 'officers_full', 'leader_must_transfer', 'not_found', 'nick_taken', 'nick_reserved', 'clan_name_taken', 'clan_tag_taken', 'banned']);
 
 export class SupabaseBackend {
   constructor({ url, key, timeoutMs = 8000 } = CONFIG.server) {
@@ -152,6 +152,12 @@ export class SupabaseBackend {
   setOfficer(pid, on) { return this._act('set_officer', { c: this.me.clanId, p: pid, on_: !!on }); }
   kick(pid) { return this._act('kick_member', { c: this.me.clanId, p: pid }); }
   transferLeader(pid) { return this._act('transfer_leader', { c: this.me.clanId, p: pid }); }
+  // Ban, duyuru ve ekipten gelen ödüller (ödüller sunucuda "alındı" işaretlenir; oyun hemen kaydına ekler)
+  async status() {
+    const r = await this._rpc('my_status');
+    return r.ok ? { ok: true, ...r.data } : r;
+  }
+  async report(snap, events) { return this._rpc('report_state', { p_snap: snap, p_events: events }); }
   disband() { return this._act('disband_clan', { c: this.me.clanId }); }
   devSetMyRole() { return Promise.resolve({ ok: false, error: 'not_found' }); }
 

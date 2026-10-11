@@ -119,6 +119,15 @@ CLAUDE.md                      kurallar ve ekonomi değişmezleri (her oturumda 
 - **Ağ:** bulut ortamından `*.supabase.co`'ya doğrudan erişim yok (proxy 403). Uçtan uca test sahibinin bilgisayarında ya da canlı sitede yapılır. SQL testleri `execute_sql` ile, sahte `auth.users` + `request.jwt.claims` ve sonunda `rollback` ile yapılabilir.
 - **Anahtar:** sadece publishable anahtar `CONFIG.server` içinde. `service_role` asla koda girmez.
 
+### Admin paneli (11 Ekim 2026)
+- Adres: `/admin.html` (canlıda https://afkgame.vercel.app/admin.html, yerelde baslat.bat açıkken localhost'ta). Oyunda linki yok.
+- Giriş: Supabase'de oluşturulan e-posta/şifre hesabı + `admins` tablosunda kaydı olmalı. Yetki sunucuda kontrol edilir.
+- Yapabildikleri: oyuncu arama, ban/ban kaldırma, ödül verme ve geri alma (altın, DGN, tome, her anahtar türü), herkese ödül,
+  üretim nerf'ü (%75/50/25/0), nick değiştirme, sıralama sıfırlama, kayıt silme (wipe), oyun içi duyuru, oyuncunun bildirdiği
+  durum (altın, DGN, yatırılan, çekilen, anahtarlar, seviye…) ve işlem geçmişi, tüm admin işlemlerinin kaydı.
+- Sınır: bakiye/envanter hâlâ oyuncunun tarayıcısında; ödül ve geri alma oyun açıldığında uygulanır, oyuncunun bildirdiği
+  durum sahte olabilir. Kalıcı çözüm Faz 2 (bakiyeleri sunucuya taşımak). Sohbet olmadığı için "mute" yok.
+
 ## 7. Açık işler ve riskler (öncelik sırasıyla)
 
 1. **Ekonomiyi sunucuya taşı.** DGN bakiyesi, üretim, dalga ilerlemesi, anahtarlar, havuz sayımı, yatıran sınırı, çekimler ve clan kurma ücreti şu an tarayıcıda ve hilelenebilir. Token canlıya çıkmadan önce şart.
