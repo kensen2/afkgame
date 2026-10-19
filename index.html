@@ -28,6 +28,10 @@
     </div>
     <div id="hud-stats" class="hud-stats panel hidden"></div>
   </div>
+  <button id="hud-price" class="hud-price panel" title="DGN price (test). The game uses the 10-minute average (oracle).">
+    <span class="hp-sym">◈ DGN</span><b id="hp-spot">$0.000000</b><span id="hp-chg" class="hp-chg">0.0%</span>
+    <span class="hp-sub">MC <b id="hp-mc">$0</b> · Oracle <b id="hp-twap">$0</b></span>
+  </button>
   <div class="hud-center">
     <div class="wave-title"><span id="hud-floor">Floor 1</span> · <span id="hud-wave">Wave 1</span></div>
     <div id="hud-enemies" class="wave-sub">—</div>
@@ -67,6 +71,12 @@
   <div class="intro-torch"></div>
   <div class="intro-text"><div class="intro-sub" id="intro-sub"></div><div class="intro-line" id="intro-line"></div></div>
   <div class="intro-skip">click to skip</div>
+</div>
+<div id="story" class="story hidden" aria-live="polite">
+  <div class="story-bar top"></div><div class="story-bar bottom"></div>
+  <div class="story-cap" id="story-cap"></div>
+  <div class="story-skip">click to skip</div>
+  <div class="story-fade"></div>
 </div>
 <div id="banner" class="hidden"></div>
 <div id="toast" class="hidden"></div>
@@ -260,6 +270,11 @@
       <div class="set-label"><span>🌙</span> Offline gold</div>
       <button class="toggle" id="btn-set-offline" aria-pressed="true"><span></span></button>
       <div class="set-note">Keep earning gold for up to 12 hours while away</div>
+    </div>
+    <div class="set-row">
+      <div class="set-label"><span>📜</span> Story scenes</div>
+      <button class="toggle" id="btn-set-story" aria-pressed="true"><span></span></button>
+      <div class="set-note">Short scenes that tell Lyra's story (each plays once)</div>
     </div>
     <div class="set-row">
       <div class="set-label"><span>♻️</span> Reset progress</div>

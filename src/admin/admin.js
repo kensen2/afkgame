@@ -160,7 +160,8 @@ async function openPlayer(id) {
 // Oyuncunun bildirdiği durum ve işlem geçmişi
 const EV = { claim: 'Claimed production', deposit: 'Deposited', vault: 'Moved to vault', withdraw: 'Sent to wallet', tokenSpend: 'Spent DGN',
   keyUsed: 'Opened wave with a key', forge: 'Forge upgrade', gemItem: 'Bought store item', keys: 'Keys changed', season: 'New season',
-  tomes: 'Got Skill Tomes', xp: 'Level up', teamGift: 'Team gift / take' };
+  tomes: 'Got Skill Tomes', xp: 'Level up', teamGift: 'Team gift / take', upgrade: 'Gear upgrade (gold)', skill: 'Skill upgrade',
+  revive: 'Revived with DGN', bestWave: 'New best wave' };
 async function detail(id) {
   const d = await rpc('admin_player_detail', { p: id, lim: 300 });
   const s = d.snapshot, box = $('p-snap'); box.replaceChildren();
@@ -181,7 +182,10 @@ async function detail(id) {
     const x = e.data || {};
     const det = e.kind === 'teamGift' ? `${x.amount < 0 ? 'took' : 'gave'} ${fmt(Math.abs(x.amount))} × ${kindName(x.kind)}`
       : e.kind === 'keys' ? `${x.id}: now ${x.have}` : e.kind === 'keyUsed' ? `wave ${x.wave}` : e.kind === 'xp' ? `level ${x.level}`
-      : e.kind === 'forge' ? `level ${x.level}` : e.kind === 'gemItem' ? x.id : x.amount != null ? fmt(x.amount) : '';
+      : e.kind === 'forge' ? `level ${x.level}` : e.kind === 'gemItem' ? x.id
+      : e.kind === 'upgrade' ? `${x.hero} · ${x.slot} → Lv ${x.level}${x.times > 1 ? ` (${x.times} times)` : ''}`
+      : e.kind === 'skill' ? `${x.hero} · skill ${Number(x.skill) + 1} → Lv ${x.level}${x.times > 1 ? ` (${x.times} times)` : ''}`
+      : e.kind === 'revive' || e.kind === 'bestWave' ? `wave ${x.wave}` : x.amount != null ? fmt(x.amount) : '';
     tb.append(el('tr', {}, el('td', { textContent: when(e.at) }), el('td', { textContent: EV[e.kind] || e.kind }), el('td', { textContent: det })));
   }
 }

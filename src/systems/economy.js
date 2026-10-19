@@ -49,7 +49,8 @@ function freshSave() {
     totalKills: 0,
     selectedHero: 'warrior',
     heroes: { warrior: freshHero(), lion: freshHero(), mage: freshHero() },
-    settings: { auto: true, speed: 1, sound: true, music: true, musicVol: 0.1, sfxVol: 0.1, audioVer: 2, offline: true },
+    settings: { auto: true, speed: 1, sound: true, music: true, musicVol: 0.1, sfxVol: 0.1, audioVer: 2, offline: true, story: true },
+    storySeen: [],       // görülmüş hikaye sahneleri (her sahne bir kez)
     lastSeen: 0,         // son görülme zamanı (çevrimdışı kazanç için)
     offlineTotal: 0,
   };
@@ -126,7 +127,7 @@ export const Economy = {
       'seasonBest', 'lastAccrue', 'idlePass', 'clanBonus',
       // DGN ile alınanlar da kalır: Forge, Gold Rush, Skill Tome. Tome ile birlikte "yenilmiş boss" listesi de
       // kalır; yoksa sıfırlayıp boss'ları tekrar yenerek bedava Tome toplanabilirdi.
-      'forge', 'goldRushUntil', 'tomes', 'bossesBeaten', 'chestsTaken']) keep[k] = d[k];
+      'forge', 'goldRushUntil', 'tomes', 'bossesBeaten', 'chestsTaken', 'storySeen']) keep[k] = d[k];
     this.data = freshSave();
     Object.assign(this.data, keep);
     this.save(); this.emit();
@@ -468,7 +469,7 @@ export const Economy = {
   revive(deathWave) {
     if (!this.spendTokens(CONFIG.tokenShop.revive.price)) return false;
     this.data.resumeWave = Math.max(1, Math.min(CONFIG.wave.maxWave, deathWave));
-    this.save();
+    this.save(); this.emit({ type: 'revive', wave: deathWave });
     return true;
   },
 
@@ -567,7 +568,7 @@ export const Economy = {
     if (w > this.data.bestWave) this.data.bestWave = w;
     // üretim sadece bu sezon açılmış dalgalara kadar sayılır (sezon devrinde eski dalga yeni sezona taşınmasın)
     const sw = Math.min(w, Math.max(CONFIG.v5.freeMaxWave, this.data.opened || 0));
-    if (sw > (this.data.seasonBest || 0)) this.data.seasonBest = sw;
+    if (sw > (this.data.seasonBest || 0)) { this.data.seasonBest = sw; this.emit({ type: 'bestWave', wave: sw }); }
     // çıkıp girince kaldığın dalgadan devam et
     if (w >= 1 && w < CONFIG.wave.maxWave) this.data.resumeWave = Math.min(w + 1, this.resumeCap());
 

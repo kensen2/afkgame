@@ -62,5 +62,8 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
   `grants` and are applied by the game via `my_status` (balances still live in the player's browser until Phase 2).
   Bans hide players from rankings and block nick/clan/stats; `player_limits.nerf` scales production. The game reports a
   state snapshot + economy events every minute (`report_state`); these are player-reported and can be faked.
+- Price oracle (test, `src/systems/oracle.js`): fake DGN price, market cap 100K–200K $ (1B supply), HUD chip top-left.
+  All USD → DGN conversions (`CONFIG.token.usdPerToken`: key packs, single keys, USD displays) use the 10-minute TWAP,
+  never the spot price. Hourly production stays fixed in DGN (`designUsdPerToken` 0.0001). Live: spot from the DEX, TWAP on the server.
 - "Burned" only for on-chain burns; in-game spending is "Spent in the dungeon".
 - The creator does not trade the token. Never propose wash trading, volume bots or price support.

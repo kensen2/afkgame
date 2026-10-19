@@ -45,14 +45,23 @@ export const Social = {
   // Panelde görünen işlem geçmişi: önemli ekonomi olayları kuyruğa, dakikada bir sunucuya
   _events: [],
   _noteEvent(e) {
-    const KEEP = { claim: 'amount', deposit: 'amount', vault: 'amount', withdraw: 'amount', tokenSpend: 'amount', keyUsed: 'wave',
-      forge: null, gemItem: 'id', keys: 'id', season: null, tomes: 'amount', xp: null };
-    if (!e?.type || !(e.type in KEEP) || (e.type === 'xp' && !e.leveled)) return;
-    const data = {};
+    const KEEP = new Set(['claim', 'deposit', 'vault', 'withdraw', 'tokenSpend', 'keyUsed', 'forge', 'gemItem', 'keys', 'season', 'tomes',
+      'xp', 'upgrade', 'skill', 'revive', 'bestWave']);
+    if (!e?.type || !KEEP.has(e.type) || (e.type === 'xp' && !e.leveled)) return;
+    const d = Economy.data, data = {};
     for (const k of ['amount', 'id', 'wave']) if (e[k] != null) data[k] = typeof e[k] === 'number' ? Math.round(e[k]) : e[k];
     if (e.type === 'keys' && e.id) data.have = Economy.keyCount(e.id);
-    if (e.type === 'forge') data.level = Economy.data.forge;
-    if (e.type === 'xp') data.level = Economy.data.level;
+    if (e.type === 'forge') data.level = d.forge;
+    if (e.type === 'xp') data.level = d.level;
+    if (e.type === 'upgrade') Object.assign(data, { hero: e.heroId, slot: e.key, level: Economy.upgradeLevel(e.heroId, e.key) });
+    if (e.type === 'skill') Object.assign(data, { hero: e.heroId, skill: e.i, level: Economy.skillLevel(e.heroId, e.i) });
+    // art arda aynı ekipmanı/yeteneği yükseltmek tek satır olsun (seviye güncellenir, kaç kez basıldığı sayılır)
+    const last = this._events[this._events.length - 1];
+    if (last && last.kind === e.type && (e.type === 'upgrade' || e.type === 'skill') && last.data.hero === data.hero
+      && last.data.slot === data.slot && last.data.skill === data.skill) {
+      last.data.level = data.level; last.data.times = (last.data.times || 1) + 1; last.at = Date.now();
+      return;
+    }
     this._events.push({ kind: e.type, data, at: Date.now() });
     if (this._events.length > 200) this._events.splice(0, this._events.length - 200);
   },

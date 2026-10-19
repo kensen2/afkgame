@@ -5,8 +5,11 @@ import { UI } from './ui/ui.js';
 import { Game } from './game.js';
 import { Social } from './systems/social.js';
 import { loadSounds, Audio } from './core/audio.js';
+import { Oracle } from './systems/oracle.js';
 
 async function boot() {
+  Oracle.start();      // test fiyatı: anahtar fiyatları ve USD gösterimleri bu fiyatın TWAP'ını kullanır
+  window.__oracle = Oracle;
   Economy.load();
   Economy.lastOfflineDgn = Economy.accrue().produced;   // sezon kontrolü + kapalıyken biriken üretim (en fazla 12 saat)
   // Menü müziği siteye girer girmez başlasın (kayıtlı ses ayarlarıyla)

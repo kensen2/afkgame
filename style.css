@@ -806,3 +806,37 @@ input[type=range]::-moz-range-thumb { border-radius: 2px; background: #c9a04e; b
 #notice-bar .nb-x { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #7a1810; color: #fff; cursor: pointer;
   background: linear-gradient(#ff8070, #d23a2e); font-size: 11px; line-height: 1; }
 #toast { z-index: 70; }
+
+/* ---- hikaye sahneleri: sinema şeritleri + alt yazı (opaklıklar story.js'te sahne zamanından hesaplanır) ---- */
+.story { position: fixed; inset: 0; z-index: 45; pointer-events: auto; cursor: pointer; }
+.story-bar { position: absolute; left: 0; right: 0; height: 11vh; background: #000; }
+.story-bar.top { top: 0; transform: translateY(-100%); } .story-bar.bottom { bottom: 0; transform: translateY(100%); }
+.story-fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+.story-cap { position: absolute; left: 50%; bottom: calc(11vh + 18px); transform: translateX(-50%); width: min(760px, 92vw); text-align: center; }
+.story-line { position: absolute; left: 0; right: 0; bottom: 0; opacity: 0;
+  font: 600 clamp(16px, 2.3vw, 24px) 'Fredoka', 'Trebuchet MS', sans-serif; color: #f1e4c4; line-height: 1.35;
+  text-shadow: 0 2px 0 #000, 0 0 18px rgba(0,0,0,0.95); }
+.story-line.quote { font: italic 600 clamp(18px, 2.6vw, 27px) Georgia, 'Times New Roman', serif; color: #ffc27a;
+  text-shadow: 0 2px 0 #000, 0 0 16px rgba(255,110,30,0.55); }
+.story-skip { position: absolute; right: 16px; bottom: calc(11vh - 30px); font-size: 12px; color: #8a7d66; letter-spacing: .05em; }
+body.cine #hud, body.cine #toast, body.cine #banner, body.cine #notice-bar { visibility: hidden; }
+@media (max-width: 520px) { .story-skip { right: 10px; } .story-cap { bottom: calc(11vh + 12px); } }
+.story-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+@media (max-aspect-ratio: 1/1) { .story-video { object-fit: contain; } }
+
+/* ---------- DGN test fiyatı (sol üst, oracle) ---------- */
+.hud-price { position: absolute; left: 12px; top: 104px; display: grid; grid-template-columns: auto auto auto; column-gap: 8px; align-items: baseline;
+  padding: 6px 10px; border: 0; cursor: pointer; text-align: left; color: #e8dcc4; font-family: 'Alegreya Sans', sans-serif; font-size: 13px;
+  background: var(--grain), linear-gradient(#26211b, #171411);
+  box-shadow: 0 0 0 1px var(--iron-hi), 0 0 0 3px var(--iron), 0 0 0 4px #0c0a08, inset 0 0 0 1px rgba(227,191,116,0.18), 0 6px 14px rgba(0,0,0,0.6); }
+.hud-price:hover { filter: brightness(1.2); }
+.hud-price:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.hud-price .hp-sym { color: var(--gold); font-weight: 800; }
+.hud-price #hp-spot { font-variant-numeric: tabular-nums; font-size: 14px; }
+.hud-price .hp-chg { font-weight: 800; font-variant-numeric: tabular-nums; }
+.hud-price .hp-chg.up { color: #7fdc8a; } .hud-price .hp-chg.down { color: #ff6b6b; }
+.hud-price .hp-sub { grid-column: 1 / -1; font-size: 11px; color: #a89c84; }
+.hud-price .hp-sub b { color: #e8dcc4; font-variant-numeric: tabular-nums; }
+.hud-price.warn { box-shadow: 0 0 0 1px #ff8a3c, 0 0 0 3px var(--iron), 0 0 0 4px #0c0a08, 0 6px 14px rgba(0,0,0,0.6); }
+.market .mrow b.warn { color: #ff8a3c; }
+@media (max-width: 520px) { .hud-price { font-size: 11px; padding: 4px 8px; column-gap: 6px; } .hud-price #hp-spot { font-size: 12px; } .hud-price .hp-sub { font-size: 10px; } }

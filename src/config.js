@@ -134,8 +134,16 @@ export const CONFIG = {
   },
   token: {
     symbol: 'DGN',
-    usdPerToken: 0.0001,          // demo kuru: 10.000 DGN = $1 (canlıda DEX fiyatı okunacak)
+    designUsdPerToken: 0.0001,    // oyunun ayarlandığı kur: 10.000 DGN = $1 (üretim tablosu bununla sabit)
+    live: 0,                      // oracle fiyatı (src/systems/oracle.js doldurur; 0 = oracle çalışmıyor, ör. node sim)
+    // USD → DGN dönüşümlerinin kullandığı fiyat: oracle varsa TWAP, yoksa tasarım kuru
+    get usdPerToken() { return this.live > 0 ? this.live : this.designUsdPerToken; },
     testMode: true,               // Faz 1: gerçek token yok; yatırma "demo token" verir
+    // Test oracle'ı: sahte piyasa fiyatı. Market cap mcapMin–mcapMax arasında dalgalanır.
+    // Oyun anlık fiyatı değil, son twapMinutes dakikanın ortalamasını (TWAP) kullanır (canlıda 60 dk olacak).
+    // clamp: anlık fiyat TWAP'tan bu kadar saparsa "fiyat hızlı oynuyor" uyarısı çıkar.
+    oracle: { supply: 1e9, mcapMin: 100000, mcapMax: 200000, tickSec: 5, twapMinutes: 10, clamp: 0.20,
+      revert: 0.01, vol: 0.012, jumpChance: 0.01, jump: 0.08 },
   },
   v5: {
     seasonDays: 10,
@@ -394,6 +402,23 @@ export const CONFIG = {
       banners: ['banner_triple_red', 'banner_shield_red'],
       deco: [['sword_shield_broken', 1], ['candle_triple', 1.2], ['chest_gold', 1]] },
   ],
+
+  // Hikaye: "The Ember Watch" (docs/HIKAYE_PROMPT.md). Her sahne oyuncu başına bir kez oynar (Economy.data.storySeen).
+  // Metinler burada; sahnelerin kamera/sahne kurgusu src/ui/story.js içinde. at: sahnenin kaçıncı saniyesinde çıkar.
+  story: {
+    intro: {
+      video: 'assets/story/intro',      // .webm + .mp4 (tools/film/intro.js ile oyun motorunda çekildi)
+      lines: [
+        { at: 0.8, text: 'Captain Lyra Vane held the last gate of the Ember Watch.' },
+        { at: 3.9, text: 'Then the dead came up through the stone.' },
+        { at: 7.0, text: 'Malakor came for her Sigil.' },
+        { at: 10.0, text: 'He broke it into eight keys and dragged her into the deep.' },
+        { at: 13.7, text: 'Now you stand where she fell.' },
+        { at: 15.3, text: 'You never were good at following orders.' },
+      ],
+      sounds: [[0.3, 'torchLight'], [3.7, 'bones'], [4.7, 'swing'], [5.0, 'hit'], [7.0, 'roar'], [8.45, 'boulderHit'], [9.9, 'ultCharge'], [11.3, 'steps'], [14.2, 'torchLight']],
+    },
+  },
 };
 
 // ------- Yardımcı formüller (oyun ve simülasyon ortak kullanır) -------
@@ -439,6 +464,7 @@ export const F = {
   keyTier: (w) => CONFIG.v5.keys.find((k) => w >= k.from && w <= k.to) || null,
   keyPackTokens: (k) => Math.round(k.usd / CONFIG.token.usdPerToken),
   // Dalgaya göre saatlik üretim (DGN/saat). 1–20 yumuşak eğri; 21+ her kademe paketini ~48 saatte geri üretir.
+  // Üretim tasarım kuruyla (0,0001 $) sabittir; oracle fiyatı oynadıkça DGN üretimi değişmez.
   rateAt(w) {
     const R = CONFIG.v5.rate;
     if (w <= 0) return 0;
@@ -446,7 +472,7 @@ export const F = {
     let r = R.keyBase;
     for (const k of CONFIG.v5.keys) {
       if (w < k.from) break;
-      const perWave = F.keyPackTokens(k) / R.returnHours / (k.to - k.from + 1);
+      const perWave = Math.round(k.usd / CONFIG.token.designUsdPerToken) / R.returnHours / (k.to - k.from + 1);
       r += perWave * (Math.min(w, k.to) - k.from + 1);
     }
     return r;

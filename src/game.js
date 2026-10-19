@@ -478,6 +478,8 @@ export class Game {
   frame() {
     let dt = Math.min(0.05, this.clock.getDelta());
     this._lastRenderDt = dt;
+    // hikaye sahnesi: oyun durur, kamera sahnenin elinde (src/ui/story.js)
+    if (this.cine) { this.cine.tick(dt); if (this.cine && !this.cine.hide) this.renderer.render(this.scene, this.camera); return; }
     if (this.paused || !this.hero) { this.render(); return; }
     if (this.hitStopT > 0) { this.hitStopT -= dt; this.render(); this.ui.updateHud(this); return; }
     dt *= Economy.data.settings.speed || 1;

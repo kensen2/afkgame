@@ -7,6 +7,8 @@ import { Audio } from '../core/audio.js';
 import { Social } from '../systems/social.js';
 import { SocialUI } from './social-ui.js';
 import { Intro } from './intro.js';
+import { Story } from './story.js';
+import { Oracle } from '../systems/oracle.js';
 import { skillIcon, skillTint, gearIcon, fillIcons, ico } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
@@ -113,6 +115,7 @@ export class UI {
     click('btn-settings-close', () => this.closeSettings());
     click('btn-set-auto', () => this.toggleAuto());
     click('btn-set-offline', () => { Economy.data.settings.offline = !Economy.data.settings.offline; Economy.save(); this.syncButtons(); });
+    click('btn-set-story', () => { Economy.data.settings.story = Economy.data.settings.story === false; Economy.save(); this.syncButtons(); });
     click('btn-offline-collect', () => this.closeOffline());
     document.querySelectorAll('#seg-speed button').forEach((b) => b.addEventListener('click', () => {
       Audio.play('click'); Economy.data.settings.speed = +b.dataset.v; Economy.save(); this.syncButtons();
@@ -218,6 +221,10 @@ export class UI {
     window.addEventListener('pagehide', () => Economy.save());
     // oyun açıkken son görülme zamanını düzenli güncelle
     setInterval(() => { if (!document.hidden) { Economy.accrue(); this.updateGold(); Economy.save(); } }, 15000);
+    // test fiyatı: sol üst fiyat kutusu, cüzdandaki oracle kutusu ve anahtar fiyatları her adımda yenilenir
+    click('hud-price', () => this.openWallet());
+    Oracle.on(() => this.onPrice());
+    window.addEventListener('resize', () => this.placePrice());
     Economy.on((d, evt) => {
       this.updateGold();
       if (evt?.type === 'season') {
@@ -312,6 +319,7 @@ export class UI {
       $('screen-select').classList.add('hidden');
       this.game.startRun(this.selected);
       this.game.zoom = 0.5;            // kamera yakından başlar, yavaşça geri çekilir
+      Story.play('intro', this.game);  // ilk oyunda bir kez: Lyra'nın son mesajı
     });
   }
 
@@ -329,6 +337,7 @@ export class UI {
   onRunStart(game) {
     this.hideGate();
     $('hud').classList.remove('hidden');
+    requestAnimationFrame(() => this.onPrice());   // fiyat kutusu yerini HUD görününce bulsun
     this.updateRush();
     const h = game.hero;
     $('hud-hero').textContent = h.def.name;
@@ -436,6 +445,55 @@ export class UI {
     $('hud-enemies').textContent = txt;
   }
 
+  // ---------- Test fiyatı / oracle ----------
+  onPrice() {
+    if (document.hidden) return;
+    const sp = Oracle.spot(), ch = Oracle.change(10);
+    const p6 = (x) => '$' + x.toFixed(6);
+    $('hp-spot').textContent = p6(sp);
+    const c = $('hp-chg');
+    c.textContent = `${ch >= 0 ? '▲' : '▼'} ${(Math.abs(ch) * 100).toFixed(1)}%`;
+    c.classList.toggle('up', ch >= 0); c.classList.toggle('down', ch < 0);
+    $('hp-mc').textContent = '$' + fmt(Oracle.mcap());
+    $('hp-twap').textContent = p6(Oracle.twap());
+    $('hud-price').classList.toggle('warn', Oracle.unstable());
+    this.placePrice();
+    const box = document.getElementById('w-oracle');
+    if (box && !$('screen-wallet').classList.contains('hidden')) box.innerHTML = this.oracleBoxHtml();
+    const mk = document.getElementById('w-mprice');
+    if (mk) mk.textContent = p6(sp);
+    // anahtar sekmesi açıksa fiyatlar yeni oracle değeriyle (kaydırma yeri korunur)
+    if (this.shopTab === 'keys' && !$('screen-shop').classList.contains('hidden')) {
+      const body = $('shop-body'), y = body.scrollTop; this.renderShop(); body.scrollTop = y;
+    }
+  }
+  // fiyat kutusu sol üstteki kahraman kutusunun hemen altında durur
+  placePrice() {
+    const l = document.querySelector('.hud-left'), el = $('hud-price');
+    if (!l || !el) return;
+    el.style.top = `${l.offsetTop + l.offsetHeight + 6}px`;
+    // telefonda dalga başlığı da sol üstte; fiyat kutusunun altına insin
+    const c = document.querySelector('.hud-center');
+    if (c) c.style.top = window.innerWidth <= 520 && el.offsetHeight ? `${el.offsetTop + el.offsetHeight + 6}px` : '';
+  }
+  oracleBoxHtml() {
+    const sym = CONFIG.token.symbol, o = CONFIG.token.oracle, tw = Oracle.twap(), dev = Oracle.deviation();
+    const n = (t) => Math.floor(t).toLocaleString('en-US'), p6 = (x) => '$' + x.toFixed(6);
+    const keyRows = CONFIG.v5.keys.slice(0, 4).map((k) => `<span>${k.name} pack ($${k.usd})</span><b>◈ ${n(F.keyPackTokens(k))}</b>`).join('');
+    const b = CONFIG.v5.keys[0];
+    return `<div class="mrow">
+        <span>Spot price</span><b>${p6(Oracle.spot())}</b>
+        <span>Oracle (${o.twapMinutes} min avg)</span><b>${p6(tw)}</b>
+        <span>Market cap</span><b>$${n(Oracle.mcap())}</b>
+        <span>Spot vs oracle</span><b class="${Math.abs(dev) > o.clamp ? 'warn' : ''}">${dev >= 0 ? '+' : ''}${(dev * 100).toFixed(1)}%</b>
+        <span>$1 =</span><b>◈ ${n(F.tokensForUsd(1))}</b>
+        ${keyRows}
+        <span>Single ${b.name}</span><b>◈ ${n(Economy.keySinglePrice(b))}</b>
+        <span>Your balance</span><b>$${F.usd(Economy.tokens()).toFixed(2)}</b>
+      </div>
+      <small>${Oracle.unstable() ? `<b>The price is moving fast.</b> The game keeps using the ${o.twapMinutes}-minute average, so a quick pump or dump does not change key prices much. ` : ''}Key prices are set in USD and converted with the oracle price, not the spot price. Test price: market cap moves between $${n(o.mcapMin)} and $${n(o.mcapMax)}.</small>`;
+  }
+
   updateGold() {
     $('hud-gold').textContent = fmt(Economy.data.gold);
     $('hud-gems').textContent = fmt(Economy.tokens());
@@ -500,6 +558,7 @@ export class UI {
     $('btn-sound').setAttribute('aria-pressed', String(!!s.sound));
     $('btn-set-auto').setAttribute('aria-pressed', String(!!s.auto));
     $('btn-set-offline').setAttribute('aria-pressed', String(s.offline !== false));
+    $('btn-set-story').setAttribute('aria-pressed', String(s.story !== false));
     for (const [id, val, vid, on] of [['rng-music', mv, 'val-music', s.music], ['rng-sfx', sv, 'val-sfx', s.sound]]) {
       const el = $(id);
       el.value = Math.round(val * 100); el.disabled = !on;
@@ -770,7 +829,7 @@ export class UI {
     }
     const note = document.createElement('div');
     note.className = 'hint'; note.style.gridColumn = '1 / -1';
-    note.textContent = `Packs (10 keys) are bought with DGN you deposited. Single keys cost ${CONFIG.v5.singleKeyMult}× more per key and can be bought with DGN you earned in the game. Prices are set in USD and converted at the current ${sym} price.`;
+    note.textContent = `Packs (10 keys) are bought with DGN you deposited. Single keys cost ${CONFIG.v5.singleKeyMult}× more per key and can be bought with DGN you earned in the game. Prices are set in USD and converted with the ${sym} oracle price (the ${CONFIG.token.oracle.twapMinutes}-minute average), so they move with the market.`;
     body.appendChild(note);
   }
 
@@ -855,10 +914,11 @@ export class UI {
         <div class="wbox"><span>Spent in the dungeon</span><b>◈ ${n(V.demo.spentInDungeon + d.spentDungeon)}</b><small>realm total</small></div>
         <div class="wbox"><span>Sent to wallets</span><b>◈ ${n(d.withdrawn)}</b><small>you</small></div>
       </div>
+      <div class="wbox market"><span class="wlabel">${sym} price oracle${CONFIG.token.testMode ? ' (test)' : ''}</span><div id="w-oracle">${this.oracleBoxHtml()}</div></div>
       <div class="wbox market"><span class="wlabel">${sym} market</span>
-        <div class="mrow"><span>Price</span><b>$${M.priceUsd.toFixed(6)}</b><span>Volume 24h</span><b>$${n(M.volume24h)}</b><span>Liquidity</span><b>$${n(M.liquidity)}</b><span>Holders</span><b>${n(M.holders)}</b></div>
+        <div class="mrow"><span>Price</span><b id="w-mprice">$${Oracle.spot().toFixed(6)}</b><span>Volume 24h</span><b>$${n(M.volume24h)}</b><span>Liquidity</span><b>$${n(M.liquidity)}</b><span>Holders</span><b>${n(M.holders)}</b></div>
         <button class="btn small" disabled>Get ${sym} · launching on Robinhood Chain</button></div>
-      ${DEV ? '<div class="wrow"><button class="btn small" id="w-day">+1 day (test)</button><button class="btn small" id="w-sim">Simulate wallet send (test)</button><button class="btn small" id="w-wal">+25K in wallet (test)</button><button class="btn small" id="w-hr">+2 hours (test)</button></div>' : ''}`;
+      ${DEV ? '<div class="wrow"><button class="btn small" id="w-day">+1 day (test)</button><button class="btn small" id="w-sim">Simulate wallet send (test)</button><button class="btn small" id="w-wal">+25K in wallet (test)</button><button class="btn small" id="w-hr">+2 hours (test)</button><button class="btn small" id="w-pump">Pump +30% (test)</button><button class="btn small" id="w-dump">Dump −30% (test)</button></div>' : ''}`;
     const q = (id) => body.querySelector('#' + id);
     q('w-claim').addEventListener('click', () => { const c = Economy.claim(); if (c) Audio.play('coin'); this.renderWallet(); });
     q('w-vault').addEventListener('click', () => {
@@ -883,6 +943,8 @@ export class UI {
     const shift = (ms) => { const d2 = Economy.data; d2.vaultMoves = (d2.vaultMoves || []).map((t) => t - ms); d2.walletHist = (d2.walletHist || []).map((h) => ({ ...h, t: h.t - ms })); Economy.save(); };
     q('w-wal')?.addEventListener('click', () => { Economy.setWallet((Economy.data.walletBal || 0) + 25000); Economy.save(); this.renderWallet(); });
     q('w-hr')?.addEventListener('click', () => { shift(2 * 3600000); this.renderWallet(); });
+    q('w-pump')?.addEventListener('click', () => Oracle.shock(Math.log(1.3)));
+    q('w-dump')?.addEventListener('click', () => Oracle.shock(Math.log(0.7)));
   }
 
   renderStore(body) {
