@@ -79,5 +79,8 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
 - Maintenance (`supabase/06_maintenance.sql`, applied): admin sets "in N minutes" (0 = now) + message; the game polls
   `get_maintenance` every 10 s, shows a countdown bar, then pauses and shows the maintenance screen; ending it reloads
   every open game. Client-side only in Phase 1 (server RPCs stay open).
+- AFK mode (`src/ui/afk.js`, 🌙 button bottom-right, F key): fog screen with live counters, render at ~4 fps
+  (`game.lowPower`), same earnings as an open game (owner: no bonus, no cut). Settings: auto AFK after 2 min idle,
+  keep screen on (Wake Lock). Snapshot reports `afkLast` so the 24/7 bot flag becomes info for AFK players.
 - "Burned" only for on-chain burns; in-game spending is "Spent in the dungeon".
 - The creator does not trade the token. Never propose wash trading, volume bots or price support.

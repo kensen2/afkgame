@@ -183,6 +183,7 @@ export const Economy = {
       depositedUsd: +(d.seasonDepositedUsd || 0).toFixed(2), withdrawnUsd: +(d.withdrawnUsdSeason || 0).toFixed(2), returnX: +this.returnX().toFixed(3),
       fees: Math.floor((d.feesToPool || 0) + (d.feesBurned || 0)), keys: d.keys || {}, opened: d.opened, seasonBest: d.seasonBest || 0, bestWave: d.bestWave || 0,
       level: d.level, forge: d.forge || 0, tomes: d.tomes || 0, season: d.season, rate: Math.round(this.ratePerHour()), heroes: lv, hero: d.selectedHero,
+      afkLast: d.afkLast || 0, afkSeasonH: Math.round((d.afkSeasonMs || 0) / 360000) / 10,
       econ: this.econSummary() };
   },
   // Admin paneli için çekim özeti (v8, USD). Oyuncunun tarayıcısı bildirir; Faz 2'de sunucu hesaplayacak.

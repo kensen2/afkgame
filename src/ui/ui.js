@@ -9,6 +9,7 @@ import { SocialUI } from './social-ui.js';
 import { Intro } from './intro.js';
 import { Story } from './story.js';
 import { Oracle } from '../systems/oracle.js';
+import { AfkMode } from './afk.js';
 import { skillIcon, skillTint, gearIcon, fillIcons, ico } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
@@ -94,6 +95,7 @@ export class UI {
     this.lastT = performance.now();
     this._bind();
     this.social = new SocialUI(this);
+    this.afk = new AfkMode(this);
     requestAnimationFrame(this._loop.bind(this));
   }
 
@@ -115,6 +117,9 @@ export class UI {
     click('btn-settings-close', () => this.closeSettings());
     click('btn-set-auto', () => this.toggleAuto());
     click('btn-set-offline', () => { Economy.data.settings.offline = !Economy.data.settings.offline; Economy.save(); this.syncButtons(); });
+    click('btn-afk', () => { if (!this.afk.enter()) { Audio.play('denied'); this.toast('AFK mode starts while your hero is fighting.'); } });
+    click('btn-set-autoafk', () => { Economy.data.settings.autoAfk = !Economy.data.settings.autoAfk; Economy.save(); this.syncButtons(); });
+    click('btn-set-afkwake', () => { Economy.data.settings.afkWake = !Economy.data.settings.afkWake; Economy.save(); this.syncButtons(); });
     click('btn-set-story', () => { Economy.data.settings.story = Economy.data.settings.story === false; Economy.save(); this.syncButtons(); });
     click('btn-offline-collect', () => this.closeOffline());
     document.querySelectorAll('#seg-speed button').forEach((b) => b.addEventListener('click', () => {
@@ -197,6 +202,7 @@ export class UI {
       else if ((k === '4' || k === '5') && !this.game.paused) Skills.tryUlt(this.game, +k - 4, true);
       else if (k === 'a') this.toggleAuto();
       else if (k === 'h') this.toggleSpeed();
+      else if (k === 'f') this.afk.toggle();
       else if (k === 'b') { if ($('screen-shop').classList.contains('hidden')) this.openShop('game'); else this.closeShop(); }
       else if (k === 'escape') {
         if (this.social?.isOpen()) this.social.close();
@@ -559,6 +565,8 @@ export class UI {
     $('btn-set-auto').setAttribute('aria-pressed', String(!!s.auto));
     $('btn-set-offline').setAttribute('aria-pressed', String(s.offline !== false));
     $('btn-set-story').setAttribute('aria-pressed', String(s.story !== false));
+    $('btn-set-autoafk').setAttribute('aria-pressed', String(!!s.autoAfk));
+    $('btn-set-afkwake').setAttribute('aria-pressed', String(!!s.afkWake));
     for (const [id, val, vid, on] of [['rng-music', mv, 'val-music', s.music], ['rng-sfx', sv, 'val-sfx', s.sound]]) {
       const el = $(id);
       el.value = Math.round(val * 100); el.disabled = !on;

@@ -104,7 +104,10 @@ begin
 
   -- 6) 7/24 aktivite
   select count(distinct date_trunc('hour', at)) into n from player_events where player_id = p and at > now() - interval '24 hours';
-  if n >= 22 then flags := flags || jsonb_build_object('level', 'med', 'kind', 'bot', 'text', format('Active in %s of the last 24 hours (no sleep)', n)); end if;
+  -- AFK modunu açık bırakan oyuncu da 7/24 aktif görünür: o zaman sadece bilgi
+  if n >= 22 and coalesce((snap->>'afkLast')::numeric, 0) > extract(epoch from now() - interval '24 hours') * 1000 then
+    flags := flags || jsonb_build_object('level', 'info', 'kind', 'info', 'text', format('Active in %s of the last 24 hours, with AFK mode left open', n));
+  elsif n >= 22 then flags := flags || jsonb_build_object('level', 'med', 'kind', 'bot', 'text', format('Active in %s of the last 24 hours (no sleep)', n)); end if;
 
   -- 7) makine gibi düzenli çekim aralıkları
   select count(*), avg(g), stddev_samp(g) into n, x, y from (

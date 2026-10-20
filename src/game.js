@@ -482,10 +482,13 @@ export class Game {
     if (this.cine) { this.cine.tick(dt); if (this.cine && !this.cine.hide) this.renderer.render(this.scene, this.camera); return; }
     if (this.paused || !this.hero) { this.render(); return; }
     if (this.hitStopT > 0) { this.hitStopT -= dt; this.render(); this.ui.updateHud(this); return; }
+    const real = dt;
     dt *= Economy.data.settings.speed || 1;
     // 2x/3x hızda simülasyonu küçük adımlarla koştur
     const steps = Math.ceil(dt / 0.034);
     for (let s = 0; s < steps; s++) this.step(dt / steps);
+    // AFK modu (src/ui/afk.js): oyun aynen oynar, ekran sisle kaplı; çizim saniyede ~4 kareye iner (pil tasarrufu)
+    if (this.lowPower) { this._lpT = (this._lpT || 0) + real; if (this._lpT < 0.25) return; this._lpT = 0; }
     this.render();
     this.ui.updateHud(this);
   }
