@@ -819,7 +819,7 @@ export class UI {
         <div class="key-btns"><button class="btn small gem-buy" data-p="1" ${canPack ? '' : 'disabled'}>${!unlocked ? ico('padlock') : room <= 0 ? 'MAX' : `Pack ×${n} · ◈${fmt(cost)}`}</button>${single ? `<button class="btn small gem-buy" data-s="1" ${canSingle ? '' : 'disabled'}>Single · ◈${fmt(single)}</button>` : ''}</div>`;
       el.querySelector('[data-p]').addEventListener('click', () => {
         const got = Economy.buyKeyPack(k.id);
-        if (got) { Audio.play('buy'); this.toast(`${got} ${k.name}${got > 1 ? 's' : ''} added. Your production pays back what you deposited first; after that you can take out part of it each day.`); this.renderShop(); }
+        if (got) { Audio.play('buy'); this.toast(`${got} ${k.name}${got > 1 ? 's' : ''} added. Your production first counts toward what you deposited; after that part of it opens up each day.`); this.renderShop(); }
         else { Audio.play('denied'); this.toast('Key packs are bought with deposited DGN. Open your Wallet to deposit.'); }
       });
       el.querySelector('[data-s]')?.addEventListener('click', () => {
@@ -870,6 +870,9 @@ export class UI {
     $('wallet-sub').textContent = `Season ${F.seasonIndex(now) + 1} · ${fmtDays(F.seasonEndsAt(now) - now)} left`;
     const perDay = Economy.poolPerDay(), eligible = Economy.poolEligible(now);
     const wd = Economy.withdrawable();
+    const $u = (x) => '$' + (x || 0).toFixed(2);
+    const dgnOf = (u) => n((u || 0) / Economy.price());
+    const LC = V.depositor.lifeCap, X = Economy.returnX(), capped = Economy.atLifeCap();
     const M = V.demo.market;
     const body = $('wallet-body');
     const fee = Economy.nextFee(now), step = V.withdraw.fees.indexOf(fee), cd = Economy.cooldownLeft(now), resetAt = Economy.feeResetsAt(now);
@@ -885,16 +888,20 @@ export class UI {
       </div>
       <div class="wbox line">${eligible
         ? (Economy.isDepositor()
-          ? `You can take out <b>${Math.round(Economy.depositorRate(now) * 100)}%</b> of your production today, about <b>${n(perDay)} ${sym}</b> a day · <b>${n(d.poolAvail)}</b> ready now. The share steps down each day after payback (${V.depositor.schedule.map((x) => Math.round(x * 100) + '%').join(' → ')}) and shrinks when many depositors take out at once. The rest stays in your balance for the game. Nothing here is guaranteed.`
+          ? (capped
+            ? `You have reached the season limit of <b>${LC}×</b> what you deposited. From now on about <b>${$u(Economy.poolPerDayUsd(now))}</b> a day opens up · <b>${$u(d.poolUsd)}</b> (≈ ${dgnOf(d.poolUsd)} ${sym}) ready now.`
+            : `You can take out <b>${Math.round(Economy.depositorRate(now) * 100)}%</b> of your production today, about <b>${$u(Economy.poolPerDayUsd(now))}</b> a day · <b>${$u(Math.min(d.poolUsd || 0, Math.max(0, Economy.withdrawableUsd() - (d.creditUsd || 0))))}</b> (≈ ${dgnOf(Math.min(d.poolUsd || 0, Math.max(0, Economy.withdrawableUsd() - (d.creditUsd || 0))))} ${sym}) ready now. The share steps down each day (${V.depositor.schedule.map((x) => Math.round(x * 100) + '%').join(' → ')}) and shrinks when many depositors take out at once. The rest stays in your balance for the game. Nothing here is guaranteed.`)
+            + `<div class="xcap"><span>This season: taken out <b>${$u(d.withdrawnUsdSeason)}</b> of <b>${$u(Economy.lifeCapUsd())}</b> max</span><b>${X.toFixed(2)}× / ${LC}×</b><span class="bar"><i style="width:${Math.min(100, X / LC * 100)}%"></i></span></div>`
           : `Your share of today's pool is <b>${n(perDay)} ${sym}</b> a day (${usd(perDay)}) · <b>${n(d.poolAvail)}</b> of it ready now. The realm is ${Math.round(Economy.realmFill() * 100)}% full: more lords means a smaller share for each.`)
-        : `Your production is paying back what you deposited: <b>${n(Economy.roiLeft())} ${sym}</b> to go, about <b>${fmtDur(Economy.poolStartsAt(now) - now)}</b> at your current rate. After that you can take out part of your production each day.`}</div>
-      <div class="wbox line">${d.credit > 0
-        ? `<b>${n(d.credit)} ${sym}</b> of what you can take out is ${sym} you brought in yourself. It is not limited by the daily share.`
+        : `Your production first counts toward what you deposited: <b>${$u(Economy.roiLeftUsd())}</b> to go, about <b>${fmtDur(Economy.poolStartsAt(now) - now)}</b> at your current rate. After that you can take out part of your production each day.`}</div>
+      <div class="wbox line">${(d.creditUsd || 0) > 0.005
+        ? `<b>${$u(d.creditUsd)}</b> (≈ ${dgnOf(d.creditUsd)} ${sym}) of what you can take out is what you brought in yourself. It is not limited by the daily share.`
+        : Economy.isDepositor() ? `What you deposited this season has been taken out. Anything more comes from the share of your production that opens up each day.`
         : `You have not deposited this season. Everything you take out comes from the daily pool.`}</div>
-      <div class="wbox line">You can move up to <b>${n(wd)} ${sym}</b> right now.
+      <div class="wbox line">You can move up to <b>${n(wd)} ${sym}</b> (${usd(wd)}) right now. Limits are counted in USD and paid in ${sym} at the oracle price, so the ${sym} amount moves with the price.
         <div class="wrow"><input id="w-amt" type="number" min="0" value="${wd}"><button class="btn small" id="w-vault" ${wd >= V.withdraw.min && !cd ? '' : 'disabled'}>${cd ? `Ready in ${fmtDur(cd)}` : `Move to the vault · ${Math.round(fee * 100)}% fee`}</button></div>
         <div class="fee-ladder">${V.withdraw.fees.map((f, i) => `<span class="${i === step ? 'on' : i < step ? 'used' : ''}">${Math.round(f * 100)}%</span>`).join('<i>›</i>')}</div>
-        <small>The fee grows with every move in 24 hours and stops at ${Math.round(V.withdraw.fees.at(-1) * 100)}%. ${resetAt ? `It drops back to ${Math.round(V.withdraw.fees[0] * 100)}% in <b>${fmtDur(resetAt - now)}</b>.` : 'One move a day keeps it at the lowest rate.'} Half of every fee is burned. ${V.withdraw.cooldownHours} hours between moves. Minimum ${n(V.withdraw.min)}.</small></div>
+        <small>The fee grows with every move in 24 hours and stops at ${Math.round(V.withdraw.fees.at(-1) * 100)}%. ${resetAt ? `It drops back to ${Math.round(V.withdraw.fees[0] * 100)}% in <b>${fmtDur(resetAt - now)}</b>.` : 'One move a day keeps it at the lowest rate.'} Every fee goes back to the reward pool${d.feesToPool ? ` (you have returned ${n(d.feesToPool)} ${sym})` : ''}. ${V.withdraw.cooldownHours} hours between moves. Minimum ${n(V.withdraw.min)}.</small></div>
       <div class="wbox line"><span class="wlabel">Waiting in the vault</span> <b>◈ ${n(d.vault)}</b>
         <div class="hold ${holdOk ? 'ok' : ''}">
           <div class="hold-h">12-hour holding rule</div>
@@ -910,7 +917,7 @@ export class UI {
         <div class="wrow">${[50000, 100000, 500000, 1000000].map((a) => `<button class="btn small" data-dep="${a}">+${fmt(a)}</button>`).join('')}</div>
         <small>${CONFIG.token.testMode ? 'Demo tokens for testing.' : `Send ${sym} from your wallet.`} Deposited ${sym} buys key packs. Deposited so far: ${n(d.deposited)}.</small></div>
       <div class="wgrid">
-        <div class="wbox"><span>🔥 Burned on-chain</span><b>◈ ${n(V.demo.burnedOnChain + d.feesBurned)}</b><small>realm total</small></div>
+        <div class="wbox"><span>🔥 Burned on-chain</span><b>◈ ${n(V.demo.burnedOnChain + (d.feesBurned || 0))}</b><small>realm total</small></div>
         <div class="wbox"><span>Spent in the dungeon</span><b>◈ ${n(V.demo.spentInDungeon + d.spentDungeon)}</b><small>realm total</small></div>
         <div class="wbox"><span>Sent to wallets</span><b>◈ ${n(d.withdrawn)}</b><small>you</small></div>
       </div>
@@ -922,7 +929,8 @@ export class UI {
     const q = (id) => body.querySelector('#' + id);
     q('w-claim').addEventListener('click', () => { const c = Economy.claim(); if (c) Audio.play('coin'); this.renderWallet(); });
     q('w-vault').addEventListener('click', () => {
-      const r = Economy.moveToVault(+q('w-amt').value || 0);
+      // oracle fiyatı açık pencere sırasında oynayabilir: istenen miktar o anki sınırı biraz aşıyorsa sınıra indir
+      const r = Economy.moveToVault(Math.min(+q('w-amt').value || 0, Economy.withdrawable()));
       if (!r) { Audio.play('denied'); this.toast(Economy.cooldownLeft() > 0 ? `Next move in ${fmtDur(Economy.cooldownLeft())}` : `You can move between ${fmt(V.withdraw.min)} and ${fmt(Economy.withdrawable())} ${sym}`); return; }
       Audio.play('coin'); this.toast(`${fmt(r.net)} ${sym} moved to the vault (${Math.round(r.rate * 100)}% fee: ${fmt(r.fee)})`); this.renderWallet();
     });

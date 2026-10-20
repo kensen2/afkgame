@@ -37,11 +37,13 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
 
 ## Economy invariants (owner decisions)
 
-- Depositors (v6, trial): no fixed pool. Production first pays back what they deposited (only the fee applies);
-  after payback they can take out a share of their own production that steps down daily (`CONFIG.v5.depositor.schedule`
-  50/40/30/20 %, last value until season end). All depositors together are capped at `capOfDeposits` (10 %) of the season's
-  deposits per day; above that everyone is scaled down. The rest stays in the game balance. No guaranteed return, and
-  this is not written into the whitepaper (owner decision).
+- Depositors (v8): no fixed pool. Everything is counted in USD: production at the design rate (10,000 DGN = $1),
+  deposits at the oracle price, payouts converted to DGN at the oracle price. Production first counts toward the season's
+  deposit (deposit itself can leave without the daily limit, only the fee applies); after payback a share of production opens
+  up daily (`CONFIG.v5.depositor.schedule` 50/40/30/20/10 %, last value until season end). All depositors together are capped
+  at `capOfDeposits` (10 %) of the season's deposits per day (server; Phase 1 uses `demo.capK`). Season total taken out is
+  capped at `lifeCap` 2.2× the season's deposit; after that `afterCap` 1 % of the deposit a day. Owner decision (2026-10-20).
+  No guaranteed return; never write "deposit back in X days" or ROI in the whitepaper. Sim: `sim/v8-blend.mjs` (avg ~1.7×).
 - Free pool is tiered by counted players (`CONFIG.v5.freePool`, `F.freePoolSize`):
   1M up to 119, +1M per 100 (120 → 2M, 220 → 3M …), fixed 10M from 920. Counted = free-pool account that reached wave 20
   and played in the last hour (to become 24h after online launch); must be counted server-side.
@@ -49,8 +51,8 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
 - Free players: waves 1–20, max 1,000 DGN/h (hand-written table `CONFIG.v5.rate.free`; waves 21+ still build on 2,000), loop 20 → 15 at "The Sealed Gate" (10 s screen).
 - Keys: 10 per tier per season, USD prices, one key per new wave above 20, unused keys carry over.
   Packs (10 keys) only with deposited DGN; single keys in every tier with any DGN at pack/10 × `singleKeyMult` (4).
-- Withdrawal: deposit back first, then today's pool share; game → vault fee grows per move in 24h: 5/10/20/40 %
-  (capped at 40, back to 5 after 24h without a move; half burned); 2h between moves; vault → wallet needs a
+- Withdrawal: deposit first, then the opened share; game → vault fee grows per move in 24h: 5/10/20 %
+  (capped at 20, back to 5 after 24h without a move; all of it goes back to the reward pool, not burned); 2h between moves; vault → wallet needs a
   12-hour time-weighted average wallet balance of 20K DGN; "Get DGN" button (not "Buy"). No staking. 10-day seasons.
 - Server: Supabase project `wfsskmchilndcsauubbs` (eu-central-1). `supabase/schema.sql` is the source of truth;
   the client (`src/net/supabase-backend.js`) only calls RPCs. Only the publishable key lives in `CONFIG.server`;

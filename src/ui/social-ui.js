@@ -184,7 +184,7 @@ export class SocialUI {
         <div class="wbox"><span>Members</span><b>${c.memberCount} / ${c.maxMembers}</b><small>${n(c.totalRate)}/h together</small></div>
       </div>
       <div class="wbox line">${c.bonus
-        ? `Your clan is <b>#${c.rank}</b>: you produce <b>${pct(c.bonus)}</b> more (${n(Economy.baseRatePerHour())} → <b>${n(Economy.ratePerHour())}/h</b>). The bonus comes from the daily pool, so it lasts as long as your clan stays in the top 5.`
+        ? `Your clan is <b>#${c.rank}</b>: you produce <b>${pct(c.bonus)}</b> more (${n(Economy.baseRatePerHour() * Economy.priceFactor())} → <b>${n(Economy.ratePerHour())}/h</b>). The bonus comes from the daily pool, so it lasts as long as your clan stays in the top 5.`
         : `Top 5 clans get a production bonus: ${bonusLine()}. Clans are ranked by the total production of their members.`}</div>
       ${reqs ? `<div class="wbox line"><span class="wlabel">Join requests (${reqs.length})</span>
         ${reqs.length ? reqs.map((q) => `<div class="crow"><span class="rk">✉️</span><span class="nm">${esc(q.nick)}<small>${ago(q.at)}</small></span><span class="st">W${q.wave}</span><span class="st">${n(q.rate)}/h</span>

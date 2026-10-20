@@ -178,19 +178,22 @@ export const CONFIG = {
     // (Sayım sunucuda yapılmalı; Supabase bağlanana kadar demo realm sayısı kullanılır.)
     freePool: { perStep: 1000000, step: 100, margin: 20, minWave: 20, activeHours: 1 },
     depositorPoolDelayHours: 48,   // (eski v5; v6'da yatıranın kazancı geri ödeme bitince başlar)
-    // Yatıran oyuncu (v6, deneme): sabit havuz yerine KENDİ üretiminden çeker.
-    //  1) Önce yatırdığı kadarını üretimiyle geri alır (sınırsız, sadece kesinti).
-    //  2) Geri ödeme bitince (ROI) her gün üretiminin schedule[gün] kadarı çekilebilir hale gelir; son değer sezon sonuna kadar.
-    //  3) Tüm yatıranların o gün çekebileceği toplam = o sezon yatırılanların capOfDeposits'i. Aşılırsa herkes oranla kısılır.
-    //  Çekilmeyen üretim kaybolmaz, oyun içi bakiyede kalır. Kazanç garantisi yoktur.
-    depositor: { schedule: [0.5, 0.4, 0.3, 0.2], capOfDeposits: 0.10 },
+    // Yatıran oyuncu (v8): KENDİ üretiminden çeker; bütün hesap USD (oracle) ile tutulur.
+    //  - Üretimin USD değeri tasarım kuruyla sayılır (10.000 DGN = $1); çekimde USD, oracle fiyatıyla DGN'e çevrilir.
+    //  1) Önce yatırdığının USD değeri kadar üretim geri ödemeye sayılır (yatırdığın kadarı sınırsız çekilebilir, sadece kesinti).
+    //  2) Geri ödeme bitince her gün üretiminin schedule[gün] kadarı çekilebilir hale gelir; son değer sezon sonuna kadar.
+    //  3) Tüm yatıranların o gün çekebileceği toplam = o sezon yatırılanların capOfDeposits'i (sunucu; Faz 1'de demo.capK ile yaklaşık).
+    //  4) Sezonda çekilen toplam, o sezon yatırılanın lifeCap katına (2.2x) ulaşınca kazanç günde afterCap'e (%1) düşer.
+    //  Çekilmeyen üretim kaybolmaz, oyun içi bakiyede kalır. Kazanç garantisi yoktur. sim/v8-blend.mjs
+    depositor: { schedule: [0.5, 0.4, 0.3, 0.2, 0.1], capOfDeposits: 0.10, lifeCap: 2.2, afterCap: 0.01 },
     // Tekli anahtar: her kademede, oyunda biriken DGN ile alınabilir. Fiyat = paket fiyatı / 10 × singleKeyMult.
     // (Paketler yine sadece yatırılan DGN ile.) 4 kat: 1M yatıran sezonda ~1,8M çeker (sim/v6-depositor.mjs).
     singleKeyMult: 4,
-    // Çekim: oyundan kasaya geçerken kesinti alınır. Kesinti 24 saat içindeki her yeni çekimde artar (%5 → %10 → %20 → %40,
-    // %40'ta durur); 24 saat çekim yapılmazsa %5'e döner. İki çekim arasında en az cooldownHours saat.
+    // Çekim: oyundan kasaya geçerken kesinti alınır. Kesinti 24 saat içindeki her yeni çekimde artar (%5 → %10 → %20,
+    // %20'de durur); 24 saat çekim yapılmazsa %5'e döner. İki çekim arasında en az cooldownHours saat.
+    // Kesintinin tamamı ödül havuzuna geri döner (yakılmaz).
     // Kasadan cüzdana: cüzdanın son holdHours saatteki ortalama bakiyesi en az holdTokens olmalı (sunucu kontrol eder).
-    withdraw: { fees: [0.05, 0.10, 0.20, 0.40], feeWindowHours: 24, cooldownHours: 2, feeBurn: 0.5, holdTokens: 20000, holdHours: 12, min: 1000 },
+    withdraw: { fees: [0.05, 0.10, 0.20], feeWindowHours: 24, cooldownHours: 2, feeToPool: 1, holdTokens: 20000, holdHours: 12, min: 1000 },
     // Forge: oyun içi bakiyeyle alınan güç (sezonluk). Her seviye hasar ve can ×1.10
     forge: { baseCost: 5000, growth: 1.32, per: 0.10, max: 40 },
     // Faz 1 demo realm (sim/v5.mjs, 1.000 oyuncu): havuzu paylaşan diğer oyuncuların toplam üretimi (DGN/saat)

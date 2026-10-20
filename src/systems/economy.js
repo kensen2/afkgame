@@ -28,8 +28,12 @@ function freshSave() {
     balance: 0,          // oyun içi DGN bakiyesi (üretim + yatırılan)
     uncollected: 0,      // üretilmiş ama henüz Claim edilmemiş
     depositBal: 0,       // bakiyenin yatırılan tokenden gelen, henüz harcanmamış kısmı (paketler bununla alınır)
-    credit: 0,           // anapara hakkı: yatırdığın kadar, günlük sınıra takılmadan çekilebilir
-    poolAvail: 0,        // bugün havuzdan çekilebilir (günlük pay, gün dönünce sıfırlanır)
+    credit: 0,           // (eski, DGN) anapara hakkı; v8'de creditUsd kullanılır
+    creditUsd: 0,        // anapara hakkı (USD): yatırdığın kadar, günlük sınıra takılmadan çekilebilir
+    poolAvail: 0,        // bedava oyuncu: bugün havuzdan çekilebilir DGN (gün dönünce sıfırlanır)
+    poolUsd: 0,          // yatıran: üretiminden açılan çekim hakkı (USD), sezon sonuna kadar birikir
+    seasonDepositedUsd: 0, prodUsdSinceDeposit: 0, withdrawnUsdSeason: 0,
+    feesToPool: 0,       // çekim kesintilerinden ödül havuzuna dönen DGN
     poolDay: -1,
     vault: 0,            // kasada bekleyen (cüzdana gönderilecek)
     deposited: 0, withdrawn: 0, spentDungeon: 0, feesBurned: 0,
@@ -86,6 +90,14 @@ export const Economy = {
           this.data.settings = settings;
           this.economyReset = true;
         }
+        // v8: yatıranın hakları USD'ye taşındı (eski DGN değerleri tasarım kuruyla çevrilir, bir kerelik)
+        if (d.creditUsd === undefined) {
+          const D = this.data, k = CONFIG.token.designUsdPerToken;
+          D.creditUsd = (D.credit || 0) * k; D.credit = 0;
+          D.seasonDepositedUsd = (D.seasonDeposited || 0) * k;
+          D.prodUsdSinceDeposit = (D.prodSinceDeposit || 0) * k;
+          if ((D.seasonDeposited || 0) > 0) { D.poolUsd = (D.poolAvail || 0) * k; D.poolAvail = 0; }
+        }
       }
     } catch (e) { console.warn('Could not read save', e); }
     this.rateBonus = Math.max(0, Math.min(0.10, +this.data.clanBonus || 0));
@@ -123,7 +135,7 @@ export const Economy = {
   reset() {
     const d = this.data, keep = {};
     for (const k of ['settings', 'season', 'balance', 'uncollected', 'depositBal', 'credit', 'poolAvail', 'poolDay', 'vault',
-      'deposited', 'withdrawn', 'spentDungeon', 'feesBurned', 'vaultMoves', 'prodSinceDeposit', 'roiAt', 'walletBal', 'walletHist', 'seasonDeposited', 'firstDepositAt', 'keys', 'opened',
+      'deposited', 'withdrawn', 'spentDungeon', 'feesBurned', 'feesToPool', 'creditUsd', 'poolUsd', 'seasonDepositedUsd', 'prodUsdSinceDeposit', 'withdrawnUsdSeason', 'vaultMoves', 'prodSinceDeposit', 'roiAt', 'walletBal', 'walletHist', 'seasonDeposited', 'firstDepositAt', 'keys', 'opened',
       'seasonBest', 'lastAccrue', 'idlePass', 'clanBonus',
       // DGN ile alınanlar da kalır: Forge, Gold Rush, Skill Tome. Tome ile birlikte "yenilmiş boss" listesi de
       // kalır; yoksa sıfırlayıp boss'ları tekrar yenerek bedava Tome toplanabilirdi.
@@ -166,7 +178,8 @@ export const Economy = {
     for (const [h, v] of Object.entries(d.heroes || {})) lv[h] = { up: Object.values(v.upgrades || {}).reduce((a, b) => a + b, 0), sk: (v.skills || []).join('/') };
     return { gold: Math.floor(d.gold), dgn: Math.floor(d.balance || 0), uncollected: Math.floor(d.uncollected || 0), vault: Math.floor(d.vault || 0),
       deposited: d.deposited || 0, seasonDeposited: d.seasonDeposited || 0, withdrawn: Math.floor(d.withdrawn || 0), spent: Math.floor(d.spentDungeon || 0),
-      fees: Math.floor(d.feesBurned || 0), keys: d.keys || {}, opened: d.opened, seasonBest: d.seasonBest || 0, bestWave: d.bestWave || 0,
+      depositedUsd: +(d.seasonDepositedUsd || 0).toFixed(2), withdrawnUsd: +(d.withdrawnUsdSeason || 0).toFixed(2), returnX: +this.returnX().toFixed(3),
+      fees: Math.floor((d.feesToPool || 0) + (d.feesBurned || 0)), keys: d.keys || {}, opened: d.opened, seasonBest: d.seasonBest || 0, bestWave: d.bestWave || 0,
       level: d.level, forge: d.forge || 0, tomes: d.tomes || 0, season: d.season, rate: Math.round(this.ratePerHour()), heroes: lv, hero: d.selectedHero };
   },
 
@@ -190,9 +203,17 @@ export const Economy = {
     if (!this.isDepositor()) return true;
     return !!this.data.roiAt;
   },
-  // ROI'ye kalan üretim ve tahmini zaman
-  roiLeft() { return Math.max(0, (this.data.seasonDeposited || 0) - (this.data.prodSinceDeposit || 0)); },
-  poolStartsAt(now = Date.now()) { const r = this.ratePerHour(); return r > 0 ? now + this.roiLeft() / r * 3600000 : Infinity; },
+  // ---- v8: USD hesapları (oracle) ----
+  price() { return CONFIG.token.usdPerToken; },               // oracle (TWAP); oracle yoksa tasarım kuru
+  prodUsd(dgn) { return dgn * this.price(); },                // üretilen DGN'in USD değeri (yatıranda saatlik USD sabit)
+  usdPerHour() { return this.prodUsd(this.ratePerHour()); },
+  // Geri ödemeye kalan (USD) ve tahmini zaman
+  roiLeftUsd() { return Math.max(0, (this.data.seasonDepositedUsd || 0) - (this.data.prodUsdSinceDeposit || 0)); },
+  poolStartsAt(now = Date.now()) { const r = this.usdPerHour(); return r > 0 ? now + this.roiLeftUsd() / r * 3600000 : Infinity; },
+  // Sezonda çekilen / yatırılan (kat). 2.2x'e ulaşınca kazanç günde %1'e düşer.
+  returnX() { const dep = this.data.seasonDepositedUsd || 0; return dep > 0 ? (this.data.withdrawnUsdSeason || 0) / dep : 0; },
+  lifeCapUsd() { return (this.data.seasonDepositedUsd || 0) * CONFIG.v5.depositor.lifeCap; },
+  atLifeCap() { return this.isDepositor() && (this.data.withdrawnUsdSeason || 0) >= this.lifeCapUsd() - this.price() * 2; },   // 2 DGN pay: çekimler tam sayı DGN
   // ROI'den sonraki gün sayısına göre üretimin çekilebilir oranı (havuz sınırı dahil)
   depositorRate(now = Date.now()) {
     const D = CONFIG.v5.depositor, d = this.data;
@@ -200,9 +221,18 @@ export const Economy = {
     const day = Math.max(0, Math.floor((now - d.roiAt) / 86400000));
     return D.schedule[Math.min(day, D.schedule.length - 1)] * CONFIG.v5.demo.depositor.capK;
   },
+  // Yatıranın bugünkü çekim hakkı artışı (USD/gün)
+  poolPerDayUsd(now = Date.now()) {
+    if (!this.isDepositor()) return F.usd(this.poolPerDay());
+    if (this.atLifeCap()) return (this.data.seasonDepositedUsd || 0) * CONFIG.v5.depositor.afterCap;
+    return this.usdPerHour() * 24 * this.depositorRate(now);
+  },
   // Üretim: sezonun en iyi dalgası × (1 + clan bonusu). Bonus ilk 5 clana girince hemen başlar.
   baseRatePerHour() { return F.rateAt(this.data.seasonBest || 0); },
-  ratePerHour() { return this.baseRatePerHour() * (1 + (this.rateBonus || 0)) * (this.nerf ?? 1); },
+  ratePerHour() { return this.baseRatePerHour() * (1 + (this.rateBonus || 0)) * (this.nerf ?? 1) * this.priceFactor(); },
+  // v8: yatıranın üretimi USD'de sabittir (tablo değeri × tasarım kuru); DGN miktarı oracle fiyatına göre değişir.
+  // Bedava oyuncunun üretimi DGN olarak sabit kalır (1.000/saat tavanı).
+  priceFactor() { return this.isDepositor() ? CONFIG.token.designUsdPerToken / CONFIG.token.usdPerToken : 1; },
   rateBonus: 0,
   // Clan bonusu değişince önce eski hızla biriken kısmı yaz, sonra yeni hıza geç
   setRateBonus(b) {
@@ -242,15 +272,19 @@ export const Economy = {
     d.uncollected += produced;
     let pool = 0;
     if (this.isDepositor()) {
-      // önce geri ödeme; ROI anında kalan üretim kazanca sayılır
-      let earnPart = produced;
+      // USD ile: önce geri ödeme; ROI anında kalan üretim kazanca sayılır. pool = açılan hak (USD).
+      const pUsd = this.prodUsd(produced);
+      let earnUsd = pUsd;
       if (!d.roiAt) {
-        const need = this.roiLeft();
-        d.prodSinceDeposit = (d.prodSinceDeposit || 0) + Math.min(produced, need);
-        earnPart = Math.max(0, produced - need);
-        if (this.roiLeft() <= 0) d.roiAt = now - (earnPart / Math.max(1e-9, this.ratePerHour())) * 3600000;
+        const need = this.roiLeftUsd();
+        d.prodUsdSinceDeposit = (d.prodUsdSinceDeposit || 0) + Math.min(pUsd, need);
+        earnUsd = Math.max(0, pUsd - need);
+        if (this.roiLeftUsd() <= 0) d.roiAt = now - (earnUsd / Math.max(1e-12, this.usdPerHour())) * 3600000;
       }
-      if (d.roiAt && earnPart > 0) { pool = earnPart * this.depositorRate(now); d.poolAvail += pool; }
+      if (this.atLifeCap()) pool = (d.seasonDepositedUsd || 0) * CONFIG.v5.depositor.afterCap * secs / 86400;
+      else if (d.roiAt && earnUsd > 0) pool = earnUsd * this.depositorRate(now);
+      d.poolUsd = (d.poolUsd || 0) + pool;
+      this.clampPoolUsd();
     } else if (this.poolEligible(now)) { pool = this.poolPerDay() * secs / 86400; d.poolAvail += pool; }
     return { produced, pool };
   },
@@ -269,7 +303,9 @@ export const Economy = {
     n = Math.max(0, Math.floor(n));
     if (!n) return 0;
     const d = this.data;
-    d.balance += n; d.depositBal += n; d.credit += n; d.deposited += n; d.seasonDeposited += n;
+    const usd = n * this.price();      // yatırılanın USD değeri oracle fiyatıyla sabitlenir
+    d.balance += n; d.depositBal += n; d.deposited += n; d.seasonDeposited += n;
+    d.creditUsd = (d.creditUsd || 0) + usd; d.seasonDepositedUsd = (d.seasonDepositedUsd || 0) + usd;
     if (!d.firstDepositAt) d.firstDepositAt = now;
     d.roiAt = 0;                       // yeni yatırılan da önce üretimle geri ödenir
     this.save(); this.emit({ type: 'deposit', amount: n });
@@ -284,10 +320,24 @@ export const Economy = {
     this.save(); this.emit({ type: 'tokenSpend', amount: n });
     return true;
   },
-  // Çekilebilir: bakiye içinden, anapara hakkı + bugünkü havuz payı kadar
+  // Çekilebilir hak (USD): anapara + açılan pay. Pay kısmı 2.2x tavanına kalan kadarla sınırlı
+  // (tavandan sonra açılan %1'lik haklar ayrıca sayılır).
+  withdrawableUsd() {
+    const d = this.data, credit = d.creditUsd || 0, pool = d.poolUsd || 0;
+    if (!this.isDepositor() || this.atLifeCap()) return credit + pool;
+    const room = Math.max(0, this.lifeCapUsd() - (d.withdrawnUsdSeason || 0) - credit);
+    return credit + Math.min(pool, room);
+  },
+  // Tavana kadar olan pay, tavanı aşan kısım açılmaz (bakiyede oyun için kalır)
+  clampPoolUsd() {
+    const d = this.data;
+    if (!this.isDepositor() || this.atLifeCap()) return;
+    d.poolUsd = Math.min(d.poolUsd || 0, Math.max(0, this.lifeCapUsd() - (d.withdrawnUsdSeason || 0) - (d.creditUsd || 0)));
+  },
+  // Çekilebilir DGN: USD hak oracle fiyatıyla DGN'e çevrilir (+ bedava oyuncunun DGN havuz payı), en fazla bakiye kadar
   withdrawable() {
     const d = this.data;
-    return Math.max(0, Math.floor(Math.min(d.balance, d.credit + d.poolAvail)));
+    return Math.max(0, Math.floor(Math.min(d.balance, this.withdrawableUsd() / this.price() + (d.poolAvail || 0))));
   },
   // Son 24 saatteki kasaya aktarımlar (artan kesinti ve bekleme süresi için)
   recentMoves(now = Date.now()) {
@@ -318,13 +368,19 @@ export const Economy = {
     amount = Math.floor(amount);
     if (amount < W.min || amount > this.withdrawable()) return false;
     if (this.cooldownLeft(now) > 0) return false;
-    const rate = this.nextFee(now);
-    const fromCredit = Math.min(d.credit, amount);
-    d.credit -= fromCredit; d.poolAvail = Math.max(0, d.poolAvail - (amount - fromCredit));
+    const rate = this.nextFee(now), p = this.price();
+    // önce anapara (USD), sonra yatıranın USD payı, en son bedava oyuncunun DGN havuz payı
+    const fromCredit = Math.min((d.creditUsd || 0) / p, amount);
+    d.creditUsd = Math.max(0, (d.creditUsd || 0) - fromCredit * p);
+    let rest = amount - fromCredit;
+    const fromPoolUsd = Math.min((d.poolUsd || 0) / p, rest);
+    d.poolUsd = Math.max(0, (d.poolUsd || 0) - fromPoolUsd * p); rest -= fromPoolUsd;
+    d.poolAvail = Math.max(0, (d.poolAvail || 0) - rest);
+    d.withdrawnUsdSeason = (d.withdrawnUsdSeason || 0) + amount * p;
     // çekilen anapara, paket almakta kullanılan "yatırılmış" kısımdan da düşer
     d.balance -= amount; d.depositBal = Math.min(Math.max(0, d.depositBal - fromCredit), d.balance);
     const fee = Math.ceil(amount * rate);
-    d.feesBurned += fee * W.feeBurn;
+    d.feesToPool = (d.feesToPool || 0) + fee * W.feeToPool;   // kesinti ödül havuzuna döner
     d.vault += amount - fee;
     d.vaultMoves = [...this.recentMoves(now), now];
     this.save(); this.emit({ type: 'vault', amount });
@@ -417,9 +473,11 @@ export const Economy = {
     const idx = F.seasonIndex(now), d = this.data;
     if (d.season === null || d.season === undefined) { d.season = idx; return false; }
     if (d.season === idx) return false;
-    const keep = { settings: d.settings, clanBonus: d.clanBonus, keys: d.keys, credit: d.credit, vault: d.vault, deposited: d.deposited,
-      withdrawn: d.withdrawn, spentDungeon: d.spentDungeon, feesBurned: d.feesBurned, selectedHero: d.selectedHero };
-    const bal = Math.min(d.balance, d.credit), depBal = Math.min(d.depositBal, bal);
+    const keep = { settings: d.settings, clanBonus: d.clanBonus, keys: d.keys, vault: d.vault, deposited: d.deposited,
+      withdrawn: d.withdrawn, spentDungeon: d.spentDungeon, feesBurned: d.feesBurned, feesToPool: d.feesToPool, selectedHero: d.selectedHero };
+    // çekilmemiş anapara hakkı (USD) yeni sezona geçer; bakiyede onun DGN karşılığı kalır
+    const credUsd = d.creditUsd || 0, bal = Math.min(d.balance, credUsd / this.price()), depBal = Math.min(d.depositBal, bal);
+    keep.creditUsd = bal * this.price();
     this.data = freshSave();
     Object.assign(this.data, keep, { season: idx, balance: bal, depositBal: depBal, lastAccrue: now });
     this.seasonReset = true;

@@ -840,3 +840,8 @@ body.cine #hud, body.cine #toast, body.cine #banner, body.cine #notice-bar { vis
 .hud-price.warn { box-shadow: 0 0 0 1px #ff8a3c, 0 0 0 3px var(--iron), 0 0 0 4px #0c0a08, 0 6px 14px rgba(0,0,0,0.6); }
 .market .mrow b.warn { color: #ff8a3c; }
 @media (max-width: 520px) { .hud-price { font-size: 11px; padding: 4px 8px; column-gap: 6px; } .hud-price #hp-spot { font-size: 12px; } .hud-price .hp-sub { font-size: 10px; } }
+
+/* v8: sezon çekim katı (2.2x tavan) */
+.wbox .xcap { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; margin-top: 8px; font-size: 13px; align-items: baseline; }
+.wbox .xcap .bar { grid-column: 1 / -1; display: block; height: 6px; border-radius: 3px; background: rgba(0,0,0,0.15); overflow: hidden; }
+.wbox .xcap .bar i { display: block; height: 100%; background: linear-gradient(90deg, #c9973a, #e8c46a); }

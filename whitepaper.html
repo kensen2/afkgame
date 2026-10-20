@@ -107,7 +107,7 @@
         <div><b>10 days</b>per season</div>
         <div><b>up to 2 × 10M</b>DGN daily pools</div>
         <div><b>1,000 / h</b>free production cap</div>
-        <div><b>5–40%</b>withdrawal fee</div>
+        <div><b>5–20%</b>withdrawal fee, back to the pool</div>
       </div>
     </header>
 
@@ -133,7 +133,7 @@
 
     <section id="keys">
       <h2><span class="n">4</span>Keys and sealed gates</h2>
-      <p>Every wave after 20 needs one key. A key is used automatically the first time you enter a wave, and that wave stays open for the rest of the season. Keys come in packs of ten, one tier for every ten waves. Prices are set in USD and converted at the current DGN price. Unused keys carry over to the next season.</p>
+      <p>Every wave after 20 needs one key. A key is used automatically the first time you enter a wave, and that wave stays open for the rest of the season. Keys come in packs of ten, one tier for every ten waves. Prices are set in USD and converted with the DGN price oracle (a time-weighted average price, not the spot price). Unused keys carry over to the next season.</p>
       <div class="tablewrap"><table>
         <thead><tr><th>Key</th><th>Opens</th><th>10 keys</th><th>Production at the top</th></tr></thead>
         <tbody>
@@ -147,24 +147,24 @@
           <tr><td>🐉 Dragon</td><td class="m">91–100</td><td class="m">$500</td><td class="m">199,917 / h</td></tr>
         </tbody>
       </table></div>
-      <p>Key packs are bought with DGN you deposited. A single Bronze key can also be bought with DGN you produced, at a higher price, so a free player can grind past wave 20 slowly. Each tier is tuned so that its production pays back its price in about two days at the top of the tier.</p>
+      <p>Key packs are bought with DGN you deposited. A single Bronze key can also be bought with DGN you produced, at a higher price, so a free player can grind past wave 20 slowly.</p>
     </section>
 
     <section id="pools">
-      <h2><span class="n">5</span>The two daily pools</h2>
-      <p>Every day the realm releases two pools: one for free players and <b>10,000,000 DGN for players who deposited</b> this season. The <b>free pool grows with the realm</b>: it starts at 1,000,000 DGN and gains 1,000,000 for every 100 active free lords who have reached wave 20 (2M from 120 lords, 3M from 220, and so on), up to a fixed <b>10,000,000 DGN</b> from 920 lords. Each pool is split by production rate, so a stronger dungeon takes a bigger share. Once a pool is at its cap, more lords means smaller shares. Your share is capped at your own production, and whatever is not handed out is burned.</p>
+      <h2><span class="n">5</span>Daily earnings</h2>
+      <p><b>Free players</b> share a daily pool. The <b>free pool grows with the realm</b>: it starts at 1,000,000 DGN and gains 1,000,000 for every 100 active free lords who have reached wave 20 (2M from 120 lords, 3M from 220, and so on), up to a fixed <b>10,000,000 DGN</b> from 920 lords. The pool is split by production rate, so a stronger dungeon takes a bigger share. Once the pool is at its cap, more lords means smaller shares. Your share is capped at your own production.</p>
       <div class="formula">your share (DGN / day) = pool × your production ÷ everyone's production
                          never more than your own production</div>
-      <p>For players who deposited, pool earnings start <b>48 hours after the first deposit</b> of the season. During those two days their production pays back what they deposited.</p>
+      <p><b>Players who deposited</b> take out part of their own production instead. Production is valued in USD at the game rate (10,000 DGN = $1). It first counts toward what you deposited this season; after that a share of it opens up each day, stepping down day by day (50%, 40%, 30%, 20%, then 10% until the season ends). When many depositors take out at once, everyone's share is scaled down. Over a season, what a depositor takes out is limited to <b>2.2×</b> what they deposited; after that only about 1% of the deposit a day opens up. These are limits, not targets: nothing here is guaranteed.</p>
     </section>
 
     <section id="withdraw">
       <h2><span class="n">6</span>Taking DGN out</h2>
       <ul>
-        <li><b>What you deposited comes first.</b> Up to the amount you deposited this season can leave without the daily limit, as your production refills your balance.</li>
-        <li><b>Beyond that, today's pool share.</b> Even if more has built up in your balance, only today's share can leave. The rest stays in the game for keys, the Forge and events.</li>
-        <li><b>Two steps.</b> First move DGN from the game into the vault, where the fee is taken (half of it is burned). Then send it from the vault to your wallet.</li>
-        <li><b>The fee grows with every move in a day.</b> 5% for the first move, then 10%, 20% and 40% for each further move within 24 hours. It never goes above 40%, and after 24 hours without a move it is back to 5%. There are at least 2 hours between moves. One move a day keeps you at the lowest rate.</li>
+        <li><b>Counted in USD, paid in DGN.</b> What you can take out is counted in USD and paid in DGN at the oracle price, a time-weighted average of the market price. A short pump or dump barely moves it.</li>
+        <li><b>What you deposited</b> can leave without the daily limit. Beyond that, only the share that has opened up can leave. The rest stays in the game for keys, the Forge and events.</li>
+        <li><b>Two steps.</b> First move DGN from the game into the vault, where the fee is taken. Then send it from the vault to your wallet.</li>
+        <li><b>The fee grows with every move in a day.</b> 5% for the first move, 10% for the second and 20% for every further move within 24 hours. It never goes above 20%, and after 24 hours without a move it is back to 5%. There are at least 2 hours between moves. <b>Every fee goes back to the reward pool.</b></li>
         <li><b>Holding rule.</b> Your wallet must have held an average of at least 20,000 DGN over the last 12 hours. Every hour counts, so tokens that arrived a minute ago count only a little. This stops lords from farming the pool and leaving the same hour.</li>
       </ul>
     </section>
@@ -203,7 +203,7 @@
 
     <section id="burn">
       <h2><span class="n">11</span>Burns and transparency</h2>
-      <p>The game shows two separate numbers. <b>Burned on-chain</b> counts only real burns you can verify on the Robinhood Chain explorer: half of every withdrawal fee and every pool share left undistributed. <b>Spent in the dungeon</b> counts DGN spent inside the game on keys, the Forge and the store; it is removed from the game but is not an on-chain burn.</p>
+      <p>The game shows two separate numbers. <b>Burned on-chain</b> counts only real burns you can verify on the Robinhood Chain explorer. Withdrawal fees are not burned; they go back to the reward pool. <b>Spent in the dungeon</b> counts DGN spent inside the game on keys, the Forge and the store; it is removed from the game but is not an on-chain burn.</p>
       <p>The team earns from trading fees on the DGN market and does not trade the token itself. The vault, fee and burn addresses will be published here at launch.</p>
     </section>
 
