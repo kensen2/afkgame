@@ -68,5 +68,8 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
   All USD → DGN conversions (`CONFIG.token.usdPerToken`: key packs, single keys, USD displays) use the 10-minute TWAP,
   never the spot price. Free players' production stays fixed in DGN; depositors' production is fixed in USD
   (table × `designUsdPerToken` 0.0001, so their DGN/h moves with the oracle price, `Economy.priceFactor`). Live: spot from the DEX, TWAP on the server.
+- Referral (`CONFIG.v5.referral`, `supabase/04_referral.sql`): 6-char code, link `?ref=CODE`, bound once within 48h of the
+  account, no self/mutual/same-IP-hash invites. Inviter gets 5 % of the invitee's vault moves (USD, from reported `vault`
+  events) via `claim_ref_rewards`, paid from the pool, $100/season cap (client), withdrawable, outside the 2.2× cap.
 - "Burned" only for on-chain burns; in-game spending is "Spent in the dungeon".
 - The creator does not trade the token. Never propose wash trading, volume bots or price support.

@@ -12,6 +12,7 @@ import { LocalBackend } from '../net/local-backend.js';
 import { SupabaseBackend } from '../net/supabase-backend.js';
 
 const listeners = new Set();
+const REF_KEY = 'afk_ref_code';
 
 export const Social = {
   backend: null,
@@ -23,6 +24,11 @@ export const Social = {
 
   async init() {
     const S = CONFIG.server, local = new URLSearchParams(location.search).has('local');
+    // davet linki (?ref=KOD): nick seçilene kadar saklanır, sonra bir kez bağlanır
+    try {
+      const ref = new URLSearchParams(location.search).get('ref');
+      if (ref && /^[A-Za-z0-9]{4,12}$/.test(ref)) localStorage.setItem(REF_KEY, ref.toUpperCase());
+    } catch (e) { /* depolama yok */ }
     if (S?.enabled && !local) {
       try { this.backend = await new SupabaseBackend(S).connect(); this.online = true; }
       catch (e) { console.warn('[social] server unreachable, using the local demo world:', e.message); }
@@ -36,6 +42,7 @@ export const Social = {
     if (this.online && this.backend.status) {
       Economy.on((d, e) => this._noteEvent(e));
       this.checkStatus(); setInterval(() => this.checkStatus(), 60000);
+      this.bindPendingRef();
     }
     return this;
   },
@@ -45,7 +52,7 @@ export const Social = {
   // Panelde görünen işlem geçmişi: önemli ekonomi olayları kuyruğa, dakikada bir sunucuya
   _events: [],
   _noteEvent(e) {
-    const KEEP = new Set(['claim', 'deposit', 'vault', 'withdraw', 'tokenSpend', 'keyUsed', 'forge', 'gemItem', 'keys', 'season', 'tomes',
+    const KEEP = new Set(['claim', 'deposit', 'vault', 'withdraw', 'tokenSpend', 'keyUsed', 'forge', 'gemItem', 'keys', 'season', 'tomes', 'referral',
       'xp', 'upgrade', 'skill', 'revive', 'bestWave']);
     if (!e?.type || !KEEP.has(e.type) || (e.type === 'xp' && !e.leveled)) return;
     const d = Economy.data, data = {};
@@ -73,6 +80,7 @@ export const Social = {
       const rr = await this.backend.report(Economy.snapshot(), ev);
       if (!rr?.ok) this._events.unshift(...ev);
     }
+    await this.claimRef();
     const r = await this.backend.status();
     if (!r?.ok) return;
     Economy.setNerf(r.nerf ?? 1);
@@ -113,8 +121,34 @@ export const Social = {
   // ---- nick ----
   async setNick(nick) {
     const r = await this.backend.setNick(nick);
-    if (r.ok) await this.refresh({ type: 'nick' });
+    if (r.ok) { await this.refresh({ type: 'nick' }); this.bindPendingRef(); }
     return r;
+  },
+
+  // ---- davet ----
+  pendingRef() { try { return localStorage.getItem(REF_KEY) || null; } catch (e) { return null; } },
+  _dropPendingRef() { try { localStorage.removeItem(REF_KEY); } catch (e) { /* yok */ } },
+  // Linkle gelen kodu bağla (bir kez). Kalıcı hatalarda kod silinir; ağ hatasında sonra yeniden denenir.
+  async bindPendingRef() {
+    const code = this.pendingRef();
+    if (!code || !this.online || !this.hasNick()) return null;
+    const r = await this.bindRef(code);
+    if (r.ok || !['offline', 'server_error'].includes(r.error)) this._dropPendingRef();
+    return r;
+  },
+  async bindRef(code) {
+    const r = await this.backend.bindRef(code);
+    this.emit(r.ok ? { type: 'refBound', inviter: r.inviter } : { type: 'refFailed', error: r.error });
+    return r;
+  },
+  referrals() { return this.backend.myReferrals(); },
+  // Davet ettiklerinin yeni çekimlerinden pay (sunucu hesaplar, USD)
+  async claimRef() {
+    const r = await this.backend.claimRef?.();
+    if (!r?.ok || !(r.usd > 0)) return 0;
+    const got = Economy.addReferral(r.usd);
+    this.emit({ type: 'referral', usd: got, capped: got < r.usd });
+    return got;
   },
 
   // ---- sıralama ----

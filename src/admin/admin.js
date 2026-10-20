@@ -161,11 +161,12 @@ async function openPlayer(id) {
 const EV = { claim: 'Claimed production', deposit: 'Deposited', vault: 'Moved to vault', withdraw: 'Sent to wallet', tokenSpend: 'Spent DGN',
   keyUsed: 'Opened wave with a key', forge: 'Forge upgrade', gemItem: 'Bought store item', keys: 'Keys changed', season: 'New season',
   tomes: 'Got Skill Tomes', xp: 'Level up', teamGift: 'Team gift / take', upgrade: 'Gear upgrade (gold)', skill: 'Skill upgrade',
-  revive: 'Revived with DGN', bestWave: 'New best wave' };
+  revive: 'Revived with DGN', bestWave: 'New best wave', referral: 'Invite reward' };
 async function detail(id) {
   const d = await rpc('admin_player_detail', { p: id, lim: 300 });
   const s = d.snapshot, box = $('p-snap'); box.replaceChildren();
   econ(s?.econ);
+  refs(id);
   $('p-snap-at').textContent = d.snapshotAt ? `· ${when(d.snapshotAt)}` : '· no report yet';
   if (s) {
     const keys = Object.entries(s.keys || {}).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`).join(', ') || 'none';
@@ -188,6 +189,7 @@ async function detail(id) {
       : e.kind === 'skill' ? `${x.hero} · skill ${Number(x.skill) + 1} → Lv ${x.level}${x.times > 1 ? ` (${x.times} times)` : ''}`
       : e.kind === 'revive' || e.kind === 'bestWave' ? `wave ${x.wave}`
       : e.kind === 'vault' && x.usd != null ? `${fmt(x.amount)} DGN (${usd(x.usd)}) · fee ${Math.round((x.rate || 0) * 100)}% = ${fmt(x.fee)}`
+      : e.kind === 'referral' && x.usd != null ? `+${usd(x.usd)} invite reward`
       : e.kind === 'deposit' && x.usd != null ? `${fmt(x.amount)} DGN (${usd(x.usd)})`
       : x.amount != null ? fmt(x.amount) : '';
     tb.append(el('tr', {}, el('td', { textContent: when(e.at) }), el('td', { textContent: EV[e.kind] || e.kind }), el('td', { textContent: det })));
@@ -230,6 +232,24 @@ function econ(e) {
     card('Next withdraw fee', pct(e.nextFee), `${fmt(e.feesToPool)} DGN returned to the pool`),
     card('Season ends in', `${e.daysLeft} days`));
   box.append(g);
+}
+// Davet: kim davet etti, kimleri davet etti, ne kazandı; aynı ağdan gelenler işaretli (olası sahte hesap)
+async function refs(id) {
+  const box = $('p-refs'); box.replaceChildren();
+  let r;
+  try { r = await rpc('admin_player_refs', { p: id }); } catch (e) { box.append(el('div', { className: 'muted', textContent: 'Invite data is not available (supabase/04_referral.sql not applied yet?).' })); return; }
+  const g = el('div', { className: 'stats' });
+  g.append(el('div', { className: 'card' }, el('span', { className: 'muted', textContent: 'Invite code' }), el('b', { textContent: r.code || '—', style: 'font-size:17px' })),
+    el('div', { className: 'card' }, el('span', { className: 'muted', textContent: 'Invited by' }), el('b', { textContent: r.invitedBy?.nick || 'nobody', style: 'font-size:17px' })),
+    el('div', { className: 'card' }, el('span', { className: 'muted', textContent: 'Friends invited' }), el('b', { textContent: String((r.invitees || []).length), style: 'font-size:17px' })),
+    el('div', { className: 'card' }, el('span', { className: 'muted', textContent: 'Earned from invites' }), el('b', { textContent: usd(r.earnedUsd), style: 'font-size:17px' })));
+  box.append(g);
+  if ((r.invitees || []).length) {
+    const tb = el('tbody');
+    for (const x of r.invitees) tb.append(el('tr', {}, el('td', { textContent: x.nick }), el('td', { textContent: String(x.wave) }), el('td', { textContent: when(x.at) }),
+      el('td', { textContent: usd(x.earnedUsd) }), el('td', { textContent: x.sameNetwork ? '⚠ same network' : '', style: x.sameNetwork ? 'color:#e0703a' : '' })));
+    box.append(el('div', { className: 'tablewrap', style: 'margin-top:8px' }, el('table', {}, el('thead', {}, el('tr', {}, ...['Friend', 'Wave', 'Joined', 'Earned for inviter', ''].map((t) => el('th', { textContent: t })))), tb)));
+  }
 }
 $('p-close').onclick = () => { current = null; $('player').classList.add('hidden'); };
 

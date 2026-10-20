@@ -34,6 +34,8 @@ function freshSave() {
     poolUsd: 0,          // yatıran: üretiminden açılan çekim hakkı (USD), sezon sonuna kadar birikir
     seasonDepositedUsd: 0, prodUsdSinceDeposit: 0, withdrawnUsdSeason: 0,
     feesToPool: 0,       // çekim kesintilerinden ödül havuzuna dönen DGN
+    refUsd: 0,           // davet kazancı: çekilebilir (USD), 2.2x tavanına sayılmaz
+    refSeasonUsd: 0, refTotalUsd: 0,
     poolDay: -1,
     vault: 0,            // kasada bekleyen (cüzdana gönderilecek)
     deposited: 0, withdrawn: 0, spentDungeon: 0, feesBurned: 0,
@@ -135,7 +137,7 @@ export const Economy = {
   reset() {
     const d = this.data, keep = {};
     for (const k of ['settings', 'season', 'balance', 'uncollected', 'depositBal', 'credit', 'poolAvail', 'poolDay', 'vault',
-      'deposited', 'withdrawn', 'spentDungeon', 'feesBurned', 'feesToPool', 'creditUsd', 'poolUsd', 'seasonDepositedUsd', 'prodUsdSinceDeposit', 'withdrawnUsdSeason', 'vaultMoves', 'prodSinceDeposit', 'roiAt', 'walletBal', 'walletHist', 'seasonDeposited', 'firstDepositAt', 'keys', 'opened',
+      'deposited', 'withdrawn', 'spentDungeon', 'feesBurned', 'feesToPool', 'creditUsd', 'poolUsd', 'seasonDepositedUsd', 'prodUsdSinceDeposit', 'withdrawnUsdSeason', 'refUsd', 'refSeasonUsd', 'refTotalUsd', 'vaultMoves', 'prodSinceDeposit', 'roiAt', 'walletBal', 'walletHist', 'seasonDeposited', 'firstDepositAt', 'keys', 'opened',
       'seasonBest', 'lastAccrue', 'idlePass', 'clanBonus',
       // DGN ile alınanlar da kalır: Forge, Gold Rush, Skill Tome. Tome ile birlikte "yenilmiş boss" listesi de
       // kalır; yoksa sıfırlayıp boss'ları tekrar yenerek bedava Tome toplanabilirdi.
@@ -197,6 +199,7 @@ export const Economy = {
       freePoolDgn: Math.floor(d.poolAvail || 0), roiLeftUsd: r2(this.roiLeftUsd()), paidBack: !!d.roiAt,
       shareDay: day === null ? null : day + 1, shareToday: day === null ? 0 : D.schedule[Math.min(day, D.schedule.length - 1)],
       usdPerHour: r2(this.usdPerHour()), perDayUsd: r2(this.poolPerDayUsd(now)), nextFee: this.nextFee(now),
+      refUsd: r2(d.refUsd), refSeasonUsd: r2(d.refSeasonUsd), refTotalUsd: r2(d.refTotalUsd),
       feesToPool: Math.floor(d.feesToPool || 0), daysLeft: +((F.seasonEndsAt(now) - now) / 86400000).toFixed(2),
       projMaxUsd: proj ? r2(proj.maxUsd) : null, projMaxX: proj ? +proj.maxX.toFixed(2) : null, projCapInDays: proj?.capInDays ?? null,
     };
@@ -362,10 +365,21 @@ export const Economy = {
   // Çekilebilir hak (USD): anapara + açılan pay. Pay kısmı 2.2x tavanına kalan kadarla sınırlı
   // (tavandan sonra açılan %1'lik haklar ayrıca sayılır).
   withdrawableUsd() {
-    const d = this.data, credit = d.creditUsd || 0, pool = d.poolUsd || 0;
-    if (!this.isDepositor() || this.atLifeCap()) return credit + pool;
+    const d = this.data, credit = d.creditUsd || 0, pool = d.poolUsd || 0, ref = d.refUsd || 0;
+    if (!this.isDepositor() || this.atLifeCap()) return credit + ref + pool;
     const room = Math.max(0, this.lifeCapUsd() - (d.withdrawnUsdSeason || 0) - credit);
-    return credit + Math.min(pool, room);
+    return credit + ref + Math.min(pool, room);
+  },
+  // Davet kazancı (sunucudan, USD). Sezon tavanını aşan kısım yazılmaz. Bakiyeye DGN olarak eklenir.
+  addReferral(usd) {
+    const d = this.data, R = CONFIG.v5.referral;
+    const give = Math.min(Math.max(0, +usd || 0), Math.max(0, R.seasonCapUsd - (d.refSeasonUsd || 0)));
+    if (give < 0.0001) return 0;
+    const dgn = give / this.price();
+    d.balance += dgn; d.refUsd = (d.refUsd || 0) + give;
+    d.refSeasonUsd = (d.refSeasonUsd || 0) + give; d.refTotalUsd = (d.refTotalUsd || 0) + give;
+    this.save(); this.emit({ type: 'referral', usd: give, amount: dgn });
+    return give;
   },
   // Tavana kadar olan pay, tavanı aşan kısım açılmaz (bakiyede oyun için kalır)
   clampPoolUsd() {
@@ -412,10 +426,12 @@ export const Economy = {
     const fromCredit = Math.min((d.creditUsd || 0) / p, amount);
     d.creditUsd = Math.max(0, (d.creditUsd || 0) - fromCredit * p);
     let rest = amount - fromCredit;
+    const fromRef = Math.min((d.refUsd || 0) / p, rest);          // davet kazancı (tavana sayılmaz)
+    d.refUsd = Math.max(0, (d.refUsd || 0) - fromRef * p); rest -= fromRef;
     const fromPoolUsd = Math.min((d.poolUsd || 0) / p, rest);
     d.poolUsd = Math.max(0, (d.poolUsd || 0) - fromPoolUsd * p); rest -= fromPoolUsd;
     d.poolAvail = Math.max(0, (d.poolAvail || 0) - rest);
-    d.withdrawnUsdSeason = (d.withdrawnUsdSeason || 0) + amount * p;
+    d.withdrawnUsdSeason = (d.withdrawnUsdSeason || 0) + (amount - fromRef) * p;
     // çekilen anapara, paket almakta kullanılan "yatırılmış" kısımdan da düşer
     d.balance -= amount; d.depositBal = Math.min(Math.max(0, d.depositBal - fromCredit), d.balance);
     const fee = Math.ceil(amount * rate);
@@ -513,10 +529,12 @@ export const Economy = {
     if (d.season === null || d.season === undefined) { d.season = idx; return false; }
     if (d.season === idx) return false;
     const keep = { settings: d.settings, clanBonus: d.clanBonus, keys: d.keys, vault: d.vault, deposited: d.deposited,
-      withdrawn: d.withdrawn, spentDungeon: d.spentDungeon, feesBurned: d.feesBurned, feesToPool: d.feesToPool, selectedHero: d.selectedHero };
+      withdrawn: d.withdrawn, spentDungeon: d.spentDungeon, feesBurned: d.feesBurned, feesToPool: d.feesToPool, selectedHero: d.selectedHero,
+      refTotalUsd: d.refTotalUsd };
     // çekilmemiş anapara hakkı (USD) yeni sezona geçer; bakiyede onun DGN karşılığı kalır
-    const credUsd = d.creditUsd || 0, bal = Math.min(d.balance, credUsd / this.price()), depBal = Math.min(d.depositBal, bal);
-    keep.creditUsd = bal * this.price();
+    const credUsd = d.creditUsd || 0, refUsd = d.refUsd || 0, p0 = this.price();
+    const bal = Math.min(d.balance, (credUsd + refUsd) / p0), depBal = Math.min(d.depositBal, bal);
+    keep.refUsd = Math.min(refUsd, bal * p0); keep.creditUsd = Math.max(0, bal * p0 - keep.refUsd);
     this.data = freshSave();
     Object.assign(this.data, keep, { season: idx, balance: bal, depositBal: depBal, lastAccrue: now });
     this.seasonReset = true;

@@ -897,7 +897,7 @@ export class UI {
       <div class="wbox line">${(d.creditUsd || 0) > 0.005
         ? `<b>${$u(d.creditUsd)}</b> (≈ ${dgnOf(d.creditUsd)} ${sym}) of what you can take out is what you brought in yourself. It is not limited by the daily share.`
         : Economy.isDepositor() ? `What you deposited this season has been taken out. Anything more comes from the share of your production that opens up each day.`
-        : `You have not deposited this season. Everything you take out comes from the daily pool.`}</div>
+        : `You have not deposited this season. Everything you take out comes from the daily pool.`}${(d.refUsd || 0) > 0.005 ? `<br><b>${$u(d.refUsd)}</b> (≈ ${dgnOf(d.refUsd)} ${sym}) comes from invite rewards and can be taken out too.` : ''}</div>
       <div class="wbox line">You can move up to <b>${n(wd)} ${sym}</b> (${usd(wd)}) right now. Limits are counted in USD and paid in ${sym} at the oracle price, so the ${sym} amount moves with the price.
         <div class="wrow"><input id="w-amt" type="number" min="0" value="${wd}"><button class="btn small" id="w-vault" ${wd >= V.withdraw.min && !cd ? '' : 'disabled'}>${cd ? `Ready in ${fmtDur(cd)}` : `Move to the vault · ${Math.round(fee * 100)}% fee`}</button></div>
         <div class="fee-ladder">${V.withdraw.fees.map((f, i) => `<span class="${i === step ? 'on' : i < step ? 'used' : ''}">${Math.round(f * 100)}%</span>`).join('<i>›</i>')}</div>

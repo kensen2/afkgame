@@ -405,4 +405,9 @@ export class LocalBackend {
     return this._ok();
   }
   devReset() { this.s = freshState(); this._apply(); this._save(); return this._ok(); }
+
+  // Davet sistemi sadece gerçek sunucuda çalışır
+  myReferrals() { return Promise.resolve({ ok: false, error: 'offline_only' }); }
+  bindRef() { return Promise.resolve({ ok: false, error: 'offline_only' }); }
+  claimRef() { return Promise.resolve({ ok: true, usd: 0 }); }
 }

@@ -38,6 +38,13 @@ export function validateClan(name, tag) {
 // Hata kodu → oyuncuya gösterilen metin (oyun dili İngilizce)
 export const ERRORS = {
   banned: 'Your account is suspended. Online features are disabled.',
+  already_invited: 'You already joined through an invite.',
+  ref_not_found: 'That invite code does not exist.',
+  self_invite: 'You cannot use your own invite code.',
+  ref_too_late: `Invite codes can only be used in the first ${CONFIG.v5.referral.bindHours} hours of a new account.`,
+  same_network: 'Invites from the same network do not count.',
+  offline_only: 'Invites need the online server.',
+  server_error: 'The server could not do that right now. Try again later.',
   nick_length: `Nickname must be ${CONFIG.social.nick.min}–${CONFIG.social.nick.max} characters.`,
   nick_chars: 'Use only letters, numbers and _.',
   nick_reserved: 'That nickname is reserved.',

@@ -11,7 +11,8 @@ import { validateNick, validateClan } from '../systems/clan-rules.js';
 
 const SESSION_KEY = 'afk_sb_session_v1';
 const KNOWN = new Set(['need_nick', 'already_in_clan', 'not_in_clan', 'clan_full', 'too_many_requests', 'already_requested',
-  'no_permission', 'officers_full', 'leader_must_transfer', 'not_found', 'nick_taken', 'nick_reserved', 'clan_name_taken', 'clan_tag_taken', 'banned']);
+  'no_permission', 'officers_full', 'leader_must_transfer', 'not_found', 'nick_taken', 'nick_reserved', 'clan_name_taken', 'clan_tag_taken', 'banned',
+  'already_invited', 'ref_not_found', 'self_invite', 'ref_too_late', 'same_network']);
 
 export class SupabaseBackend {
   constructor({ url, key, timeoutMs = 8000 } = CONFIG.server) {
@@ -158,6 +159,10 @@ export class SupabaseBackend {
     return r.ok ? { ok: true, ...r.data } : r;
   }
   async report(snap, events) { return this._rpc('report_state', { p_snap: snap, p_events: events }); }
+  // ---------- davet (supabase/04_referral.sql) ----------
+  async myReferrals() { const r = await this._rpc('my_referrals'); return r.ok ? { ok: true, ...r.data } : r; }
+  async bindRef(code) { const r = await this._rpc('bind_ref', { p_code: String(code || '').slice(0, 12) }); return r.ok ? { ok: true, ...r.data } : r; }
+  async claimRef() { const r = await this._rpc('claim_ref_rewards'); return r.ok ? { ok: true, usd: Number(r.data?.usd) || 0 } : r; }
   disband() { return this._act('disband_clan', { c: this.me.clanId }); }
   devSetMyRole() { return Promise.resolve({ ok: false, error: 'not_found' }); }
 

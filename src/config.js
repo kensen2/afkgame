@@ -189,6 +189,10 @@ export const CONFIG = {
     // Tekli anahtar: her kademede, oyunda biriken DGN ile alınabilir. Fiyat = paket fiyatı / 10 × singleKeyMult.
     // (Paketler yine sadece yatırılan DGN ile.) 4 kat: 1M yatıran sezonda ~1,8M çeker (sim/v6-depositor.mjs).
     singleKeyMult: 4,
+    // Davet: davet eden, arkadaşının oyundan kasaya taşıdığı tutarın (USD) rate'i kadar kazanır. Arkadaştan kesilmez,
+    // ödül havuzundan ödenir. Sezonda en fazla seasonCapUsd. Kod hesap açıldıktan sonra bindHours içinde bir kez bağlanır.
+    // Davet kazancı çekilebilir; yatıranın 2.2x tavanına sayılmaz. Sunucu: supabase/04_referral.sql
+    referral: { rate: 0.05, seasonCapUsd: 100, bindHours: 48 },
     // Çekim: oyundan kasaya geçerken kesinti alınır. Kesinti 24 saat içindeki her yeni çekimde artar (%5 → %10 → %20,
     // %20'de durur); 24 saat çekim yapılmazsa %5'e döner. İki çekim arasında en az cooldownHours saat.
     // Kesintinin tamamı ödül havuzuna geri döner (yakılmaz).

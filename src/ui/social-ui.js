@@ -90,6 +90,8 @@ export class SocialUI {
     if (t === 'request_failed') this.ui.toast('A clan you asked to join is full.');
     if (t === 'removed') this.ui.toast('You are no longer in your clan.');
     if (t === 'role') this.ui.toast(t && evt.role === 'leader' ? 'You are now the clan leader.' : evt.role === 'officer' ? 'You are now an officer of your clan.' : 'Your clan role changed.');
+    if (t === 'refBound') { Audio.play('coin'); this.ui.toast(`You joined through ${evt.inviter}'s invite. Welcome!`); }
+    if (t === 'referral' && evt.usd > 0) { Audio.play('coin'); this.ui.toast(`🎁 Invite reward: +$${evt.usd.toFixed(2)} from your friends${evt.capped ? ' (season limit reached)' : ''}`); }
     if (t === 'grant') { Audio.play('coin'); this.ui.toast(`🎁 From the team: ${evt.msg}${evt.note ? ` · ${evt.note}` : ''}`, 7000); }
     if (t === 'wipe') { this.ui.toast('Your progress was reset by the team. Reloading…', 3000); setTimeout(() => location.reload(), 2500); }
     if (t === 'ban' || t === 'notice') this._renderNotice();
@@ -140,6 +142,7 @@ export class SocialUI {
     else if (this.tab === 'find') html = this._findHtml();
     else if (this.tab === 'players') html = this._playersHtml(await Social.players({ limit: 100 }));
     else if (this.tab === 'clans') html = this._clansHtml(await Social.clans({ limit: 50 }));
+    else if (this.tab === 'invite') html = this._inviteHtml(await Social.referrals());
     if (gen !== this._gen) return;   // bu arada başka sekme açıldı
     body.innerHTML = html;
     this._wire(body);
@@ -235,6 +238,31 @@ export class SocialUI {
       <div class="clist">${rows.map(row).join('')}${mine && mine.rank > rows.length ? `<div class="csep">…</div>${row(mine)}` : ''}</div>`;
   }
 
+  // ---- davet ----
+  _inviteHtml(r) {
+    const R = CONFIG.v5.referral, d = Economy.data, usd = (x) => '$' + (+x || 0).toFixed(2);
+    if (!r?.ok) {
+      return `<div class="wbox line">${r?.error === 'offline_only' ? 'Invites work when the game is connected to the online server.' : 'Invites are not available right now. Try again later.'}</div>`;
+    }
+    const link = `${location.origin}${location.pathname}?ref=${encodeURIComponent(r.code || '')}`;
+    const list = (r.invitees || []).map((x) => `<div class="crow"><span class="rk">${x.active ? '🟢' : '⚪'}</span><span class="nm">${esc(x.nick)}<small>joined ${ago(x.joined)}</small></span><span class="st">W${x.wave}</span><span class="st">${usd(x.earnedUsd)}</span></div>`).join('');
+    return `
+      <div class="wbox line"><span class="wlabel">Your invite link</span>
+        <div class="wrow"><input id="ref-link" readonly value="${esc(link)}"><button class="btn small" id="ref-copy">Copy</button></div>
+        <small>Code <b>${esc(r.code)}</b>. When a friend you invite moves ${CONFIG.token.symbol} out of the game, you get <b>${Math.round(R.rate * 100)}%</b> of it on top. It is paid from the reward pool, not taken from your friend.</small></div>
+      <div class="wgrid">
+        <div class="wbox"><span>Invited</span><b>${(r.invitees || []).length}</b><small>${(r.invitees || []).filter((x) => x.active).length} active today</small></div>
+        <div class="wbox"><span>Earned this season</span><b>${usd(d.refSeasonUsd)}</b><small>limit ${usd(R.seasonCapUsd)} a season</small></div>
+        <div class="wbox"><span>Earned in total</span><b>${usd(r.earnedUsd)}</b><small>${usd(d.refUsd)} ready to take out</small></div>
+      </div>
+      ${r.invitedBy ? `<div class="wbox line">You joined through <b>${esc(r.invitedBy)}</b>'s invite.</div>`
+        : r.canBind ? `<div class="wbox line"><span class="wlabel">Got an invite code?</span>
+          <div class="wrow"><input id="ref-code" maxlength="12" placeholder="Code" value="${esc(Social.pendingRef() || '')}"><button class="btn small" id="ref-bind">Use code</button></div>
+          <small>You can add a code in the first ${R.bindHours} hours of a new account, once.</small></div>` : ''}
+      <div class="wbox line"><span class="wlabel">Your friends</span>${list ? `<div class="clist">${list}</div>` : '<small>Nobody yet. Share your link!</small>'}</div>
+      <small class="hint">Rules: one code per account, set once. Your own code and invites from the same network do not count. What you earn from invites can be taken out like the rest of your balance and does not count toward the ${CONFIG.v5.depositor.lifeCap}× season limit.</small>`;
+  }
+
   // ---------------- düğmeler ----------------
   _wire(root) {
     const res = async (p, okMsg) => {
@@ -245,6 +273,17 @@ export class SocialUI {
       return r;
     };
     const on = (sel, fn) => root.querySelectorAll(sel).forEach((b) => b.addEventListener('click', () => { Audio.play('click'); fn(b); }));
+    // davet
+    on('#ref-copy', async () => {
+      const inp = root.querySelector('#ref-link');
+      try { await navigator.clipboard.writeText(inp.value); } catch (e) { inp.select(); document.execCommand?.('copy'); }
+      this.ui.toast('Invite link copied');
+    });
+    on('#ref-bind', async () => {
+      const r = await Social.bindRef(root.querySelector('#ref-code')?.value || '');
+      if (!r.ok) { Audio.play('denied'); this.ui.toast(errText(r.error)); return; }
+      Audio.play('buy'); this.render();
+    });
     on('[data-go]', (b) => { this.tab = b.dataset.go; this.render(); });
     on('#cc-go', async () => {
       const r = await Social.createClan(root.querySelector('#cc-name').value, root.querySelector('#cc-tag').value);
