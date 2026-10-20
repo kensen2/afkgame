@@ -66,6 +66,7 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
   state snapshot + economy events every minute (`report_state`); these are player-reported and can be faked.
 - Price oracle (test, `src/systems/oracle.js`): fake DGN price, market cap 100K–200K $ (1B supply), HUD chip top-left.
   All USD → DGN conversions (`CONFIG.token.usdPerToken`: key packs, single keys, USD displays) use the 10-minute TWAP,
-  never the spot price. Hourly production stays fixed in DGN (`designUsdPerToken` 0.0001). Live: spot from the DEX, TWAP on the server.
+  never the spot price. Free players' production stays fixed in DGN; depositors' production is fixed in USD
+  (table × `designUsdPerToken` 0.0001, so their DGN/h moves with the oracle price, `Economy.priceFactor`). Live: spot from the DEX, TWAP on the server.
 - "Burned" only for on-chain burns; in-game spending is "Spent in the dungeon".
 - The creator does not trade the token. Never propose wash trading, volume bots or price support.
