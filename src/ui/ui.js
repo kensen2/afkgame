@@ -575,7 +575,7 @@ export class UI {
   toggleAuto() { Economy.data.settings.auto = !Economy.data.settings.auto; Economy.save(); this.syncButtons(); }
   toggleSpeed() {
     const s = Economy.data.settings;
-    const steps = [1, 1.5, 2, 2.5];
+    const steps = [1, 1.25, 1.5, 2, 2.5];
     const i = steps.indexOf(s.speed);
     s.speed = steps[(i + 1) % steps.length];
     Economy.save(); this.syncButtons();

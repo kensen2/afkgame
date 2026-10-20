@@ -77,7 +77,7 @@ export const Economy = {
         // eski kayıtlarda ses %10'dan başlasın (bir kerelik)
         if ((this.data.settings.audioVer || 0) < 2) { this.data.settings.musicVol = 0.1; this.data.settings.sfxVol = 0.1; this.data.settings.audioVer = 2; }
         // eski kayıttaki 3x hız artık yok
-        if (![1, 1.5, 2, 2.5].includes(this.data.settings.speed)) this.data.settings.speed = 1;
+        if (![1, 1.25, 1.5, 2, 2.5].includes(this.data.settings.speed)) this.data.settings.speed = 1;
         // eski kayıt: checkpoint'ten devam dalgasına geçiş
         if (d.resumeWave === undefined && d.checkpointWave) this.data.resumeWave = d.checkpointWave;
         for (const h of Object.keys(CONFIG.heroes)) {
