@@ -88,6 +88,16 @@
       <div id="wd-alert"></div>
     </div>
 
+    <div class="panel" id="mt-panel">
+      <div class="head"><h2>Maintenance</h2><span class="sp"></span><span id="mt-state" class="pill done">Off</span></div>
+      <div class="muted">Players see a countdown at the top of the game. When it reaches zero the game stops and shows the maintenance screen. When you end maintenance every open game reloads itself, so a new version is picked up.</div>
+      <div class="row" style="margin-top:8px">
+        <select id="mt-min"><option value="0">Now</option><option value="1" selected>In 1 minute</option><option value="2">In 2 minutes</option><option value="5">In 5 minutes</option><option value="10">In 10 minutes</option><option value="30">In 30 minutes</option><option value="60">In 1 hour</option></select>
+        <input id="mt-msg" class="grow" maxlength="200" placeholder="Message for players (e.g. Updating the economy, back in 15 minutes)" />
+      </div>
+      <div class="row" style="margin-top:8px"><button class="red" id="btn-mt-on">Start maintenance</button><button id="btn-mt-off">End maintenance</button><span id="mt-msg-out" class="msg"></span></div>
+    </div>
+
     <div class="panel" id="wd-panel">
       <div class="head"><h2>Withdrawal requests <span id="wd-badge" class="tag ban hidden"></span></h2><span class="sp"></span>
         <select id="wd-filter"><option value="open">Waiting</option><option value="flagged">Waiting · flagged only</option><option value="all">All (incl. reviewed)</option></select>

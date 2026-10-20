@@ -845,3 +845,19 @@ body.cine #hud, body.cine #toast, body.cine #banner, body.cine #notice-bar { vis
 .wbox .xcap { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; margin-top: 8px; font-size: 13px; align-items: baseline; }
 .wbox .xcap .bar { grid-column: 1 / -1; display: block; height: 6px; border-radius: 3px; background: rgba(0,0,0,0.15); overflow: hidden; }
 .wbox .xcap .bar i { display: block; height: 100%; background: linear-gradient(90deg, #c9973a, #e8c46a); }
+
+/* ---- bakım modu (admin paneli) ---- */
+#maint-bar { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 62; max-width: min(640px, 92vw);
+  padding: 8px 16px; border-radius: 12px; pointer-events: none; text-align: center;
+  font: 700 14px 'Fredoka', 'Trebuchet MS', sans-serif; color: #fff; background: linear-gradient(#e08a2a, #b8611a);
+  border: 2px solid #3a210c; box-shadow: 0 0 0 3px #7a3f0c, 0 6px 16px rgba(0,0,0,0.6); font-variant-numeric: tabular-nums; }
+#maint-screen { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: radial-gradient(ellipse at center, rgba(20,14,8,0.92), rgba(4,3,2,0.97)); pointer-events: auto; }
+#maint-screen .ms-box { max-width: 420px; width: 100%; text-align: center; padding: 26px 22px; border-radius: 16px;
+  background: linear-gradient(#e2cc9f, #d3b882); border: 3px solid #3a210c; box-shadow: 0 0 0 4px #a8702f, 0 0 0 7px #3a210c, 0 14px 30px rgba(0,0,0,0.6);
+  color: #3b2814; font-family: 'Fredoka', 'Trebuchet MS', sans-serif; }
+#maint-screen .ms-icon { font-size: 46px; animation: ms-spin 3s ease-in-out infinite; display: inline-block; }
+#maint-screen .ms-title { font: 800 26px 'Cinzel', serif; color: #6b3a0e; margin: 6px 0 10px; }
+#maint-screen .ms-msg { font-size: 16px; font-weight: 600; }
+#maint-screen .ms-note { font-size: 13px; color: #7d6648; margin-top: 12px; }
+@keyframes ms-spin { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }

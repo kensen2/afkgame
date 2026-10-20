@@ -39,6 +39,8 @@ export const Social = {
     // istek onayları, gelen istekler ve sıralama değişimi için düzenli kontrol
     setInterval(() => this.tick(), 2000);
     setInterval(() => this.refresh(), 30000);
+    // bakım modu: 10 saniyede bir sorulur (geri sayım ve bakım ekranı)
+    if (this.online && this.backend.getMaintenance) { await this.checkMaintenance(); setInterval(() => this.checkMaintenance(), 10000); }
     // ekipten: ban, duyuru, ödüller (admin paneli). Sadece gerçek sunucuda.
     if (this.online && this.backend.status) {
       Economy.on((d, e) => this._noteEvent(e));
@@ -129,6 +131,18 @@ export const Social = {
     const r = await this.backend.setNick(nick);
     if (r.ok) { await this.refresh({ type: 'nick' }); this.bindPendingRef(); }
     return r;
+  },
+
+  // ---- bakım ----
+  // maintenance: null ya da { at: bakımın başladığı an (bu cihazın saatine göre), message }
+  maintenance: null,
+  async checkMaintenance() {
+    const r = await this.backend.getMaintenance();
+    if (!r?.ok) return;
+    const m = r.startsAt ? { at: Date.now() + (Number(r.startsAt) - Number(r.now || Date.now())), message: r.message || null } : null;
+    const changed = JSON.stringify(m && { a: Math.round(m.at / 1000), msg: m.message }) !== JSON.stringify(this.maintenance && { a: Math.round(this.maintenance.at / 1000), msg: this.maintenance.message });
+    this.maintenance = m;
+    if (changed) this.emit({ type: 'maintenance' });
   },
 
   // ---- davet ----

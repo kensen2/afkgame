@@ -76,5 +76,8 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
   same browser fingerprint, same IP hash, invite + same network, webdriver/headless, 24/7 activity, machine-regular
   withdrawals and impossible numbers (x over the cap, production above `rate_at`, out > 2.2× deposits). Verdicts:
   ok / check / multi / bot / cheat. Flags are hints; approving does nothing on-chain in Phase 1.
+- Maintenance (`supabase/06_maintenance.sql`, applied): admin sets "in N minutes" (0 = now) + message; the game polls
+  `get_maintenance` every 10 s, shows a countdown bar, then pauses and shows the maintenance screen; ending it reloads
+  every open game. Client-side only in Phase 1 (server RPCs stay open).
 - "Burned" only for on-chain burns; in-game spending is "Spent in the dungeon".
 - The creator does not trade the token. Never propose wash trading, volume bots or price support.

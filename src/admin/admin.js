@@ -71,8 +71,9 @@ async function start() {
     const me = await rpc('admin_whoami');
     $('who').textContent = me.email || me.id;
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
-    await Promise.all([overview(), search(''), log(), withdrawals()]);
+    await Promise.all([overview(), search(''), log(), withdrawals(), maint()]);
     setInterval(() => { if (!document.hidden) Promise.all([overview(), withdrawals()]).catch(() => {}); }, 60000);
+    setInterval(() => showMaint(), 1000);
   } catch (e) { logout(e.message); }
 }
 
@@ -310,6 +311,33 @@ $('btn-wipe').onclick = busy($('btn-wipe'), async () => {
   await after(); return 'Wipe queued. It runs the next time the player opens the game.';
 }, $('p-msg'));
 
+// ---------- bakım modu ----------
+let mt = null, mtSkew = 0;   // mt: sunucudan son durum; mtSkew: sunucu saati - bu bilgisayarın saati
+async function maint() {
+  try { mt = await rpc('get_maintenance'); mtSkew = Number(mt.now || Date.now()) - Date.now(); } catch (e) { mt = null; }
+  showMaint();
+}
+function showMaint() {
+  const st = $('mt-state');
+  if (!mt?.startsAt) { st.textContent = 'Off · game is open'; st.className = 'pill ok'; return; }
+  const left = Number(mt.startsAt) - (Date.now() + mtSkew);
+  if (left > 0) {
+    const s = Math.ceil(left / 1000);
+    st.textContent = `Starts in ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; st.className = 'pill check';
+  } else { st.textContent = `ON since ${when(mt.startsAt)}`; st.className = 'pill cheat'; }
+}
+$('btn-mt-on').onclick = busy($('btn-mt-on'), async () => {
+  const m = Number($('mt-min').value);
+  if (!confirm(m ? `Start maintenance in ${m} minute${m > 1 ? 's' : ''}? Players see a countdown now.` : 'Start maintenance NOW? Every open game stops right away.')) return '';
+  mt = await rpc('admin_set_maintenance', { p_minutes: m, p_message: $('mt-msg').value.trim() }); mtSkew = Number(mt.now || Date.now()) - Date.now();
+  showMaint(); await log();
+  return m ? `Countdown started. The game stops in ${m} minute${m > 1 ? 's' : ''} (players see it within 10 seconds).` : 'Maintenance is on. Games stop within 10 seconds.';
+}, $('mt-msg-out'));
+$('btn-mt-off').onclick = busy($('btn-mt-off'), async () => {
+  mt = await rpc('admin_end_maintenance'); showMaint(); await log();
+  return 'Maintenance ended. Open games reload within 10 seconds.';
+}, $('mt-msg-out'));
+
 // ---------- çekim talepleri ve risk ----------
 const VERDICT = { ok: ['ok', '✅ Looks OK'], check: ['check', '⚠ Check'], multi: ['multi', '👥 Same person?'], bot: ['bot', '🤖 Bot'], cheat: ['cheat', '🚩 Cheat'] };
 const LEVEL_ICON = { high: '⛔', med: '⚠', info: 'ℹ' };
@@ -376,7 +404,8 @@ async function playerRisk(id) {
 
 // ---------- kayıt ----------
 const ACT = { ban: 'Ban', unban: 'Unban', grant: 'Reward', grant_all: 'Reward everyone', revoke_grant: 'Cancel reward', set_nick: 'Rename',
-  reset_stats: 'Reset stats', notice: 'Notice', nerf: 'Nerf', withdraw_approved: 'Approve withdrawal', withdraw_rejected: 'Reject withdrawal' };
+  reset_stats: 'Reset stats', notice: 'Notice', nerf: 'Nerf', withdraw_approved: 'Approve withdrawal', withdraw_rejected: 'Reject withdrawal',
+  maintenance_on: 'Maintenance on', maintenance_off: 'Maintenance off' };
 async function log() {
   const rows = await rpc('admin_log_list', { lim: 100 });
   const tb = $('log'); tb.replaceChildren();
@@ -387,6 +416,7 @@ async function log() {
       ? `${d.kind === 'wipe' ? 'Save wipe' : `${d.amount < 0 ? 'take ' : ''}${fmt(Math.abs(d.amount))} × ${kindName(d.kind)}`}${d.count != null ? ` → ${fmt(d.count)} players` : ''}${d.note ? ` · ${d.note}` : ''}`
       : r.action === 'ban' ? `${d.hours ? `${d.hours} h` : 'permanent'}${d.reason ? ` · ${d.reason}` : ''}`
       : r.action === 'nerf' ? `${Math.round((d.mult ?? 1) * 100)}%${d.reason ? ` · ${d.reason}` : ''}`
+      : r.action === 'maintenance_on' ? `${d.minutes ? `in ${d.minutes} min` : 'now'}${d.message ? ` · ${d.message}` : ''}`
       : r.action.startsWith('withdraw_') ? `request #${d.event}${d.note ? ` · ${d.note}` : ''}`
       : r.action === 'set_nick' ? `→ ${d.nick}` : r.action === 'notice' ? (d.text || '(removed)') : r.action === 'revoke_grant' ? `#${d.id}` : '';
     tb.append(el('tr', {}, el('td', { textContent: when(r.at) }), el('td', { textContent: r.admin || '' }),

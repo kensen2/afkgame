@@ -162,6 +162,8 @@ export class SupabaseBackend {
   // ---------- davet (supabase/04_referral.sql) ----------
   async myReferrals() { const r = await this._rpc('my_referrals'); return r.ok ? { ok: true, ...r.data } : r; }
   async bindRef(code) { const r = await this._rpc('bind_ref', { p_code: String(code || '').slice(0, 12) }); return r.ok ? { ok: true, ...r.data } : r; }
+  // Bakım modu (supabase/06_maintenance.sql)
+  async getMaintenance() { const r = await this._rpc('get_maintenance'); return r.ok ? { ok: true, ...r.data } : r; }
   // Cihaz bilgisi (supabase/05_withdraw_review.sql): hile/bot analizi için
   noteDevice(d) {
     return this._rpc('note_device', { p_dev: d.dev, p_fp: d.fp, p_ua: d.ua, p_mobile: d.mobile, p_webdriver: d.webdriver, p_tz: d.tz, p_screen: d.screen });

@@ -95,6 +95,7 @@ export class SocialUI {
     if (t === 'grant') { Audio.play('coin'); this.ui.toast(`🎁 From the team: ${evt.msg}${evt.note ? ` · ${evt.note}` : ''}`, 7000); }
     if (t === 'wipe') { this.ui.toast('Your progress was reset by the team. Reloading…', 3000); setTimeout(() => location.reload(), 2500); }
     if (t === 'ban' || t === 'notice') this._renderNotice();
+    if (t === 'maintenance') this._renderMaint();
     if (t === 'requests' && can(Social.me.role, 'approve')) this.ui.toast(`🛡 New join request${evt.count > 1 ? 's' : ''} for your clan`);
     // açık listeyi yenile (yazı yazılan sekmelerde odak kaybolmasın diye sadece clan sekmesi tam yenilenir)
     if (this.isOpen() && t !== 'refresh') {
@@ -120,6 +121,57 @@ export class SocialUI {
     } else if (Social.notice && Social.notice !== this._noticeClosed) {
       txt.textContent = Social.notice; bar.className = ''; bar.querySelector('.nb-x').hidden = false;
     } else bar.className = 'hidden';
+  }
+
+  // ---------------- Bakım modu ----------------
+  // Geri sayım şeridi → süre dolunca oyun durur ve bakım ekranı gelir → bakım bitince sayfa yenilenir (yeni sürüm yüklensin)
+  _renderMaint() {
+    const m = Social.maintenance;
+    if (!m) {
+      clearInterval(this._maintT); this._maintT = null;
+      $('maint-bar')?.classList.add('hidden');
+      if (this._maintOn) {
+        this._maintOn = false;
+        const scr = $('maint-screen');
+        if (scr) { scr.querySelector('.ms-title').textContent = 'We are back!'; scr.querySelector('.ms-msg').textContent = 'Loading the latest version…'; }
+        setTimeout(() => location.reload(), 1500);
+      } else if (this._maintShown) this.ui.toast('The planned maintenance was cancelled.');
+      this._maintShown = false;
+      return;
+    }
+    this._maintShown = true;
+    if (!this._maintT) this._maintT = setInterval(() => this._tickMaint(), 500);
+    this._tickMaint();
+  }
+  _tickMaint() {
+    const m = Social.maintenance;
+    if (!m) return;
+    const left = m.at - Date.now();
+    if (left > 0) {
+      let bar = $('maint-bar');
+      if (!bar) { bar = document.createElement('div'); bar.id = 'maint-bar'; bar.setAttribute('role', 'status'); document.body.appendChild(bar); }
+      const s = Math.ceil(left / 1000), mm = Math.floor(s / 60), ss = String(s % 60).padStart(2, '0');
+      bar.textContent = `🛠 Maintenance in ${mm}:${ss}. Your progress is saved automatically.${m.message ? ` ${m.message}` : ''}`;
+      bar.classList.remove('hidden');
+      return;
+    }
+    $('maint-bar')?.classList.add('hidden');
+    if (this._maintOn) { if (this.ui.game?.hero) this.ui.game.paused = true; const msg = $('maint-screen')?.querySelector('.ms-msg'); if (msg) msg.textContent = m.message || 'We are making the dungeon better. Please come back in a little while.'; return; }
+    this._maintOn = true;
+    // oyunu durdur ve kaydet
+    const g = this.ui.game;
+    if (g?.hero && !g.paused) g.paused = true;
+    Economy.save();
+    let scr = $('maint-screen');
+    if (!scr) {
+      scr = document.createElement('div'); scr.id = 'maint-screen'; scr.setAttribute('role', 'alertdialog');
+      scr.innerHTML = '<div class="ms-box"><div class="ms-icon">🛠</div><div class="ms-title"></div><div class="ms-msg"></div><div class="ms-note"></div></div>';
+      document.body.appendChild(scr);
+    }
+    scr.querySelector('.ms-title').textContent = 'Under maintenance';
+    scr.querySelector('.ms-msg').textContent = m.message || 'We are making the dungeon better. Please come back in a little while.';
+    scr.querySelector('.ms-note').textContent = 'Your progress is saved. This page refreshes by itself when the game is back.';
+    scr.classList.remove('hidden');
   }
 
   updateHud() {
