@@ -180,7 +180,46 @@ export const Economy = {
       deposited: d.deposited || 0, seasonDeposited: d.seasonDeposited || 0, withdrawn: Math.floor(d.withdrawn || 0), spent: Math.floor(d.spentDungeon || 0),
       depositedUsd: +(d.seasonDepositedUsd || 0).toFixed(2), withdrawnUsd: +(d.withdrawnUsdSeason || 0).toFixed(2), returnX: +this.returnX().toFixed(3),
       fees: Math.floor((d.feesToPool || 0) + (d.feesBurned || 0)), keys: d.keys || {}, opened: d.opened, seasonBest: d.seasonBest || 0, bestWave: d.bestWave || 0,
-      level: d.level, forge: d.forge || 0, tomes: d.tomes || 0, season: d.season, rate: Math.round(this.ratePerHour()), heroes: lv, hero: d.selectedHero };
+      level: d.level, forge: d.forge || 0, tomes: d.tomes || 0, season: d.season, rate: Math.round(this.ratePerHour()), heroes: lv, hero: d.selectedHero,
+      econ: this.econSummary() };
+  },
+  // Admin paneli için çekim özeti (v8, USD). Oyuncunun tarayıcısı bildirir; Faz 2'de sunucu hesaplayacak.
+  econSummary(now = Date.now()) {
+    const d = this.data, r2 = (x) => Math.round((x || 0) * 100) / 100, D = CONFIG.v5.depositor;
+    const dep = d.seasonDepositedUsd || 0, depositor = this.isDepositor();
+    const day = d.roiAt ? Math.floor((now - d.roiAt) / 86400000) : null;
+    const proj = this.projectSeason(now);
+    return {
+      depositor, price: +this.price().toPrecision(4), depositedUsd: r2(dep), withdrawnUsd: r2(d.withdrawnUsdSeason),
+      returnX: +this.returnX().toFixed(3), lifeCap: D.lifeCap, capUsd: r2(this.lifeCapUsd()),
+      capRoomUsd: r2(Math.max(0, this.lifeCapUsd() - (d.withdrawnUsdSeason || 0))), atCap: this.atLifeCap(),
+      creditUsd: r2(d.creditUsd), poolUsd: r2(d.poolUsd), availableUsd: r2(this.withdrawableUsd()), availableDgn: this.withdrawable(),
+      freePoolDgn: Math.floor(d.poolAvail || 0), roiLeftUsd: r2(this.roiLeftUsd()), paidBack: !!d.roiAt,
+      shareDay: day === null ? null : day + 1, shareToday: day === null ? 0 : D.schedule[Math.min(day, D.schedule.length - 1)],
+      usdPerHour: r2(this.usdPerHour()), perDayUsd: r2(this.poolPerDayUsd(now)), nextFee: this.nextFee(now),
+      feesToPool: Math.floor(d.feesToPool || 0), daysLeft: +((F.seasonEndsAt(now) - now) / 86400000).toFixed(2),
+      projMaxUsd: proj ? r2(proj.maxUsd) : null, projMaxX: proj ? +proj.maxX.toFixed(2) : null, projCapInDays: proj?.capInDays ?? null,
+    };
+  },
+  // Sezon sonuna kadar en fazla ne çekebilir (bugünkü üretim hızıyla, her açılan hakkı çektiğini varsayar)
+  projectSeason(now = Date.now()) {
+    if (!this.isDepositor()) return null;
+    const d = this.data, D = CONFIG.v5.depositor, capK = CONFIG.v5.demo.depositor.capK;
+    const dep = d.seasonDepositedUsd || 0, cap = this.lifeCapUsd(), perHour = this.usdPerHour();
+    let total = (d.withdrawnUsdSeason || 0) + this.withdrawableUsd(), roiLeft = this.roiLeftUsd(), capInDays = null;
+    let idx = d.roiAt ? Math.floor((now - d.roiAt) / 86400000) : -1;
+    const daysLeft = Math.max(0, (F.seasonEndsAt(now) - now) / 86400000);
+    if (total >= cap) capInDays = 0;
+    for (let i = 0; i < Math.ceil(daysLeft); i++) {
+      const frac = Math.min(1, daysLeft - i);
+      if (total >= cap) { total += dep * D.afterCap * frac; continue; }
+      let prod = perHour * 24 * frac;
+      if (roiLeft > 0) { const pay = Math.min(prod, roiLeft); roiLeft -= pay; prod -= pay; if (roiLeft <= 0) idx = 0; }
+      else idx++;
+      if (idx >= 0 && prod > 0) total = Math.min(cap, total + prod * D.schedule[Math.min(idx, D.schedule.length - 1)] * capK);
+      if (total >= cap && capInDays === null) capInDays = i + 1;
+    }
+    return { maxUsd: total, maxX: dep > 0 ? total / dep : 0, capInDays };
   },
 
   on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
@@ -308,7 +347,7 @@ export const Economy = {
     d.creditUsd = (d.creditUsd || 0) + usd; d.seasonDepositedUsd = (d.seasonDepositedUsd || 0) + usd;
     if (!d.firstDepositAt) d.firstDepositAt = now;
     d.roiAt = 0;                       // yeni yatırılan da önce üretimle geri ödenir
-    this.save(); this.emit({ type: 'deposit', amount: n });
+    this.save(); this.emit({ type: 'deposit', amount: n, usd });
     return n;
   },
   // Harcama: önce oyunda üretilen kısım, sonra yatırılan kısım
@@ -383,7 +422,7 @@ export const Economy = {
     d.feesToPool = (d.feesToPool || 0) + fee * W.feeToPool;   // kesinti ödül havuzuna döner
     d.vault += amount - fee;
     d.vaultMoves = [...this.recentMoves(now), now];
-    this.save(); this.emit({ type: 'vault', amount });
+    this.save(); this.emit({ type: 'vault', amount, usd: amount * p, fee, rate });
     return { net: amount - fee, fee, rate };
   },
   // Cüzdan (Faz 1: simülasyon). Gerçekte bakiye ve geçmişi zincirden sunucu okur.

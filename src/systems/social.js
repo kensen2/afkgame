@@ -50,6 +50,8 @@ export const Social = {
     if (!e?.type || !KEEP.has(e.type) || (e.type === 'xp' && !e.leveled)) return;
     const d = Economy.data, data = {};
     for (const k of ['amount', 'id', 'wave']) if (e[k] != null) data[k] = typeof e[k] === 'number' ? Math.round(e[k]) : e[k];
+    if (e.usd != null) data.usd = Math.round(e.usd * 100) / 100;          // v8: çekim/yatırım USD değeri
+    if (e.fee != null) { data.fee = Math.round(e.fee); data.rate = e.rate; }
     if (e.type === 'keys' && e.id) data.have = Economy.keyCount(e.id);
     if (e.type === 'forge') data.level = d.forge;
     if (e.type === 'xp') data.level = d.level;

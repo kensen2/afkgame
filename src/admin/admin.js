@@ -165,6 +165,7 @@ const EV = { claim: 'Claimed production', deposit: 'Deposited', vault: 'Moved to
 async function detail(id) {
   const d = await rpc('admin_player_detail', { p: id, lim: 300 });
   const s = d.snapshot, box = $('p-snap'); box.replaceChildren();
+  econ(s?.econ);
   $('p-snap-at').textContent = d.snapshotAt ? `· ${when(d.snapshotAt)}` : '· no report yet';
   if (s) {
     const keys = Object.entries(s.keys || {}).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`).join(', ') || 'none';
@@ -185,9 +186,50 @@ async function detail(id) {
       : e.kind === 'forge' ? `level ${x.level}` : e.kind === 'gemItem' ? x.id
       : e.kind === 'upgrade' ? `${x.hero} · ${x.slot} → Lv ${x.level}${x.times > 1 ? ` (${x.times} times)` : ''}`
       : e.kind === 'skill' ? `${x.hero} · skill ${Number(x.skill) + 1} → Lv ${x.level}${x.times > 1 ? ` (${x.times} times)` : ''}`
-      : e.kind === 'revive' || e.kind === 'bestWave' ? `wave ${x.wave}` : x.amount != null ? fmt(x.amount) : '';
+      : e.kind === 'revive' || e.kind === 'bestWave' ? `wave ${x.wave}`
+      : e.kind === 'vault' && x.usd != null ? `${fmt(x.amount)} DGN (${usd(x.usd)}) · fee ${Math.round((x.rate || 0) * 100)}% = ${fmt(x.fee)}`
+      : e.kind === 'deposit' && x.usd != null ? `${fmt(x.amount)} DGN (${usd(x.usd)})`
+      : x.amount != null ? fmt(x.amount) : '';
     tb.append(el('tr', {}, el('td', { textContent: when(e.at) }), el('td', { textContent: EV[e.kind] || e.kind }), el('td', { textContent: det })));
   }
+}
+// v8 kazanç özeti: yatırdığı, çektiği, şu an çekebileceği ve sezon sonuna kadar en fazla ne alabileceği
+const usd = (x) => (x == null ? '—' : '$' + Number(x).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+function econ(e) {
+  const box = $('p-econ'); box.replaceChildren();
+  if (!e) { box.append(el('div', { className: 'muted', textContent: 'No report from this player with the new economy yet (they need to open the updated game).' })); return; }
+  const card = (k, v, sub) => el('div', { className: 'card' }, el('span', { className: 'muted', textContent: k }), el('b', { textContent: v, style: 'font-size:17px' }),
+    sub ? el('div', { className: 'muted', textContent: sub }) : '');
+  const pct = (x) => `${Math.round((x || 0) * 100)}%`;
+  if (!e.depositor) {
+    const g = el('div', { className: 'stats' });
+    g.append(card('Type', 'Free player', 'has not deposited this season'), card('Can take out now', `${fmt(e.freePoolDgn)} DGN`, 'daily free pool share'),
+      card('Deposit carried over', usd(e.creditUsd)), card('Fees back to the pool', `${fmt(e.feesToPool)} DGN`));
+    box.append(g); return;
+  }
+  const x = e.returnX || 0, barW = Math.min(100, x / e.lifeCap * 100);
+  const status = e.atCap ? `Reached the ${e.lifeCap}× limit. Now only ${usd(e.perDayUsd)} a day opens up.`
+    : !e.paidBack ? `Production is still counting toward the deposit: ${usd(e.roiLeftUsd)} to go (${usd(e.usdPerHour)}/h).`
+    : `Day ${e.shareDay} after payback: ${pct(e.shareToday)} of production opens up, about ${usd(e.perDayUsd)} a day.`;
+  const next = e.atCap ? 'Season limit reached.'
+    : `At this pace the most they can take out by season end is about ${usd(e.projMaxUsd)} (${e.projMaxX}×)` +
+      (e.projCapInDays != null ? `, reaching the ${e.lifeCap}× limit in about ${e.projCapInDays} day${e.projCapInDays === 1 ? '' : 's'}.` : `; they would not reach the ${e.lifeCap}× limit.`);
+  box.append(el('div', { className: 'card', style: 'margin-bottom:8px' },
+    el('div', { style: 'display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap' },
+      el('b', { textContent: `Put in ${usd(e.depositedUsd)} · took out ${usd(e.withdrawnUsd)}`, style: 'font-size:17px' }),
+      el('b', { textContent: `${x.toFixed(2)}× / ${e.lifeCap}×`, style: `font-size:17px;color:${e.atCap ? '#e0703a' : x >= 1 ? '#4caf50' : 'inherit'}` })),
+    el('div', { style: 'height:8px;background:rgba(127,127,127,.25);border-radius:4px;overflow:hidden;margin:8px 0' },
+      el('div', { style: `height:100%;width:${barW}%;background:${e.atCap ? '#e0703a' : '#c9973a'}` })),
+    el('div', { textContent: status }), el('div', { className: 'muted', textContent: next, style: 'margin-top:4px' })));
+  const g = el('div', { className: 'stats' });
+  g.append(card('Can take out now', usd(e.availableUsd), `≈ ${fmt(e.availableDgn)} DGN at ${'$' + e.price}`),
+    card('From their own deposit', usd(e.creditUsd), 'no daily limit'),
+    card('Opened from production', usd(e.poolUsd)),
+    card(`Room to ${e.lifeCap}×`, usd(e.capRoomUsd), `limit ${usd(e.capUsd)}`),
+    card('Production', `${usd(e.usdPerHour)} / h`),
+    card('Next withdraw fee', pct(e.nextFee), `${fmt(e.feesToPool)} DGN returned to the pool`),
+    card('Season ends in', `${e.daysLeft} days`));
+  box.append(g);
 }
 $('p-close').onclick = () => { current = null; $('player').classList.add('hidden'); };
 
