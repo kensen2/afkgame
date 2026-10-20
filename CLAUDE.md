@@ -71,5 +71,10 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
 - Referral (`CONFIG.v5.referral`, `supabase/04_referral.sql`): 6-char code, link `?ref=CODE`, bound once within 48h of the
   account, no self/mutual/same-IP-hash invites. Inviter gets 5 % of the invitee's vault moves (USD, from reported `vault`
   events) via `claim_ref_rewards`, paid from the pool, $100/season cap (client), withdrawable, outside the 2.2× cap.
+- Withdrawal review (`supabase/05_withdraw_review.sql`, applied): every reported `vault`/`withdraw` event is a request in the
+  admin "Withdrawal requests" panel. `player_risk()` flags same device id (`src/net/device.js`, `note_device` hourly),
+  same browser fingerprint, same IP hash, invite + same network, webdriver/headless, 24/7 activity, machine-regular
+  withdrawals and impossible numbers (x over the cap, production above `rate_at`, out > 2.2× deposits). Verdicts:
+  ok / check / multi / bot / cheat. Flags are hints; approving does nothing on-chain in Phase 1.
 - "Burned" only for on-chain burns; in-game spending is "Spent in the dungeon".
 - The creator does not trade the token. Never propose wash trading, volume bots or price support.

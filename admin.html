@@ -45,6 +45,19 @@
   .msg { min-height: 20px; font-size: 14px; font-weight: 600; } .msg.ok { color: #2f7a2a; } .msg.bad { color: #a8281c; }
   .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; }
   .hidden { display: none !important; }
+  /* çekim talepleri ve risk */
+  .alert { background: #a8281c; color: #fff; border-radius: 12px; padding: 10px 14px; font-weight: 700; margin: 8px 0; }
+  .wd { background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-top: 10px; box-shadow: 0 3px 0 #b89458; }
+  .wd.bad { border-color: #c0392b; box-shadow: 0 3px 0 #8e2a20; } .wd.warn { border-color: #d68a1e; }
+  .wd-top { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; } .wd-top .sp { flex: 1; }
+  .wd-amt { font-size: 17px; font-weight: 700; color: #8a4f0c; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 13px; font-weight: 700; color: #fff; }
+  .pill.ok { background: #4f9d2f; } .pill.check { background: #d68a1e; } .pill.multi { background: #8e44ad; }
+  .pill.bot { background: #2c3e50; } .pill.cheat { background: #c0392b; } .pill.done { background: #7a6a55; }
+  .flags { margin: 6px 0 0; padding: 0; list-style: none; font-size: 14px; }
+  .flags li { padding: 2px 0; } .flags .high { color: #a8281c; font-weight: 700; } .flags .med { color: #9a5b0b; } .flags .info { color: var(--muted); }
+  .dev { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  a.nick { color: #6b3a0e; font-weight: 700; cursor: pointer; text-decoration: underline; }
   .login { max-width: 380px; margin: 10vh auto 0; display: grid; gap: 10px; }
   .log td { font-size: 13px; }
   @media (max-width: 600px) { body { padding: 10px; } .panel { padding: 12px; } h1 { font-size: 21px; } .stats b { font-size: 19px; } th:nth-child(4), td:nth-child(4), th:nth-child(6), td:nth-child(6) { display: none; } }
@@ -72,6 +85,15 @@
 
     <div class="panel">
       <div class="stats" id="stats"></div>
+      <div id="wd-alert"></div>
+    </div>
+
+    <div class="panel" id="wd-panel">
+      <div class="head"><h2>Withdrawal requests <span id="wd-badge" class="tag ban hidden"></span></h2><span class="sp"></span>
+        <select id="wd-filter"><option value="open">Waiting</option><option value="flagged">Waiting · flagged only</option><option value="all">All (incl. reviewed)</option></select>
+        <button class="plain" id="wd-refresh">Refresh</button></div>
+      <div class="muted">Every move from the game to the vault is a request. Each one is checked automatically: same device or internet as other accounts, automated browsers, bot-like timing and numbers the game should not allow. The flags are hints, not proof. In test mode approving does not send anything on-chain.</div>
+      <div id="wd-list"></div>
     </div>
 
     <div class="grid2">
@@ -112,6 +134,7 @@
       <div class="head"><h2 id="p-title">Player</h2><span class="sp"></span><button class="plain" id="p-close">Close</button></div>
       <div class="mono" id="p-id"></div>
       <div id="p-ban-line" class="msg bad"></div>
+      <div id="p-risk"></div>
       <div class="grid2" style="margin-top:10px">
         <div class="card">
           <h2>Give or take away</h2>

@@ -10,6 +10,7 @@ import { CONFIG } from '../config.js';
 import { Economy } from './economy.js';
 import { LocalBackend } from '../net/local-backend.js';
 import { SupabaseBackend } from '../net/supabase-backend.js';
+import { deviceInfo } from '../net/device.js';
 
 const listeners = new Set();
 const REF_KEY = 'afk_ref_code';
@@ -75,6 +76,11 @@ export const Social = {
     if (this._events.length > 200) this._events.splice(0, this._events.length - 200);
   },
   async checkStatus() {
+    // cihaz bilgisi saatte bir (admin panelindeki hile/bot analizi için)
+    if (this.hasNick() && this.backend.noteDevice && Date.now() - (this._devAt || 0) > 3600000) {
+      this._devAt = Date.now();
+      deviceInfo().then((d) => this.backend.noteDevice(d)).catch(() => { this._devAt = 0; });
+    }
     if (this.hasNick() && this.backend.report) {
       const ev = this._events.splice(0, 50);
       const rr = await this.backend.report(Economy.snapshot(), ev);

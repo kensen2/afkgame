@@ -71,7 +71,8 @@ async function start() {
     const me = await rpc('admin_whoami');
     $('who').textContent = me.email || me.id;
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
-    await Promise.all([overview(), search(''), log()]);
+    await Promise.all([overview(), search(''), log(), withdrawals()]);
+    setInterval(() => { if (!document.hidden) Promise.all([overview(), withdrawals()]).catch(() => {}); }, 60000);
   } catch (e) { logout(e.message); }
 }
 
@@ -79,8 +80,18 @@ async function start() {
 async function overview() {
   const o = await rpc('admin_overview');
   const box = $('stats'); box.replaceChildren();
-  for (const [k, v] of [['Players', o.players], ['Active 24h', o.active24h], ['Banned', o.banned], ['Clans', o.clans], ['Rewards waiting', o.pendingGrants]])
-    box.append(el('div', { className: 'card' }, el('span', { className: 'muted', textContent: k }), el('b', { textContent: fmt(v) })));
+  let w = null;
+  try { w = await rpc('admin_withdraw_counts'); } catch (e) { /* 05_withdraw_review.sql yok */ }
+  for (const [k, v] of [['Players', o.players], ['Active 24h', o.active24h], ['Banned', o.banned], ['Clans', o.clans], ['Rewards waiting', o.pendingGrants],
+    ...(w ? [['Withdrawals waiting', w.open], ['Flagged', w.flagged]] : [])])
+    box.append(el('div', { className: 'card' }, el('span', { className: 'muted', textContent: k }), el('b', { textContent: fmt(v), style: k === 'Flagged' && v ? 'color:#a8281c' : '' })));
+  const al = $('wd-alert'); al.replaceChildren();
+  if (w?.danger) {
+    const a = el('div', { className: 'alert', textContent: `⚠ ${w.danger} withdrawal request${w.danger > 1 ? 's look' : ' looks'} like a bot, a cheat or the same person on several accounts. Check them before approving.` });
+    a.style.cursor = 'pointer'; a.onclick = () => { $('wd-filter').value = 'flagged'; withdrawals().then(() => $('wd-panel').scrollIntoView({ behavior: 'smooth' })); };
+    al.append(a);
+  }
+  const bd = $('wd-badge'); bd.classList.toggle('hidden', !w?.flagged); if (w?.flagged) bd.textContent = `${w.flagged} flagged`;
   $('notice').value = o.notice || '';
 }
 $('btn-refresh').onclick = () => Promise.all([overview(), search($('q').value), log(), current && openPlayer(current.id)]).catch(alert);
@@ -167,6 +178,7 @@ async function detail(id) {
   const s = d.snapshot, box = $('p-snap'); box.replaceChildren();
   econ(s?.econ);
   refs(id);
+  playerRisk(id);
   $('p-snap-at').textContent = d.snapshotAt ? `· ${when(d.snapshotAt)}` : '· no report yet';
   if (s) {
     const keys = Object.entries(s.keys || {}).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`).join(', ') || 'none';
@@ -298,9 +310,73 @@ $('btn-wipe').onclick = busy($('btn-wipe'), async () => {
   await after(); return 'Wipe queued. It runs the next time the player opens the game.';
 }, $('p-msg'));
 
+// ---------- çekim talepleri ve risk ----------
+const VERDICT = { ok: ['ok', '✅ Looks OK'], check: ['check', '⚠ Check'], multi: ['multi', '👥 Same person?'], bot: ['bot', '🤖 Bot'], cheat: ['cheat', '🚩 Cheat'] };
+const LEVEL_ICON = { high: '⛔', med: '⚠', info: 'ℹ' };
+function uaShort(ua = '') {
+  const os = /Android/i.test(ua) ? 'Android' : /iPhone|iPad|iPod/i.test(ua) ? 'iOS' : /Windows/i.test(ua) ? 'Windows' : /Mac OS X/i.test(ua) ? 'macOS' : /Linux/i.test(ua) ? 'Linux' : '?';
+  const br = /Edg\//.test(ua) ? 'Edge' : /SamsungBrowser/.test(ua) ? 'Samsung' : /OPR\//.test(ua) ? 'Opera' : /Firefox\//.test(ua) ? 'Firefox'
+    : /HeadlessChrome/.test(ua) ? 'HeadlessChrome' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '?';
+  return `${os} · ${br}`;
+}
+function riskNodes(r) {
+  const out = [];
+  const devs = r?.devices || [];
+  const dev = devs.length
+    ? devs.slice(0, 3).map((d) => `${d.mobile ? '📱 Mobile' : '💻 PC'} · ${uaShort(d.ua)} · ${d.screen || '?'} · ${d.tz || '?'}${d.webdriver ? ' · AUTOMATED' : ''}`).join('  |  ')
+    : 'No device info yet';
+  out.push(el('div', { className: 'dev', textContent: `${dev} · ${r?.ipCount ?? 0} internet address${r?.ipCount === 1 ? '' : 'es'} seen` }));
+  const ul = el('ul', { className: 'flags' });
+  for (const f of (r?.flags || [])) ul.append(el('li', { className: f.level, textContent: `${LEVEL_ICON[f.level] || ''} ${f.text}` }));
+  if (ul.children.length) out.push(ul);
+  return out;
+}
+const pill = (v) => { const [c, t] = VERDICT[v] || VERDICT.ok; return el('span', { className: `pill ${c}`, textContent: t }); };
+
+$('wd-filter').onchange = () => withdrawals().catch((e) => alert(e.message));
+$('wd-refresh').onclick = () => Promise.all([overview(), withdrawals()]).catch((e) => alert(e.message));
+async function withdrawals() {
+  const box = $('wd-list'); box.replaceChildren();
+  let rows;
+  try { rows = await rpc('admin_withdrawals', { p_filter: $('wd-filter').value, lim: 100 }); }
+  catch (e) { box.append(el('div', { className: 'muted', textContent: `Not available: ${e.message}` })); return; }
+  if (!rows.length) { box.append(el('div', { className: 'muted', style: 'margin-top:8px', textContent: 'No requests here.' })); return; }
+  for (const w of rows) {
+    const v = w.risk?.verdict || 'ok', bad = ['bot', 'cheat', 'multi'].includes(v);
+    const card = el('div', { className: `wd${bad ? ' bad' : v === 'check' ? ' warn' : ''}` });
+    const nick = el('a', { className: 'nick', textContent: w.nick });
+    nick.onclick = () => openPlayer(w.playerId).catch((er) => alert(er.message));
+    const amt = `${fmt(w.dgn)} DGN${w.usd != null ? ` (${usd(w.usd)})` : ''}${w.rate != null ? ` · fee ${Math.round(w.rate * 100)}%` : ''}`;
+    card.append(el('div', { className: 'wd-top' }, nick, el('span', { className: 'muted', textContent: `wave ${w.wave} · ${w.kind === 'withdraw' ? 'vault → wallet' : 'game → vault'} · ${when(w.at)}` }),
+      el('span', { className: 'sp' }), w.banned ? el('span', { className: 'tag ban', textContent: 'banned' }) : '', pill(v)));
+    card.append(el('div', { className: 'wd-amt', textContent: amt }));
+    for (const n of riskNodes(w.risk)) card.append(n);
+    const act = el('div', { className: 'row', style: 'margin-top:8px' });
+    if (w.status) act.append(el('span', { className: 'pill done', textContent: `${w.status === 'approved' ? 'Approved' : 'Rejected'} ${when(w.reviewedAt)}${w.note ? ` · ${w.note}` : ''}` }));
+    const note = el('input', { className: 'grow', maxLength: 200, placeholder: 'Note (only admins see it)' });
+    const ok = el('button', { textContent: 'Approve' }), no = el('button', { className: 'red', textContent: 'Reject' });
+    const review = (status) => busy(status === 'approved' ? ok : no, async () => {
+      if (status === 'approved' && bad && !confirm(`${w.nick} is flagged as "${VERDICT[v][1]}". Approve anyway?`)) return;
+      await rpc('admin_review_withdraw', { p_event: w.id, p_status: status, p_note: note.value.trim() });
+      await Promise.all([withdrawals(), overview(), log()]);
+    });
+    ok.onclick = review('approved'); no.onclick = review('rejected');
+    act.append(note, ok, no);
+    card.append(act);
+    box.append(card);
+  }
+}
+async function playerRisk(id) {
+  const box = $('p-risk'); box.replaceChildren();
+  let r;
+  try { r = await rpc('admin_player_risk', { p: id }); } catch (e) { return; }
+  box.append(el('div', { className: `wd${['bot', 'cheat', 'multi'].includes(r.verdict) ? ' bad' : r.verdict === 'check' ? ' warn' : ''}` },
+    el('div', { className: 'wd-top' }, el('b', { textContent: 'Risk check' }), el('span', { className: 'sp' }), pill(r.verdict)), ...riskNodes(r)));
+}
+
 // ---------- kayıt ----------
 const ACT = { ban: 'Ban', unban: 'Unban', grant: 'Reward', grant_all: 'Reward everyone', revoke_grant: 'Cancel reward', set_nick: 'Rename',
-  reset_stats: 'Reset stats', notice: 'Notice', nerf: 'Nerf' };
+  reset_stats: 'Reset stats', notice: 'Notice', nerf: 'Nerf', withdraw_approved: 'Approve withdrawal', withdraw_rejected: 'Reject withdrawal' };
 async function log() {
   const rows = await rpc('admin_log_list', { lim: 100 });
   const tb = $('log'); tb.replaceChildren();
@@ -311,6 +387,7 @@ async function log() {
       ? `${d.kind === 'wipe' ? 'Save wipe' : `${d.amount < 0 ? 'take ' : ''}${fmt(Math.abs(d.amount))} × ${kindName(d.kind)}`}${d.count != null ? ` → ${fmt(d.count)} players` : ''}${d.note ? ` · ${d.note}` : ''}`
       : r.action === 'ban' ? `${d.hours ? `${d.hours} h` : 'permanent'}${d.reason ? ` · ${d.reason}` : ''}`
       : r.action === 'nerf' ? `${Math.round((d.mult ?? 1) * 100)}%${d.reason ? ` · ${d.reason}` : ''}`
+      : r.action.startsWith('withdraw_') ? `request #${d.event}${d.note ? ` · ${d.note}` : ''}`
       : r.action === 'set_nick' ? `→ ${d.nick}` : r.action === 'notice' ? (d.text || '(removed)') : r.action === 'revoke_grant' ? `#${d.id}` : '';
     tb.append(el('tr', {}, el('td', { textContent: when(r.at) }), el('td', { textContent: r.admin || '' }),
       el('td', { textContent: ACT[r.action] || r.action }), el('td', { textContent: r.nick || '' }), el('td', { textContent: det })));
