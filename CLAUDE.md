@@ -82,5 +82,11 @@ The three.js skills are written for r186; this project pins r170, so check APIs 
 - AFK mode (`src/ui/afk.js`, 🌙 button bottom-right, F key): fog screen with live counters, render at ~4 fps
   (`game.lowPower`), same earnings as an open game (owner: no bonus, no cut). Settings: auto AFK after 2 min idle,
   keep screen on (Wake Lock). Snapshot reports `afkLast` so the 24/7 bot flag becomes info for AFK players.
+- Founding Raiders campaign (`raid.html`, `/raid`; `src/raid/`; `supabase/07_raid.sql` + Edge Function `supabase/functions/raid`,
+  both applied/deployed): anonymous session → wallet signature (viem verifyMessage, no gas) → X link by a tweet with the
+  raid code, checked through X's public oEmbed (no X API) → follow/like/repost self-reported, reply/post verified by oEmbed
+  (#AFKDungeon) → deterministic card (rarity/hero by wallet hash) → invites (count after X link, not same IP). Points:
+  50/100/25×3/50/50/100/50 per invite (max 50). Ends 2026-11-01 24:00 Istanbul (`raid_config`, admin editable). Rewards are
+  in-game only (beta access, badge, Bronze keys for top 100, Silver pack for top 10); never promise money or tokens.
 - "Burned" only for on-chain burns; in-game spending is "Spent in the dungeon".
 - The creator does not trade the token. Never propose wash trading, volume bots or price support.

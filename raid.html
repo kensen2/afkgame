@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Founding Raiders · AFK Dungeon</title>
+<meta name="description" content="Join the AFK Dungeon Founding Raiders: link your wallet and X, raid the post, claim your raider card and climb the leaderboard for early access." />
+<meta property="og:title" content="AFK Dungeon · Founding Raiders" />
+<meta property="og:description" content="Raid, claim your Founding Raider card and climb the leaderboard for early access." />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Alegreya+Sans:wght@500;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg: #0b0907; --ink: #3b2814; --muted: #7d6648; --parch: #e8dcc4; --gold: #e3bf74; --brass: #a8702f;
+    --card: #efdfbd; --line: #c9a668; --green: #4f9d2f; --green-d: #2d5f17; --red: #d23a2e; --blue: #1e8fae; }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body { margin: 0; min-height: 100vh; color: var(--ink); font: 500 15px 'Alegreya Sans', 'Trebuchet MS', system-ui, sans-serif;
+    background: radial-gradient(ellipse 80% 50% at 50% 0%, #3a2614, transparent 70%), radial-gradient(ellipse at bottom, #1a130c, var(--bg) 70%); background-attachment: fixed; }
+  a { color: inherit; }
+  .top { max-width: 1180px; margin: 0 auto; padding: 22px 16px 6px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .logo { font: 800 30px Cinzel, serif; color: var(--parch); letter-spacing: .04em; text-shadow: 0 2px 0 #000; text-decoration: none; }
+  .logo span { color: var(--gold); }
+  .top .sp { flex: 1; }
+  .top .play { font: 800 14px Cinzel, serif; color: var(--gold); text-decoration: none; border: 2px solid var(--brass); border-radius: 10px; padding: 7px 14px; }
+  .hero-t { max-width: 1180px; margin: 0 auto; padding: 4px 16px 14px; color: var(--parch); }
+  .hero-t h1 { margin: 6px 0 4px; font: 800 clamp(28px, 5vw, 44px) Cinzel, serif; color: #f3e7cc; text-shadow: 0 3px 0 #000, 0 0 24px rgba(255,160,60,.25); }
+  .hero-t p { margin: 0; color: #b8ae96; font-size: 16px; max-width: 760px; }
+  .ends { display: inline-block; margin-top: 10px; padding: 5px 12px; border-radius: 999px; background: rgba(227,191,116,.12); border: 1px solid rgba(227,191,116,.35);
+    color: var(--gold); font-weight: 800; font-variant-numeric: tabular-nums; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 8px 16px 40px; display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 330px; align-items: start; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 520px) { .step { grid-template-columns: 34px minmax(0, 1fr); gap: 10px; } .num { width: 34px; height: 34px; font-size: 16px; border-radius: 10px; } .panel { padding: 12px; } }
+  .panel { background: linear-gradient(#e2cc9f, #d3b882); border: 3px solid #3a210c; border-radius: 16px; padding: 16px;
+    box-shadow: 0 0 0 4px var(--brass), 0 0 0 7px #3a210c, 0 14px 30px rgba(0,0,0,.6); }
+  .steps { display: grid; gap: 22px; }
+  .step { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; }
+  .num { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font: 800 20px Cinzel, serif; color: #2a1a05;
+    background: linear-gradient(#ffd97a, #e2a531); border: 2px solid #3a210c; }
+  .step.done .num { background: linear-gradient(#86d35a, var(--green)); color: #fff; }
+  .step.locked { opacity: .55; }
+  .step h2 { margin: 2px 0 2px; font: 800 20px Cinzel, serif; color: #6b3a0e; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pts { font: 800 12px 'Alegreya Sans', sans-serif; color: #fff; background: var(--blue); border-radius: 8px; padding: 2px 8px; }
+  .opt { font: 800 11px 'Alegreya Sans', sans-serif; color: #7d6648; border: 1px solid #b8894a; border-radius: 8px; padding: 1px 7px; }
+  .ok { color: #2f7a2a; font-weight: 800; } .bad { color: #a8281c; font-weight: 700; } .muted { color: var(--muted); font-size: 14px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; } .row .grow { flex: 1; min-width: 180px; }
+  input { font: inherit; color: var(--ink); background: #f6ead0; border: 2px solid var(--line); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+  button, .btn { font: 800 14px 'Alegreya Sans', sans-serif; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.45); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(#86d35a, var(--green)); border: 2px solid var(--green-d); border-radius: 10px; padding: 8px 14px;
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.35), 0 3px 0 var(--green-d); }
+  button:active, .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--green-d); }
+  button.dark, .btn.dark { background: linear-gradient(#3a3530, #1b1815); border-color: #0c0a08; box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 3px 0 #0c0a08; }
+  button.plain { color: var(--ink); text-shadow: none; background: linear-gradient(#ecdab3, #dcc292); border-color: #b8894a; box-shadow: 0 3px 0 #b8894a; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .task { display: flex; align-items: center; gap: 10px; background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 9px 12px; margin-top: 8px; }
+  .task .ico { width: 34px; height: 34px; border-radius: 9px; background: #1b1815; color: #fff; display: grid; place-items: center; font-weight: 800; flex: none; }
+  .task .t { flex: 1; min-width: 0; } .task .t b { display: block; } .task .t small { color: var(--muted); }
+  .task.done { border-color: #6fb04a; background: #e3f0cf; }
+  .code { font: 800 18px ui-monospace, Menlo, monospace; letter-spacing: .12em; background: #1b1815; color: var(--gold); padding: 4px 10px; border-radius: 8px; }
+  canvas#card { width: 100%; height: auto; border-radius: 12px; display: block; margin-top: 10px; background: #000; box-shadow: 0 6px 20px rgba(0,0,0,.45); }
+  .msg { min-height: 20px; font-size: 14px; font-weight: 700; margin-top: 6px; }
+  .side { display: grid; gap: 18px; }
+  .me .big { font: 800 34px Cinzel, serif; color: #8a4f0c; } .me .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .me .grid div { background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+  .me .grid span { display: block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  .board { max-height: 520px; overflow-y: auto; margin-top: 6px; }
+  .board .r { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; padding: 6px 4px; border-bottom: 1px dashed #c9a668; align-items: center; }
+  .board .r .n { font-weight: 800; color: var(--muted); } .board .r .h { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+  .board .r.me { background: #f2d999; border-radius: 8px; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .rew li, .ptab li { margin: 6px 0; } .rew, .ptab { padding-left: 18px; margin: 6px 0; }
+  .ptab li { display: flex; justify-content: space-between; gap: 8px; list-style: none; margin-left: -18px; border-bottom: 1px dashed #c9a668; padding-bottom: 4px; }
+  h3 { margin: 0 0 6px; font: 800 18px Cinzel, serif; color: #6b3a0e; }
+  .note { color: #b8ae96; font-size: 13px; max-width: 1180px; margin: 0 auto; padding: 0 16px 30px; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: #1b1815; color: var(--parch); border: 2px solid var(--brass);
+    border-radius: 12px; padding: 10px 16px; font-weight: 700; z-index: 10; max-width: 92vw; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  .toast.on { opacity: 1; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <a class="logo" href="./">AFK<span>DUNGEON</span></a><span class="sp"></span>
+    <a class="play" href="./" target="_blank" rel="noopener">⚔ Play the beta</a>
+  </div>
+  <div class="hero-t">
+    <h1>Founding Raiders</h1>
+    <p>Link your wallet and X, raid our post, claim your Founding Raider card and invite friends. Top raiders get early access and in-game rewards when AFK Dungeon launches.</p>
+    <div class="ends" id="ends">Raid ends in …</div>
+  </div>
+
+  <div class="wrap">
+    <main class="panel steps" id="steps">
+      <section class="step" id="s1">
+        <div class="num">1</div>
+        <div><h2>Connect your wallet <span class="pts">+50</span></h2>
+          <div class="muted">Sign a free message to prove the wallet is yours. No transaction, no gas. Any EVM wallet works (Robinhood Chain is EVM).</div>
+          <div id="s1-body"></div><div class="msg" id="s1-msg"></div></div>
+      </section>
+      <section class="step" id="s2">
+        <div class="num">2</div>
+        <div><h2>Link your X account <span class="pts">+100</span></h2>
+          <div class="muted">Post a tweet with your raid code, then paste its link. We read the public tweet only, no login needed.</div>
+          <div id="s2-body"></div><div class="msg" id="s2-msg"></div></div>
+      </section>
+      <section class="step" id="s3">
+        <div class="num">3</div>
+        <div><h2>Raid the post</h2>
+          <div class="muted" id="s3-sub">Follow, like, repost and reply.</div>
+          <div id="s3-body"></div><div class="msg" id="s3-msg"></div></div>
+      </section>
+      <section class="step" id="s4">
+        <div class="num">4</div>
+        <div><h2>Claim your Founding Raider card <span class="pts">+50</span></h2>
+          <div class="muted">Your card is tied to your wallet: hero, rarity and stats are rolled once and never change.</div>
+          <div id="s4-body"></div><div class="msg" id="s4-msg"></div></div>
+      </section>
+      <section class="step" id="s5">
+        <div class="num">5</div>
+        <div><h2>Post about AFK Dungeon <span class="pts">+100</span></h2>
+          <div class="muted">Share your card on X with #AFKDungeon and paste the link.</div>
+          <div id="s5-body"></div><div class="msg" id="s5-msg"></div></div>
+      </section>
+      <section class="step" id="s6">
+        <div class="num">6</div>
+        <div><h2>Invite your friends <span class="pts">+50 each</span></h2>
+          <div class="muted">You get points for every friend who links their X through your link (up to 50 friends).</div>
+          <div id="s6-body"></div></div>
+      </section>
+    </main>
+
+    <aside class="side">
+      <div class="panel me">
+        <h3>Your raid</h3>
+        <div class="grid"><div><span>Rank</span><b class="big" id="me-rank">—</b></div><div><span>Points</span><b class="big" id="me-pts">0</b></div></div>
+        <div class="muted" id="me-sub" style="margin-top:8px"></div>
+      </div>
+      <div class="panel">
+        <h3>Top 100 raiders</h3>
+        <div class="muted" id="board-total"></div>
+        <div class="board" id="board"></div>
+      </div>
+      <div class="panel">
+        <h3>Rewards</h3>
+        <ul class="rew">
+          <li><b>Every raider who finishes:</b> early access to the beta and the <b>Founding Raider</b> badge in the game.</li>
+          <li><b>Top 100:</b> a few single Bronze keys at launch.</li>
+          <li><b>Top 10:</b> Legendary Founder badge, a Silver key pack and their name on the founders' wall.</li>
+        </ul>
+        <div class="muted">Rewards are in-game only. Points are not money and are not converted into tokens.</div>
+      </div>
+      <div class="panel">
+        <h3>Points</h3>
+        <ul class="ptab">
+          <li><span>Connect wallet</span><b>50</b></li><li><span>Link X</span><b>100</b></li>
+          <li><span>Follow · like · repost</span><b>25 each</b></li><li><span>Reply</span><b>50</b></li>
+          <li><span>Claim card</span><b>50</b></li><li><span>Post about AFK Dungeon</span><b>100</b></li>
+          <li><span>Each invited friend</span><b>50</b></li>
+        </ul>
+        <div class="muted">Follows, likes and reposts cannot be checked automatically; the top raiders are checked by hand before rewards. Fake accounts and invites from the same network do not count.</div>
+      </div>
+    </aside>
+  </div>
+  <div class="note">AFK Dungeon is a game, not an investment. Nothing on this page is a promise of money or tokens.</div>
+  <div class="toast" id="toast"></div>
+  <script type="module" src="src/raid/raid.js"></script>
+</body>
+</html>

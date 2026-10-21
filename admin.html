@@ -98,6 +98,23 @@
       <div class="row" style="margin-top:8px"><button class="red" id="btn-mt-on">Start maintenance</button><button id="btn-mt-off">End maintenance</button><span id="mt-msg-out" class="msg"></span></div>
     </div>
 
+    <div class="panel" id="rd-panel">
+      <div class="head"><h2>Founding Raiders (X campaign)</h2><span class="sp"></span><a class="muted" href="raid.html" target="_blank" rel="noopener">Open raid page ↗</a></div>
+      <div class="stats" id="rd-stats" style="margin-top:6px"></div>
+      <div class="row" style="margin-top:10px">
+        <input id="rd-handle" placeholder="X handle (without @)" style="width:180px" />
+        <input id="rd-post" class="grow" placeholder="Raid post link: https://x.com/…/status/…" />
+        <input id="rd-ends" type="datetime-local" title="Raid ends (your local time)" />
+        <button class="blue" id="btn-rd-save">Save</button>
+      </div>
+      <div id="rd-msg" class="msg"></div>
+      <div class="row"><input id="rd-q" class="grow" placeholder="Search X handle or wallet" /><button class="plain" id="btn-rd-search">Search</button><button class="plain" id="btn-rd-csv">Download top 100 (CSV)</button></div>
+      <div class="muted" style="margin-top:6px">Follows, likes and reposts are self-reported: check the top raiders on X before rewards. ⚠ marks raiders on the same internet as others or as their inviter.</div>
+      <div class="tablewrap" style="margin-top:8px;max-height:520px;overflow-y:auto">
+        <table><thead><tr><th>#</th><th>X</th><th>Wallet</th><th>Points</th><th>Tasks</th><th>Invites</th><th>Card</th><th>Flags</th><th></th></tr></thead><tbody id="rd-list"></tbody></table>
+      </div>
+    </div>
+
     <div class="panel" id="wd-panel">
       <div class="head"><h2>Withdrawal requests <span id="wd-badge" class="tag ban hidden"></span></h2><span class="sp"></span>
         <select id="wd-filter"><option value="open">Waiting</option><option value="flagged">Waiting · flagged only</option><option value="all">All (incl. reviewed)</option></select>

@@ -21,5 +21,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/raid",
+      "destination": "/raid.html"
+    }
   ]
 }

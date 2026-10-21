@@ -16,7 +16,7 @@ const when = (ms) => (ms ? new Date(Number(ms)).toLocaleString() : '—');
 const KINDS = [['gold', 'Gold'], ['dgn', 'DGN (in-game)'], ['tomes', 'Skill Tomes'],
   ...CONFIG.v5.keys.map((k) => ['key_' + k.id, k.name])];
 const kindName = (k) => (k === 'wipe' ? 'Save wipe' : (KINDS.find((x) => x[0] === k) || [k, k])[1]);
-const ERR = { not_admin: 'This account is not an admin.', not_found: 'Player not found.', cannot_ban_admin: 'Admins cannot be banned.',
+const ERR = { not_admin: 'This account is not an admin.', bad_post_url: 'Paste a full post link: https://x.com/name/status/123…', not_found: 'Player not found.', cannot_ban_admin: 'Admins cannot be banned.',
   already_claimed: 'The player already received it; it cannot be taken back.', not_allowed: 'Not allowed.', nick_taken: 'That nickname is taken.' };
 
 let session = null, current = null;
@@ -71,7 +71,7 @@ async function start() {
     const me = await rpc('admin_whoami');
     $('who').textContent = me.email || me.id;
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
-    await Promise.all([overview(), search(''), log(), withdrawals(), maint()]);
+    await Promise.all([overview(), search(''), log(), withdrawals(), maint(), raiders()]);
     setInterval(() => { if (!document.hidden) Promise.all([overview(), withdrawals()]).catch(() => {}); }, 60000);
     setInterval(() => showMaint(), 1000);
   } catch (e) { logout(e.message); }
@@ -311,6 +311,62 @@ $('btn-wipe').onclick = busy($('btn-wipe'), async () => {
   await after(); return 'Wipe queued. It runs the next time the player opens the game.';
 }, $('p-msg'));
 
+// ---------- Founding Raiders (raid.html) ----------
+let rdRows = [];
+const xLink = (h, id) => `https://x.com/${encodeURIComponent(h || '')}${id ? `/status/${id}` : ''}`;
+async function raiders() {
+  let cfg;
+  try { cfg = await rpc('admin_raid_config'); } catch (e) { $('rd-panel').classList.add('hidden'); return; }
+  const st = $('rd-stats'); st.replaceChildren();
+  const left = cfg.endsAt - Date.now();
+  for (const [k, v] of [['Raiders (X linked)', fmt(cfg.raiders)], ['Wallets', fmt(cfg.wallets)], ['Cards', fmt(cfg.cards)],
+    ['Ends', left > 0 ? `${Math.floor(left / 86400000)}d ${Math.floor(left / 3600000) % 24}h` : 'ended']])
+    st.append(el('div', { className: 'card' }, el('span', { className: 'muted', textContent: k }), el('b', { textContent: v })));
+  if (document.activeElement?.closest?.('#rd-panel') == null) {
+    $('rd-handle').value = cfg.xHandle || ''; $('rd-post').value = cfg.postUrl || '';
+    const d = new Date(cfg.endsAt); $('rd-ends').value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  }
+  rdRows = await rpc('admin_raiders', { q: $('rd-q').value.trim(), lim: 300 });
+  const tb = $('rd-list'); tb.replaceChildren();
+  if (!rdRows.length) tb.append(el('tr', {}, el('td', { colSpan: 9, className: 'muted', textContent: 'No raiders yet.' })));
+  rdRows.forEach((r, i) => {
+    const t = r.tasks || {};
+    const tasks = el('td', {}, ...[['F', t.follow], ['L', t.like], ['R', t.repost]].map(([k, v]) => el('span', { className: 'tag', textContent: k, style: v ? 'background:#4f9d2f' : 'opacity:.35' })),
+      ...[['reply', t.reply], ['post', t.post]].map(([k, id]) => id ? el('a', { href: xLink(r.x, id), target: '_blank', rel: 'noopener', className: 'tag', textContent: k, style: 'background:#1e8fae;margin-left:2px' }) : el('span', { className: 'tag', textContent: k, style: 'opacity:.35;margin-left:2px' })));
+    const flags = [];
+    if (r.sameIp) flags.push(`⚠ same internet as ${r.sameIp}`);
+    if (r.sameIpAsInviter) flags.push('⚠ same internet as inviter');
+    if (r.status === 'rejected') flags.push('⛔ disqualified');
+    const btn = el('button', { className: r.status === 'rejected' ? 'plain' : 'red', textContent: r.status === 'rejected' ? 'Restore' : 'Disqualify' });
+    btn.onclick = busy(btn, async () => {
+      if (r.status !== 'rejected' && !confirm(`Disqualify @${r.x}? Their points go to 0.`)) return;
+      await rpc('admin_raider_status', { p_id: r.id, p_status: r.status === 'rejected' ? 'ok' : 'rejected' });
+      await Promise.all([raiders(), log()]);
+    });
+    tb.append(el('tr', { style: r.status === 'rejected' ? 'opacity:.55' : '' },
+      el('td', { textContent: i + 1 }),
+      el('td', {}, el('a', { href: xLink(r.x, t.xTweet), target: '_blank', rel: 'noopener', textContent: `@${r.x}`, className: 'nick' }), r.invitedBy ? el('div', { className: 'muted', textContent: `via @${r.invitedBy}` }) : ''),
+      el('td', { className: 'mono', textContent: r.wallet ? `${r.wallet.slice(0, 6)}…${r.wallet.slice(-4)}` : '—', title: r.wallet || '' }),
+      el('td', {}, el('b', { textContent: fmt(r.points) })), tasks, el('td', { textContent: r.invites }),
+      el('td', { textContent: r.card ? `#${r.card.no} ${r.card.rarity}` : '—' }),
+      el('td', { textContent: flags.join(' · '), style: flags.length ? 'color:#a8281c;font-size:13px' : '' }), el('td', {}, btn)));
+  });
+}
+$('btn-rd-search').onclick = () => raiders().catch((e) => alert(e.message));
+$('btn-rd-save').onclick = busy($('btn-rd-save'), async () => {
+  const ends = $('rd-ends').value ? new Date($('rd-ends').value).toISOString() : null;
+  await rpc('admin_raid_set', { p_handle: $('rd-handle').value.trim(), p_post_url: $('rd-post').value.trim(), p_ends_at: ends });
+  await Promise.all([raiders(), log()]);
+  return 'Saved. The raid page uses it right away.';
+}, $('rd-msg'));
+$('btn-rd-csv').onclick = () => {
+  const rows = rdRows.filter((r) => r.status === 'ok').slice(0, 100);
+  const csv = ['rank,x,wallet,points,invites,card,rarity,follow,like,repost,reply,post',
+    ...rows.map((r, i) => [i + 1, r.x, r.wallet, r.points, r.invites, r.card?.no ?? '', r.card?.rarity ?? '', r.tasks.follow, r.tasks.like, r.tasks.repost, !!r.tasks.reply, !!r.tasks.post].join(','))].join('\n');
+  const a = el('a', { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: `founding-raiders-top100-${new Date().toISOString().slice(0, 10)}.csv` });
+  a.click();
+};
+
 // ---------- bakım modu ----------
 let mt = null, mtSkew = 0;   // mt: sunucudan son durum; mtSkew: sunucu saati - bu bilgisayarın saati
 async function maint() {
@@ -405,7 +461,7 @@ async function playerRisk(id) {
 // ---------- kayıt ----------
 const ACT = { ban: 'Ban', unban: 'Unban', grant: 'Reward', grant_all: 'Reward everyone', revoke_grant: 'Cancel reward', set_nick: 'Rename',
   reset_stats: 'Reset stats', notice: 'Notice', nerf: 'Nerf', withdraw_approved: 'Approve withdrawal', withdraw_rejected: 'Reject withdrawal',
-  maintenance_on: 'Maintenance on', maintenance_off: 'Maintenance off' };
+  maintenance_on: 'Maintenance on', maintenance_off: 'Maintenance off', raid_config: 'Raid settings', raider_rejected: 'Disqualify raider', raider_ok: 'Restore raider' };
 async function log() {
   const rows = await rpc('admin_log_list', { lim: 100 });
   const tb = $('log'); tb.replaceChildren();
