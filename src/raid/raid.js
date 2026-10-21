@@ -1,6 +1,6 @@
 // =====================================================================
 //  Founding Raiders sayfası (raid.html). Sunucu: supabase/07_raid.sql + Edge Function "raid".
-//  Oturum: Supabase anonim hesap (oyundan ayrı anahtar). Cüzdan: tarayıcıdaki EVM cüzdanı (window.ethereum).
+//  Oturum: Supabase anonim hesap (oyundan ayrı anahtar). Cüzdan: tarayıcıdaki EVM cüzdanları (EIP-6963 listesi; yoksa window.ethereum).
 // =====================================================================
 import { CONFIG } from '../config.js';
 import { drawCard, rarityColor } from './card.js';
@@ -69,6 +69,41 @@ async function edge(action, args = {}) {
 
 // ---------------- durum ----------------
 let me = null, board = null, busy = false;
+
+// ---------------- cüzdanlar (EIP-6963) ----------------
+// Tarayıcıdaki her EVM cüzdanı kendini duyurur (MetaMask, Phantom, OKX, Rabby, Coinbase …). Oyuncu listeden seçer;
+// window.ethereum'u hangi eklenti ele geçirdiyse ona mahkum kalmayız.
+const wallets = new Map();
+window.addEventListener('eip6963:announceProvider', (e) => {
+  const d = e.detail;
+  if (!d?.info?.uuid || !d.provider) return;
+  wallets.set(d.info.uuid, d);
+  if (me && !me.wallet) render();
+});
+window.dispatchEvent(new Event('eip6963:requestProvider'));
+const hasWallet = () => wallets.size > 0 || !!window.ethereum;
+function pickWallet() {
+  const list = [...wallets.values()].sort((a, b) => a.info.name.localeCompare(b.info.name));
+  if (!list.length) return Promise.resolve(window.ethereum ? { info: { name: 'Browser wallet' }, provider: window.ethereum } : null);
+  if (list.length === 1) return Promise.resolve(list[0]);
+  return new Promise((resolve) => {
+    const box = $('wallet-pick'), ul = $('wallet-list');
+    ul.innerHTML = '';
+    for (const w of list) {
+      const b = document.createElement('button'); b.className = 'wp-item'; b.type = 'button';
+      const icon = String(w.info.icon || '');
+      if (/^data:image\/(png|svg\+xml|webp|jpeg|gif);/i.test(icon)) { const im = document.createElement('img'); im.src = icon; im.alt = ''; b.append(im); }
+      else b.append(Object.assign(document.createElement('span'), { className: 'wp-ph', textContent: '◈' }));
+      b.append(Object.assign(document.createElement('span'), { textContent: w.info.name }));
+      b.addEventListener('click', () => { close(); resolve(w); });
+      ul.append(b);
+    }
+    const close = () => { box.classList.add('hidden'); $('wp-cancel').onclick = null; };
+    $('wp-cancel').onclick = () => { close(); resolve(null); };
+    box.classList.remove('hidden');
+  });
+}
+
 const ref = (() => { try { const r = new URLSearchParams(location.search).get('ref'); return r && /^[A-Za-z0-9]{4,12}$/.test(r) ? r : null; } catch (e) { return null; } })();
 
 async function load() {
@@ -98,7 +133,7 @@ function render() {
   // 1 cüzdan
   stepState('s1', hasW, false);
   if (hasW) $('s1-body').innerHTML = `<div class="row"><span class="ok">✓ Connected</span><span class="code" style="font-size:14px">${esc(me.wallet.slice(0, 6))}…${esc(me.wallet.slice(-4))}</span></div>`;
-  else if (window.ethereum) $('s1-body').innerHTML = `<div class="row"><button id="b-wallet">🦊 Connect wallet</button></div>`;
+  else if (hasWallet()) $('s1-body').innerHTML = `<div class="row"><button id="b-wallet">🔗 Connect wallet</button>${wallets.size > 1 ? `<span class="muted">${wallets.size} wallets found</span>` : ''}</div>`;
   else {
     const dapp = `${location.host}${location.pathname}${location.search}`;
     $('s1-body').innerHTML = `<div class="row muted">No wallet in this browser. On a phone, open this page inside your wallet app:</div>
@@ -188,10 +223,13 @@ function wire() {
   $('b-wallet')?.addEventListener('click', (e) => run(e.currentTarget, async () => {
     msg('s1-msg', '');
     try {
-      const [acc] = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const w = await pickWallet();
+      if (!w) return;
+      msg('s1-msg', `Check ${esc(w.info.name)}: connect, then sign the message.`);
+      const [acc] = await w.provider.request({ method: 'eth_requestAccounts' });
       if (!acc) throw new Error('no_wallet');
       const address = acc.toLowerCase();
-      const signature = await window.ethereum.request({ method: 'personal_sign', params: [hex(walletMessage(address, me.nonce)), acc] });
+      const signature = await w.provider.request({ method: 'personal_sign', params: [hex(walletMessage(address, me.nonce)), acc] });
       const r = await edge('wallet', { address, signature });
       if (!r.ok) return msg('s1-msg', esc(errText(r.error)), 'bad');
       toast(r.moved ? 'Welcome back! Your raid was loaded from this wallet.' : 'Wallet connected. +50');
@@ -243,5 +281,5 @@ setInterval(() => {
   $('ends').textContent = `Raid ends in ${d}d ${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
 }, 1000);
 setInterval(() => { if (!document.hidden) loadBoard(); }, 30000);
-window.ethereum?.on?.('accountsChanged', () => load());
+setTimeout(() => { if (me && !me.wallet) render(); }, 600);   // geç duyuran cüzdanlar için
 load();

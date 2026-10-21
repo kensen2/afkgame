@@ -76,6 +76,15 @@
     border-radius: 12px; padding: 10px 16px; font-weight: 700; z-index: 10; max-width: 92vw; opacity: 0; transition: opacity .3s; pointer-events: none; }
   .toast.on { opacity: 1; }
   .hidden { display: none !important; }
+  .wp { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(5,4,2,.75); }
+  .wp-box { width: 100%; max-width: 380px; background: linear-gradient(#f3e6c8, #e2cc9f); border: 3px solid #3a210c; border-radius: 16px; padding: 18px;
+    box-shadow: 0 0 0 4px var(--brass), 0 0 0 7px #3a210c, 0 14px 30px rgba(0,0,0,.6); }
+  .wp-box h3 { font-size: 22px; }
+  .wp-list { display: grid; gap: 8px; margin-top: 12px; }
+  .wp-item { width: 100%; justify-content: flex-start; gap: 12px; color: var(--ink); text-shadow: none; font-size: 16px; padding: 10px 12px;
+    background: #fbf1dc; border: 2px solid #3a210c; box-shadow: 0 3px 0 #3a210c; }
+  .wp-item:hover { background: #ffe9a8; }
+  .wp-item img, .wp-ph { width: 32px; height: 32px; border-radius: 8px; flex: none; display: grid; place-items: center; background: #1b1815; color: var(--gold); }
 </style>
 </head>
 <body>
@@ -163,6 +172,14 @@
   </div>
   <div class="note">AFK Dungeon is a game, not an investment. Nothing on this page is a promise of money or tokens.</div>
   <div class="toast" id="toast"></div>
+  <div class="wp hidden" id="wallet-pick" role="dialog" aria-label="Choose a wallet">
+    <div class="wp-box">
+      <h3>Choose a wallet</h3>
+      <div class="muted">Any wallet that supports Robinhood Chain (EVM) works.</div>
+      <div id="wallet-list" class="wp-list"></div>
+      <button class="dark" id="wp-cancel" style="width:100%;justify-content:center;margin-top:10px">Cancel</button>
+    </div>
+  </div>
   <script type="module" src="src/raid/raid.js"></script>
 </body>
 </html>
